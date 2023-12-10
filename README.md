@@ -25,7 +25,7 @@ base em análise automática de imagens de satélite
 *Duração: Mês 1-6*
 
 Entregáveis:
-  * E1.1 – Relatório com a descrição do problema, condicionantes, dados de input e especificações técnicas dos outputs
+  * E1.1 – [Relatório com a descrição do problema, condicionantes, dados de input e especificações técnicas dos outputs](Entregavel_1_1.pdf)
   * E1.2 – Relatório com seleção e justificação das metodologias a operacionalizar
   * E1.3 – Relatório sobre potenciais adaptações tecnológicas a implementar na cadeia de produção da DGT.
 
