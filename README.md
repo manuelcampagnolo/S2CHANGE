@@ -17,6 +17,7 @@ eficientes a nível computacional para a criação sistemática de um produto na
 vetorial de delimitação de manchas superiores a 0.5 ha de perda recente de floresta e mato com
 base em análise automática de imagens de satélite
 * Data de início: 23 de outubro de 2023
+* Centro de custos do ISA: 5207 (S2CHANGE)
 
 ## Tarefas
 
