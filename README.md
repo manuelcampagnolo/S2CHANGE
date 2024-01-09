@@ -1,4 +1,7 @@
 # S2CHANGE 
+
+**Desenvolvimento de mapas de perdas recentes de floresta e mato em Portugal derivados de imagens de satélite**
+
 Contrato N.º 3044 de cooperação entre a Direção Geral do Território e o Instituto Superior de Agronomia
 
 ## Referências
@@ -30,7 +33,7 @@ Entregáveis:
   * E1.2 – Relatório com seleção e justificação das metodologias a operacionalizar
   * E1.3 – Relatório sobre potenciais adaptações tecnológicas a implementar na cadeia de produção da DGT.
 
-**Tarefa 2** - Construção da uma base de dados de referência (BDR) para calibração e validação espacial e temporal das metodologias a operacionalizar com base em dados resultantes de interpretação de imagens áereas e de satélite, do Instituto de Conservação da Natureza e Florestas (ICNF) e outras fontes consideradas relevantes.
+**Tarefa 2** - Construção da uma base de dados de referência (BDR) para calibração e validação espacial e temporal das metodologias a operacionalizar com base em dados resultantes de interpretação de imagens aéreas e de satélite, do Instituto de Conservação da Natureza e Florestas (ICNF) e outras fontes consideradas relevantes.
 
 *Duração: Meses 2-18*
 
