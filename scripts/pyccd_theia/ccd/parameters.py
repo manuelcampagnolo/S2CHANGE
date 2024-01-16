@@ -30,7 +30,7 @@ defaults = {
 
     # Spectral bands that are utilized for detecting change
     #'DETECTION_BANDS': [1, 2, 3, 4, 5], # Breakpointbands; tipicamente qt mais bandas, mais breaks estimados
-    'DETECTION_BANDS': [0,1,5], # Breakpointbands; tipicamente qt mais bandas, mais breaks estimados
+    'DETECTION_BANDS': [0, 1, 5], # Breakpointbands; tipicamente qt mais bandas, mais breaks estimados
 
     # Spectral bands that are utilized for Tmask filtering
     'TMASK_BANDS': [1, 5],
