@@ -74,7 +74,7 @@ defaults = {
     'SNOW_PCT_THRESHOLD': 0.75,
     'OUTLIER_THRESHOLD': 35.888186879610423, #Tmask
     'CHANGE_THRESHOLD': 15.086272469388987,
-    'CHISQUARE': 0.999, #0.99
+    'CHISQUAREPROB': 0.999, #0.99
     'T_CONST': 4.89,
 
     # Value added to the median green value for filtering purposes
