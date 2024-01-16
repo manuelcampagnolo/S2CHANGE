@@ -298,10 +298,15 @@ def adjustpeek(dates, defpeek):
     return adj_peek if adj_peek > defpeek else defpeek
 
 
-def adjustchgthresh(peek, defpeek, defthresh):
+def adjustchgthresh(peek, defpeek, defthresh, chisquare_prob, deg_free):
     thresh = defthresh
     if peek > defpeek:
-        pt_cg = 1 - (1 - 0.99) ** (defpeek / peek)
-        thresh = chi2.ppf(pt_cg, 5)
+        pt_cg = 1 - (1 - chisquare_prob) ** (defpeek / peek)
+        thresh = chi2.ppf(pt_cg, deg_free)
 
     return thresh
+
+
+def returnThresholdFromProb(chisquare_prob, deg_free):
+
+    return chi2.ppf(chisquare_prob, deg_free)
