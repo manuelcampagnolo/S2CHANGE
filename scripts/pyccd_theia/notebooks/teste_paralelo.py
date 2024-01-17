@@ -143,7 +143,7 @@ def processar_ponto(args):
     ndvis=[]
     for (nir,red) in zip(nirs,reds):
         if nir+red>0:
-            ndvis.append((nir-red)/(nir+red))
+            ndvis.append(10000*(nir-red)/(nir+red))
         else:
             ndvis.append(0)
     #results = ccd.detect(dates, blues, greens, reds, nirs, swir1s, swir2s)
