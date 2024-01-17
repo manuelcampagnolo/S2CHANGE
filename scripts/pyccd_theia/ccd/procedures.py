@@ -492,7 +492,6 @@ def lookback(dates, observations, model_window, models, previous_break,
     peek_size = proc_params.PEEK_SIZE
     detection_bands = proc_params.DETECTION_BANDS
     change_thresh = proc_params.CHANGE_THRESHOLD
-    chisquare = proc_params.CHISQUARE
     outlier_thresh = proc_params.OUTLIER_THRESHOLD
     avg_days_yr = proc_params.AVG_DAYS_YR
     #alpha = proc_params.ALPHA
