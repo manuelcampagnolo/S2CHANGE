@@ -292,6 +292,17 @@ def find_closest_doy(dates, date_idx, window, num):
 
 
 def adjustpeek(dates, defpeek):
+    """
+    Adjust the number of observations looked at for the forward processing window
+    based on observation date characteristics
+
+    Args:
+        dates: 1-d ndarray of observation dates
+        defpeek: default number of observations
+
+    Returns:
+        int number of observations to use
+    """
     delta = np.median(np.diff(dates))
     adj_peek = int(np.round(defpeek * 16 / delta))
 
@@ -299,6 +310,19 @@ def adjustpeek(dates, defpeek):
 
 
 def adjustchgthresh(peek, defpeek, defthresh, chisquare_prob, deg_free):
+    """
+    Adjust the change threshold if the peek window size has changed
+
+    Args:
+        peek: peek window size determined from adjustpeek
+        defpeek: default window size
+        defthresh: default change threshold
+        chisquare_prob: default chi-square probability
+        deg_free: degrees of freedom of the chi-square distribution
+
+    Returns:
+        float change threshold to use
+    """
     thresh = defthresh
     if peek > defpeek:
         pt_cg = 1 - (1 - chisquare_prob) ** (defpeek / peek)
@@ -308,5 +332,14 @@ def adjustchgthresh(peek, defpeek, defthresh, chisquare_prob, deg_free):
 
 
 def returnThresholdFromProb(chisquare_prob, deg_free):
+    """
+    Calculates the chi-square value based on the probability and degrees of freedom.
 
+    Args:
+        chisquare_prob: chi-square probability
+        deg_free: degrees of freedom of the chi-square distribution
+    
+    Returns:
+        float change threshold to use
+    """
     return chi2.ppf(chisquare_prob, deg_free)
