@@ -1,4 +1,6 @@
 import geopandas as gpd
+from shapely.geometry import Point
+from pyproj import Transformer
 import pandas as pd
 import numpy as np
 import rasterio
@@ -24,27 +26,28 @@ def extract_date(file_path):
 def main():
     tiles = "T29TNE"
     caminho_arquivo = os.path.join(module_path, tiles, 'BUFFER_300','pontos_300_buffers_1_metros.gpkg') #"C:\\Users\\scaetano\\Desktop\\PPT realizados\\Buffer\\pontos_300_buffers 1_metros.gpkg"
-    dados_geoespaciais = gpd.read_file(caminho_arquivo) # seria melhor ler csv; apenas coordenadas interessam
+    dados_geoespaciais_metros = gpd.read_file(caminho_arquivo) # seria melhor ler csv; apenas coordenadas interessam
+    dados_geoespaciais_metros = dados_geoespaciais_metros.sample(1000, random_state=42).copy() #para quando se quer uma amostra dos pontos
     
     dfs = []
-    points_per_csv = 20000
+    points_per_csv = 1000
     csv_counter = 1
     
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
 
     with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
-        N=10 #len(dados_geoespaciais)
+        N=1000 #len(dados_geoespaciais)
 
         tqdm_bar = tqdm(total=N)
         
-        args_list = [(k, dados_geoespaciais.iloc[k].geometry, tiles) for k in range(N)] #len(dados_geoespaciais))]
+        args_list = [(k, dados_geoespaciais_metros.iloc[k].geometry, tiles) for k in range(N)] #len(dados_geoespaciais))]
         
         for result_df in executor.map(processar_ponto, args_list):
             dfs.append(result_df)
             tqdm_bar.update(1)
 
             # Check if the length of dfs is a multiple of points_per_csv
-            if len(dfs) % points_per_csv == 0:
+            if False:#len(dfs) % points_per_csv == 0:
                 # Concatenate DataFrames and save to CSV
                 partial_df = pd.concat(dfs, ignore_index=True)
                 #partial_df.to_csv(f"C:\\Users\\scaetano\\Desktop\\PPT realizados\\Buffer\\CSV 300\\csv_{csv_counter}_{timestamp}.csv", index=False)
@@ -68,7 +71,7 @@ def read_tif_files(S2_tile):
     # Theia_T29TNE_20171007-112058
 
     list_files=[]
-    for i in range(2017, 2023):
+    for i in range(2017, 2024):
         if DGT: 
             if i == 2017:
                 base_folder = fr"\\192.168.10.35\\Imag_sentinel2\\Theia_S2process\\" + S2_tile
@@ -113,8 +116,8 @@ def read_tif_files(S2_tile):
 
 def processar_ponto(args):
     k, ponto_desejado, S2_tile = args
-    print('module path', module_path)
-    print('S2_tile',S2_tile)
+    #print('module path', module_path)
+    #print('S2_tile',S2_tile)
     base_folder=os.path.join(module_path,S2_tile)
     bandas_desejadas = [1, 2, 3, 7, 9, 10]
 
@@ -197,14 +200,11 @@ def processar_ponto(args):
     
     datas = [datetime.fromordinal(data) for data in end_dates]
     end_dates_epoch = [int(data.timestamp() * 1000) for data in datas]
-    
-    caminho_arquivo1 = os.path.join(base_folder,'BUFFER_300','pontos_300_buffers_1.gpkg') #"C:\\Users\\scaetano\\Desktop\\PPT realizados\\Buffer\\pontos_300_buffers 1.gpkg"
-    dados_geoespaciais1 = gpd.read_file(caminho_arquivo1)
 
-    ponto_desejado = dados_geoespaciais1.iloc[k].geometry
+    ponto_desejado_wgs = convertPointToCrs(ponto_desejado, 32629, 4326)
 
     dados = [
-        {'tBreak': break_dates_epoch,'tEnd': end_dates_epoch,'tStart':start_dates_epoch,'changeProb':prob, 'Lat': ponto_desejado.y,'Lon': ponto_desejado.x}
+        {'tBreak': break_dates_epoch,'tEnd': end_dates_epoch,'tStart':start_dates_epoch,'changeProb':prob, 'Lat': ponto_desejado_wgs.y,'Lon': ponto_desejado_wgs.x}
     ]
     
     df = pd.DataFrame(dados)
@@ -227,8 +227,32 @@ def processar_ponto(args):
     # # Escrever DataFrame para o arquivo CSV
     # df.to_csv(nome_arquivo_csv, index=False)
 
+def convertPointToCrs(point, source_crs, target_crs):
+    """
+    Converts a point from a source crs to a target crs.
+
+    Args:
+        point: point (shapely.geometry.poin.Point) as extracted from a gdf.
+        source_crs: original crs of the input point. Use int (e.g. 4326) or string (e.g. 'EPSG:4326')
+        target_crs: new crs the the point should bear. Use int (e.g. 32629) or string (e.g. 'EPSG:32629')
+    Returns:
+        point with new crs
+    """
+    #create a transformer for the conversion
+    transformer = Transformer.from_crs(source_crs, target_crs, always_xy=True)
+
+    #extract coordinates from the input point
+    x, y = point.xy
+
+    #transform coordinates to new crs
+    new_x, new_y = transformer.transform(x[0], y[0])
+
+    return Point(new_x, new_y)
+
+
 if __name__ == "__main__":
     final_df = main()
+    final_df.to_csv('/home/daniel/Downloads/csv_test_n1.csv', index=False)
     print(final_df)
 #%%
 # def main():
