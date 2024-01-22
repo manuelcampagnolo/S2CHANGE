@@ -29,7 +29,7 @@ from ccd import qa
 from ccd.change import enough_samples, enough_time,\
     update_processing_mask, stable, determine_num_coefs, calc_residuals, \
     find_closest_doy, change_magnitude, detect_change, detect_outlier, \
-    adjustpeek, adjustchgthresh
+    adjustpeek, adjustchgthresh, returnThresholdFromProb
 from ccd.models import results_to_changemodel, tmask
 from ccd.math_utils import adjusted_variogram, euclidean_norm
 
@@ -94,11 +94,15 @@ def standard_procedure(dates, observations, fitter_fn, proc_params):
     # TODO Temporary setup on this to just get it going
     peek_size = adjustpeek(dates[processing_mask], defpeek)
     proc_params.PEEK_SIZE = peek_size
+    proc_params.CHANGE_THRESHOLD = returnThresholdFromProb(proc_params.CHISQUAREPROB, len(proc_params.DETECTION_BANDS))
     proc_params.CHANGE_THRESHOLD = adjustchgthresh(peek_size, defpeek,
-                                                    proc_params.CHANGE_THRESHOLD)
+                                                    proc_params.CHANGE_THRESHOLD, proc_params.CHISQUAREPROB, len(proc_params.DETECTION_BANDS))
 
     log.debug('Peek size: %s', proc_params.PEEK_SIZE)
     log.debug('Chng thresh: %s', proc_params.CHANGE_THRESHOLD)
+
+    # Compute and store outlier threshold
+    proc_params.OUTLIER_THRESHOLD = returnThresholdFromProb(0.999999, len(proc_params.DETECTION_BANDS))
 
     # Initialize the window which is used for building the models
     model_window = slice(0, meow_size)
@@ -213,7 +217,6 @@ def initialize(dates, observations, fitter_fn, model_window, processing_mask,
     detection_bands = proc_params.DETECTION_BANDS
     tmask_bands = proc_params.TMASK_BANDS
     change_thresh = proc_params.CHANGE_THRESHOLD
-    chisquare = proc_params.CHISQUARE
     tmask_scale = proc_params.T_CONST
     avg_days_yr = proc_params.AVG_DAYS_YR
     fit_max_iter = proc_params.LASSO_MAX_ITER
@@ -338,7 +341,6 @@ def lookforward(dates, observations, model_window, fitter_fn, processing_mask,
     num_obs_fact = proc_params.NUM_OBS_FACTOR
     detection_bands = proc_params.DETECTION_BANDS
     change_thresh = proc_params.CHANGE_THRESHOLD
-    chisquare = proc_params.CHISQUARE
     outlier_thresh = proc_params.OUTLIER_THRESHOLD
     avg_days_yr = proc_params.AVG_DAYS_YR
     fit_max_iter = proc_params.LASSO_MAX_ITER
@@ -490,7 +492,6 @@ def lookback(dates, observations, model_window, models, previous_break,
     peek_size = proc_params.PEEK_SIZE
     detection_bands = proc_params.DETECTION_BANDS
     change_thresh = proc_params.CHANGE_THRESHOLD
-    chisquare = proc_params.CHISQUARE
     outlier_thresh = proc_params.OUTLIER_THRESHOLD
     avg_days_yr = proc_params.AVG_DAYS_YR
     #alpha = proc_params.ALPHA

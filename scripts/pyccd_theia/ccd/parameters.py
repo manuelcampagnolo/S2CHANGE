@@ -21,7 +21,7 @@ defaults = {
     ############################
     # Define spectral band indices on input observations array
     ############################
-    'BLUE_IDX': 0,
+    'BLUE_OR_NDVI_IDX': 0,
     'GREEN_IDX': 1,
     'RED_IDX': 2,
     'NIR_IDX': 3,
@@ -30,10 +30,10 @@ defaults = {
 
     # Spectral bands that are utilized for detecting change
     #'DETECTION_BANDS': [1, 2, 3, 4, 5], # Breakpointbands; tipicamente qt mais bandas, mais breaks estimados
-    'DETECTION_BANDS': [0,1,4], # Breakpointbands; tipicamente qt mais bandas, mais breaks estimados
+    'DETECTION_BANDS': [0, 1, 5], # Breakpointbands; tipicamente qt mais bandas, mais breaks estimados
 
     # Spectral bands that are utilized for Tmask filtering
-    'TMASK_BANDS': [1, 4],
+    'TMASK_BANDS': [1, 5],
 
     ############################
     # Representative values in the QA band
@@ -72,9 +72,9 @@ defaults = {
     'CLEAR_OBSERVATION_THRESHOLD': 3,
     'CLEAR_PCT_THRESHOLD': 0.25,
     'SNOW_PCT_THRESHOLD': 0.75,
-    'OUTLIER_THRESHOLD': 35.888186879610423, #Tmask
-    'CHANGE_THRESHOLD': 15.086272469388987,
-    'CHISQUARE': 0.999, #0.99
+    'OUTLIER_THRESHOLD': None, #35.888186879610423, #Tmask (df = detection_bands, prob = 0.999999)
+    'CHANGE_THRESHOLD': None, #15.086272469388987,
+    'CHISQUAREPROB': 0.999, #0.99
     'T_CONST': 4.89,
 
     # Value added to the median green value for filtering purposes

@@ -38,7 +38,7 @@ def adjusted_variogram(dates, observations):
     for idx in range(dates.shape[0]):
         var = dates[1 + idx:] - dates[:-idx - 1]
 
-        majority = mode(var, axis=None).mode[0]
+        majority = mode(var, axis=None, keepdims=True).mode[0] #explicitly called with keepdims=True to ensure compatibility with newer scipy versions
 
         if majority > 30:
             diff = observations[:, 1 + idx:] - observations[:, :-idx - 1]
