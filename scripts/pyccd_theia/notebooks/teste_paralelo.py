@@ -34,13 +34,15 @@ def extract_date(file_path):
     return None
 #%%
 #test
+NODATA_VALUE= 65535
+THEIA=True # if False, use S2 and S2 cloudness
+CRIAR_CSV= False
+VALIDAR_CSV=True
+CRIAR_PLOTS=False
+CRIAR_NDVI=True
+
 def main():
-    THEIA=True # if False, use S2 and S2 cloudness
-    NODATA_VALUE= 65535
-    CRIAR_CSV= False
-    VALIDAR_CSV=True
-    CRIAR_PLOTS=False
-    CRIAR_NDVI=True
+    N=10 #len(dados_geoespaciais)
     pontos_input = 'pontos_300_buffers_1_metros.gpkg' 
     S2_tile = 'T29TNE'
     if THEIA:
@@ -65,14 +67,14 @@ def main():
         #caminho_arquivo = os.path.join(module_path, tiles, 'BUFFER_300','pontos_300_buffers_1_metros.gpkg') #"C:\\Users\\scaetano\\Desktop\\PPT realizados\\Buffer\\pontos_300_buffers 1_metros.gpkg"
         caminho_arquivo = samples / pontos_input #"C:\\Users\\scaetano\\Desktop\\PPT realizados\\Buffer\\pontos_300_buffers 1_metros.gpkg"
         dados_geoespaciais_metros = gpd.read_file(caminho_arquivo) # seria melhor ler csv; apenas coordenadas interessam
-        dados_geoespaciais_metros = dados_geoespaciais_metros.sample(1000, random_state=42).copy() #para quando se quer uma amostra dos pontos
+        dados_geoespaciais_metros = dados_geoespaciais_metros.sample(N, random_state=42).copy() #para quando se quer uma amostra dos pontos
 
         dfs = []
+        # escrever csv para cada múltiplo de:
         points_per_csv = 1000
         csv_counter = 1
 
         with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
-            N=10 #len(dados_geoespaciais)
 
             tqdm_bar = tqdm(total=N)
             
@@ -155,6 +157,8 @@ def main():
         print('F1-score = {}%'.format(round(100*f1,2)))
         print('Omission error = {}%'.format(round(100*om,2)))
         print('Commission error = {}%'.format(round(100*cm,2)))
+
+        return DF_FINAL_T
 
 def read_tif_files(S2_tile,tiles):
         # DGT
@@ -258,6 +262,7 @@ def processar_ponto(args):
     break_dates = []
     start_dates = []
     end_dates=[]
+    ndvi_magnitudes=[]
     # coeficientes=[]
     prob=[]
     for num, result in enumerate(results['change_models']):
@@ -278,6 +283,7 @@ def processar_ponto(args):
         start_dates.append(result['start_day'])
         end_dates.append(result['end_day'])
         prob.append(result['change_probability'])
+        ndvi_magnitudes.append(result['blue']['magnitude'])
         
         # intercept = result['nir']['intercept']
         # coef = result['nir']['coefficients']
@@ -300,13 +306,13 @@ def processar_ponto(args):
     ponto_desejado_wgs = convertPointToCrs(ponto_desejado, 32629, 4326)
 
     dados = [
-        {'tBreak': break_dates_epoch,'tEnd': end_dates_epoch,'tStart':start_dates_epoch,'changeProb':prob, 'Lat': ponto_desejado_wgs.y,'Lon': ponto_desejado_wgs.x}
+        {'tBreak': break_dates_epoch,'tEnd': end_dates_epoch,'tStart':start_dates_epoch,'changeProb':prob, 'Lat': ponto_desejado_wgs.y,'Lon': ponto_desejado_wgs.x, 'ndvi_magnitude' : ndvi_magnitudes}
     ]
     
     df = pd.DataFrame(dados)
     
     # Reorganizar colunas
-    ordem_colunas = ['tBreak', 'tEnd', 'tStart', 'changeProb', 'Lat', 'Lon']
+    ordem_colunas = ['tBreak', 'tEnd', 'tStart', 'changeProb', 'Lat', 'Lon', 'ndvi_magnitude']
     df = df[ordem_colunas]
     
     return df
@@ -371,7 +377,10 @@ def get_most_recent_file(directory, exclude_string=None):
         return None
     
 if __name__ == "__main__":
-    main()
+    DF=main()
+
+print(DF[DF['FP']==1]['ndvi_magnitude'])
+print( DF[['FP','FN','ndvi_magnitude','geometry']])
 #%%
 # def main():
 #     caminho_arquivo = "C:\\Users\\scaetano\\Desktop\\PPT realizados\\Buffer\\pontos_300_buffers 1_metros.gpkg"
