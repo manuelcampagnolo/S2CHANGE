@@ -21,7 +21,7 @@ defaults = {
     ############################
     # Define spectral band indices on input observations array
     ############################
-    'BLUE_IDX': 0,
+    'BLUE_OR_NDVI_IDX': 0,
     'GREEN_IDX': 1,
     'RED_IDX': 2,
     'NIR_IDX': 3,
