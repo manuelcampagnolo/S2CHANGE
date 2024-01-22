@@ -35,12 +35,19 @@ def extract_date(file_path):
 #%%
 #test
 def main():
+    THEIA=True # if False, use S2 and S2 cloudness
+    NODATA_VALUE= 65535
     CRIAR_CSV= False
     VALIDAR_CSV=True
+    CRIAR_PLOTS=False
+    CRIAR_NDVI=True
     pontos_input = 'pontos_300_buffers_1_metros.gpkg' 
     S2_tile = 'T29TNE'
-    tiles = base_path / 'pyCCD_Theia' / S2_tile
-    samples = base_path / 'pyCCD_Theia' / 'samples_pontos_testes'
+    if THEIA:
+        tiles = base_path / 'pyCCD_Theia' / S2_tile
+    else: 
+        pass # necessário pré-procesar 
+    samples = base_path / 'inputs_pontos'
     
     # datas do filtro das datas da análise (DGT 300)
     ########### Não alterar ################
@@ -97,6 +104,8 @@ def main():
     if VALIDAR_CSV:
         #caminho para o csv (leitura)
         csv_file_ccd=get_most_recent_file(str(csv_folder_ccd),exclude_string='pre_proc')
+        if csv_file_ccd is None: 
+            raise ValueError('Pasta vazia')
         print('csv_file_ccd',csv_file_ccd)
         # Validação com BDR-300
         #caminho para gravar o csv pre-processado
@@ -223,18 +232,21 @@ def processar_ponto(args):
             query_bands.append(linha_pixeis)
     
     df1 = pd.DataFrame(query_bands)
-    df2 = df1[~(df1 == 65535).any(axis=1)].reset_index(drop=True)
+    df2 = df1[~(df1 == NODATA_VALUE).any(axis=1)].reset_index(drop=True)
     df3 = df2.transpose()
 
     dates, blues, greens, reds, nirs, swir1s, swir2s = df3.values
-    ndvis=[]
-    for (nir,red) in zip(nirs,reds):
-        if nir+red>0:
-            ndvis.append(10000*(nir-red)/(nir+red))
-        else:
-            ndvis.append(0)
-    #results = ccd.detect(dates, blues, greens, reds, nirs, swir1s, swir2s)
-    results = ccd.detect(dates, ndvis, greens, reds, nirs, swir1s, swir2s)
+    if CRIAR_NDVI:
+        ndvis=[]
+        for (nir,red) in zip(nirs,reds):
+            if nir+red>0:
+                ndvis.append(10000*(nir-red)/(nir+red))
+            else:
+                ndvis.append(0)
+        #results = ccd.detect(dates, blues, greens, reds, nirs, swir1s, swir2s)
+        results = ccd.detect(dates, ndvis, greens, reds, nirs, swir1s, swir2s)
+    else:
+        results = ccd.detect(dates, blues, greens, reds, nirs, swir1s, swir2s)
     
     # mask = np.array(results['processing_mask'], dtype='bool')
 
