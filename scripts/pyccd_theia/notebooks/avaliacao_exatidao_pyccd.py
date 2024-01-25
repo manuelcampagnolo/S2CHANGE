@@ -489,7 +489,7 @@ def valPol(df, theta):
 def testeRemove(groupedby):
   min_delta_min = groupedby['Min_delta_min'].min()
   #remove rows only if there is more than 1 row per point, the number of analyst dates is not zero and min_delta_min is greater than zero.
-  if len(groupedby) > 1 and groupedby.analistas.min() > 0 and min_delta_min > 0:
+  if len(groupedby) > 1 and groupedby.analistas.min() > 0 and min_delta_min >= 0:
       Bj, Ai = groupedby.loc[groupedby['delta_min']==min_delta_min][['tBreak','data1_z']].values[0]
       #remove rows that contain Ai or Bj (other than the row with the min_delta_min)
       mask = ((groupedby['tBreak'] == Bj) | (groupedby['data1_z'] == Ai)) & (groupedby['delta_min']!=min_delta_min)
