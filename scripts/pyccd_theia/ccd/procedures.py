@@ -131,6 +131,8 @@ def standard_procedure(dates, observations, fitter_fn, proc_params):
                                   processing_mask, variogram, proc_params)
 
         model_window, init_models, processing_mask = initialized
+        
+        # print('After Initialization - Processing Mask:', processing_mask)
 
         # Catch for failure
         if init_models is None:
@@ -143,6 +145,8 @@ def standard_procedure(dates, observations, fitter_fn, proc_params):
                           previous_end, processing_mask, variogram, proc_params)
 
             model_window, processing_mask = lb
+            
+            # print('After Lookback - Processing Mask:', processing_mask)
 
         # Step 3: catch
         # If we have moved > peek_size from the previous break point
@@ -168,6 +172,8 @@ def standard_procedure(dates, observations, fitter_fn, proc_params):
 
         result, processing_mask, model_window = lf
         results.append(result)
+        
+        # print('After Lookforward - Processing Mask:', processing_mask)
 
         log.debug('Accumulate results, {} so far'.format(len(results)))
 
@@ -184,6 +190,8 @@ def standard_procedure(dates, observations, fitter_fn, proc_params):
         results.append(catch(dates, observations, fitter_fn,
         processing_mask, model_window,
         proc_params=proc_params))
+    
+    # print('After Final Catch - Processing Mask:', processing_mask)
 
     log.debug("change detection complete")
 
@@ -299,6 +307,10 @@ def initialize(dates, observations, fitter_fn, model_window, processing_mask,
                       change_thresh, detection_bands):
 
             model_window = slice(model_window.start + 1, model_window.stop + 1)
+            
+            # remove a sobreposição de curvas mas estraga os outros resultados:
+            # model_window = slice(model_window.stop, model_window.stop + meow_size)
+            
             log.debug('Unstable model, shift window to: %s', model_window)
             models = None
             continue
@@ -370,9 +382,18 @@ def lookforward(dates, observations, model_window, fitter_fn, processing_mask,
 
     # Used for comparison purposes
     fit_span = period[model_window.stop - 1] - period[model_window.start]
+    
+    print('antes do while model_window.stop:',model_window.stop)
+    print('antes do while peek size:', peek_size)
+    print('antes do while period shape:', period.shape[0])
 
     # stop is always exclusive
-    while model_window.stop + peek_size <= period.shape[0]:
+    
+    # while model_window.stop + peek_size <= period.shape[0]:
+    while model_window.stop < period.shape[0]:
+        print('model_window.stop:',model_window.stop)
+        print('peek size:', peek_size)
+        print('period shape:', period.shape[0])
         num_coefs = determine_num_coefs(period[model_window], coef_min,
                                         coef_mid, coef_max, num_obs_fact)
 
@@ -409,7 +430,11 @@ def lookforward(dates, observations, model_window, fitter_fn, processing_mask,
         else:
             # We want to use the closest residual values to the peek_window
             # values based on seasonality.
-            closest_indexes = find_closest_doy(period, peek_window.stop - 1,
+            
+            # closest_indexes = find_closest_doy(period, peek_window.stop - 1,
+            #                                    fit_window, 24)
+
+            closest_indexes = find_closest_doy(period, min(peek_window.stop - 1, len(dates) - 1), 
                                                fit_window, 24)
 
             # Calculate an RMSE for the seasonal residual values, using 8
@@ -447,8 +472,10 @@ def lookforward(dates, observations, model_window, fitter_fn, processing_mask,
 
         # Check before incrementing the model window, otherwise the reporting
         # can get a little messy.
-        if model_window.stop + peek_size > period.shape[0]:
-            break
+        
+        # if model_window.stop + peek_size > period.shape[0]:
+        #     print('Condição de parada ativada: model_window.stop + peek_size > period.shape[0]')
+        #     break
 
         model_window = slice(model_window.start, model_window.stop + 1)
 

@@ -84,6 +84,6 @@ defaults = {
     # Values related to model fitting
     ############################
     'FITTER_FN': 'ccd.models.lasso.fitted_model',
-    'LASSO_MAX_ITER': 1000,
+    'LASSO_MAX_ITER': 25000,
     'ALPHA':  200
 }
