@@ -22,6 +22,10 @@ base em análise automática de imagens de satélite
 * Data de início: 23 de outubro de 2023
 * Centro de custos do ISA: 5207 (S2CHANGE)
 
+## Apresentações
+
+### Reunião DGT 
+
 ## Tarefas
 
 **Tarefa 1** – Seleção e justificação das metodologias a operacionalizar nas Tarefas 2, 3 e 4, dados de input, especificações técnicas dos outputs, e potenciais adaptações tecnológicas a implementar na cadeia de produção da DGT.
