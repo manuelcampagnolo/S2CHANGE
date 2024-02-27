@@ -24,7 +24,9 @@ base em análise automática de imagens de satélite
 
 ## Apresentações
 
-### Reunião DGT 
+### Reunião DGT 20 fevereiro 2024
+
+* Apresentação Sara Caetano sobre pyCCD: dados Theia vs dados préprocessados com S2cloudness: [ficheiro powerpoint](PPT_CCD_20fev.pptx)
 
 ## Tarefas
 
