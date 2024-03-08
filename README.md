@@ -27,6 +27,7 @@ base em análise automática de imagens de satélite
 ### Reunião DGT 20 fevereiro 2024
 
 * Apresentação Sara Caetano. Resultados que permitem comparar a aplicação da metodologia de deteção de alterações (CCD), com o algoritmo Python pyccd, a imagens Sentinel-2 obtidas no GEE (com máscara de nuvens produzida pelo algoritmo S2cloudness) com as imagens Sentinel-2 préprocessadas pela Theia: [ficheiro powerpoint](PPT_CCD_20fev.pptx)
+* Apresentação Inês Silveira sobre a base de dados de referência Navigator: [ficheiro pdf](Apresentacao_BD_NVG_IS_20fev.pdf)
 
 ## Tarefas
 
