@@ -15,7 +15,7 @@ from pathlib import Path
 from pathlib import Path
 # chamar python a partir da pasta 'CCD'
 module_path= Path(__name__ ).parent.absolute() / 'S2CHANGE' / 'scripts' / 'pyccd_theia' #  / 'CCD' / 'S2CHANGE' / 'scripts' / 
-base_path= Path(__name__ ).parent.absolute()  
+base_path= Path(__name__ ).parent.absolute()  # dir do script; # dir referência (acima): 'DGT-S2CHANGE_2023'
 if module_path not in sys.path:
     sys.path.append(str(module_path))
 import ccd
