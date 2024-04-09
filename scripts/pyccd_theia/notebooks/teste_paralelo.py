@@ -1,3 +1,5 @@
+import os
+os.chdir("C:\\Users\\Utilizador\\Desktop\\CCD")
 import geopandas as gpd
 from shapely.geometry import Point
 from pyproj import Transformer
@@ -8,7 +10,7 @@ import glob
 import re
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from pathlib import Path
 # chamar python a partir da pasta 'CCD'
@@ -22,7 +24,9 @@ from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor
 import haversine as hs # Novo
 from haversine.haversine import Unit
-
+from datetime import timezone
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -36,13 +40,13 @@ def extract_date(file_path):
 #test
 NODATA_VALUE= 65535
 THEIA=True # if False, use S2 and S2 cloudness
-CRIAR_CSV= False
+CRIAR_CSV= True
 VALIDAR_CSV=True
 CRIAR_PLOTS=False
 CRIAR_NDVI=True
 
 def main():
-    N=10 #len(dados_geoespaciais)
+    N=10000 #len(dados_geoespaciais)
     pontos_input = 'pontos_300_buffers_1_metros.gpkg' 
     S2_tile = 'T29TNE'
     if THEIA:
@@ -61,7 +65,7 @@ def main():
     bandFilter = None #não implementado ainda - não mexer
     
     # nome output
-    csv_folder_ccd= base_path / 'outputs' / 'csv'
+    csv_folder_ccd= base_path / 'outputs' / 'csv' / 'Theia'
 
     if CRIAR_CSV: 
         #caminho_arquivo = os.path.join(module_path, tiles, 'BUFFER_300','pontos_300_buffers_1_metros.gpkg') #"C:\\Users\\scaetano\\Desktop\\PPT realizados\\Buffer\\pontos_300_buffers 1_metros.gpkg"
@@ -71,7 +75,7 @@ def main():
 
         dfs = []
         # escrever csv para cada múltiplo de:
-        points_per_csv = 1000
+        points_per_csv = 10000
         csv_counter = 1
 
         with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
@@ -97,7 +101,7 @@ def main():
 
         # Save the remaining points
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        csv_file_ccd= base_path / 'outputs' / 'csv' / f"csv_{csv_counter}_{timestamp}.csv"
+        csv_file_ccd= base_path / 'outputs' / 'csv' / 'Theia' / f"csv_{csv_counter}_{timestamp}.csv"
         if dfs:
             final_df = pd.concat(dfs, ignore_index=True)
             final_df.to_csv(csv_file_ccd, index=False)
@@ -158,16 +162,16 @@ def main():
         print('Omission error = {}%'.format(round(100*om,2)))
         print('Commission error = {}%'.format(round(100*cm,2)))
 
-        return DF_FINAL_T
+        return DF_FINAL_T, N
 
 def read_tif_files(S2_tile,tiles):
-        # DGT
+    # DGT
     DGT=False
     # outro
     # Theia_T29TNE_20171007-112058
 
     list_files=[]
-    for i in range(2017, 2024):
+    for i in range(2017, 2022):
         if DGT: 
             if i == 2017:
                 base_folder = fr"\\192.168.10.35\\Imag_sentinel2\\Theia_S2process\\" + S2_tile
@@ -212,8 +216,8 @@ def read_tif_files(S2_tile,tiles):
 
 def processar_ponto(args):
     k, ponto_desejado, S2_tile, tiles = args
-    #print('module path', module_path)
-    #print('S2_tile',S2_tile)
+    # print('module path', module_path)
+    # print('S2_tile',S2_tile)
     base_folder=module_path / S2_tile
     bandas_desejadas = [1, 2, 3, 7, 9, 10]
 
@@ -240,68 +244,138 @@ def processar_ponto(args):
     df3 = df2.transpose()
 
     dates, blues, greens, reds, nirs, swir1s, swir2s = df3.values
+        
     if CRIAR_NDVI:
         ndvis=[]
         for (nir,red) in zip(nirs,reds):
             if nir+red>0:
                 ndvis.append(10000*(nir-red)/(nir+red))
             else:
-                ndvis.append(0)
-        #results = ccd.detect(dates, blues, greens, reds, nirs, swir1s, swir2s)
+                ndvis.append(NODATA_VALUE)
+    
+        df3.iloc[1]=ndvis
+        
+        df3=df3.transpose()
+        df3 = df3[~(df3 == NODATA_VALUE).any(axis=1)].reset_index(drop=True)
+        df3=df3.transpose()
+        dates, ndvis, greens, reds, nirs, swir1s, swir2s = df3.values
+        
         results = ccd.detect(dates, ndvis, greens, reds, nirs, swir1s, swir2s)
     else:
         results = ccd.detect(dates, blues, greens, reds, nirs, swir1s, swir2s)
-    
-    # mask = np.array(results['processing_mask'], dtype='bool')
 
-    # print('Start Date: {0}\nEnd Date: {1}\n'.format(datetime.fromordinal(int(dates[0])),
-    #                                                 datetime.fromordinal(int(dates[-1]))))
-    
-    # predicted_values = []
+    predicted_values = []
     prediction_dates = []
     break_dates = []
     start_dates = []
     end_dates=[]
-    ndvi_magnitudes=[]
     # coeficientes=[]
     prob=[]
     for num, result in enumerate(results['change_models']):
-        # print('Result: {}'.format(num))
-        # print('Start Date: {}'.format(datetime.fromordinal(result['start_day'])))
-        # print('End Date: {}'.format(datetime.fromordinal(result['end_day'])))
-        # print('Break Date: {}'.format(datetime.fromordinal(result['break_day'])))
-        # print('Norm: {}\n'.format(np.linalg.norm([result['green']['magnitude'],
-        #                                         result['red']['magnitude'],
-        #                                         result['nir']['magnitude'],
-        #                                         result['swir1']['magnitude'],
-        #                                         result['swir2']['magnitude']])))
-        # print('Change prob: {}'.format(result['change_probability']))
-        
         days = np.arange(result['start_day'], result['end_day'] + 1)
         prediction_dates.append(days)
         break_dates.append(result['break_day'])
         start_dates.append(result['start_day'])
         end_dates.append(result['end_day'])
         prob.append(result['change_probability'])
-        ndvi_magnitudes.append(result['blue']['magnitude'])
         
-        # intercept = result['nir']['intercept']
-        # coef = result['nir']['coefficients']
-        # coeficientes.append(coef)
+        intercept = result['blue']['intercept']
+        coef = result['blue']['coefficients']
         
-        # predicted_values.append(intercept + coef[0] * days +
-        #                         coef[1]*np.cos(days*1*2*np.pi/365.25) + coef[2]*np.sin(days*1*2*np.pi/365.25) +
-        #                         coef[3]*np.cos(days*2*2*np.pi/365.25) + coef[4]*np.sin(days*2*2*np.pi/365.25) +
-        #                         coef[5]*np.cos(days*3*2*np.pi/365.25) + coef[6]*np.sin(days*3*2*np.pi/365.25))
-     
+        predicted_values.append(intercept + coef[0] * days +
+                                coef[1]*np.cos(days*1*2*np.pi/365.25) + coef[2]*np.sin(days*1*2*np.pi/365.25) +
+                                coef[3]*np.cos(days*2*2*np.pi/365.25) + coef[4]*np.sin(days*2*2*np.pi/365.25) +
+                                coef[5]*np.cos(days*3*2*np.pi/365.25) + coef[6]*np.sin(days*3*2*np.pi/365.25))
+    
+    ndvi_magnitudes=[]
+    for num in range(len(predicted_values) - 1):
+        diff = predicted_values[num][-1] - predicted_values[num + 1][0]
+        ndvi_magnitudes.append(diff)
+    
+    # Verificar se há valores em diff
+    if len(ndvi_magnitudes) > 0 and any(ndvi_magnitudes):
+        # Se houver valores, adicionar np.nan como último elemento
+        ndvi_magnitudes.append(65535)
+    else:
+        # Se não houver valores, adicionar zero como último elemento
+        ndvi_magnitudes.append(0)
+    
+    # # Preencher com zeros para garantir que ndvi_magnitudes tenha o mesmo número de elementos que predicted_values
+    # while len(ndvi_magnitudes) < len(predicted_values):
+    #     ndvi_magnitudes.append(0)
+
+
+    # variavel_grafico = ndvis
+    
+    # mask = np.array(results['processing_mask'], dtype='bool')
+    # date_objects1 = [datetime.fromordinal(int(ordinal)) for ordinal in dates]
+    
+    # plt.style.use('ggplot')
+    # fg = plt.figure(figsize=(14, 4), dpi=90)
+    
+    # a1 = fg.add_subplot(1, 1, 1, xlim=(min(date_objects1), max(date_objects1)))#, ylim=(0, 1500))
+    # plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d-%m-%Y'))
+    # plt.gca().xaxis.set_major_locator(mdates.DayLocator())
+    
+    # a1.xaxis.set_major_locator(mdates.YearLocator(1))
+    # a1.xaxis.set_major_formatter(mdates.DateFormatter('%d-%m-%Y'))
+    
+    # colors = ['orange', 'purple', 'brown']
+    
+    # # Predicted curves
+    # for idx, (_preddate, _predvalue) in enumerate(zip(prediction_dates, predicted_values)):
+    #     # Converter números ordinais de volta para objetos de data
+    #     _preddate = [datetime.fromordinal(int(ordinal)) for ordinal in _preddate]
+    #     color = colors[idx % len(colors)]
+    #     a1.plot(_preddate, _predvalue, color, linewidth=1, label=f'Predicted values {idx + 1}')
+    
+    # a1.plot(np.array(date_objects1)[mask], np.array(variavel_grafico)[mask], 'g+',label='Observed values')  # Observed values
+    # a1.plot(np.array(date_objects1)[~mask], np.array(variavel_grafico)[~mask], 'g+')  # Observed values masked out
+
+    # ticks = [min(date_objects1) + timedelta(days=i*365) for i in range(10) if min(date_objects1) + timedelta(days=i*365) <= datetime(2021, 12, 31)]
+    # plt.xticks(ticks)
+    
+    # a1.plot([], [], color='r', linestyle='--', label='Start dates')
+    # a1.plot([], [], color='brown', linestyle='--', label='End Dates')
+    # a1.plot([], [], color='b', linestyle='--', label='Break dates')
+    # a1.plot([], [], color='black', linestyle='--', label='DGT Dates')
+    
+    # for b in break_dates:
+    #     b_date = datetime.fromordinal(b)
+    #     a1.axvline(b_date, color='b', linestyle='--')
+    #     a1.text(mdates.date2num(b_date)+1, a1.get_ylim()[1], b_date.strftime('%d-%m-%Y'), rotation=90, ha='right',weight='bold', va='top', color='b',size=8)
+    
+    # # Linhas verticais para datas de início (color='r')
+    # for s in start_dates:
+    #     s_date = datetime.fromordinal(s)
+    #     a1.axvline(s_date, color='r', linestyle='--')
+    #     a1.text(mdates.date2num(s_date) + 1, a1.get_ylim()[0], s_date.strftime('%d-%m-%Y'), rotation=90, ha='right',weight='bold', va='bottom', color='r',size=8)
+    
+    # for e in end_dates:
+    #     e_date = datetime.fromordinal(e)
+    #     a1.axvline(e_date, color='brown', linestyle='--')
+    #     a1.text(mdates.date2num(e_date) + 1, a1.get_ylim()[0], e_date.strftime('%d-%m-%Y'), rotation=90, ha='right',weight='bold', va='bottom', color='brown',size=8,alpha=0.6)
+
+    # reference_start_date = datetime.strptime('2018-09-12', '%Y-%m-%d')
+    # reference_end_date = datetime.strptime('2021-09-30', '%Y-%m-%d')
+    # a1.axvspan(reference_start_date, reference_end_date, facecolor='pink', alpha=0.3,label='Período de Referência')
+    # # plt.text(0.5, 0.9, 'Período de Referência', transform=plt.gca().transAxes, color='blue', size=10, ha='center', bbox=dict(facecolor='yellow', alpha=0.3))
+    
+    # plt.ylabel('NDVI')
+    # plt.legend(loc='upper center', bbox_to_anchor=(0.7, -0.1), fancybox=True, shadow=True, ncol=3)
+    # plt.tight_layout()
+    # plt.savefig('C:\\Users\\Utilizador\\Desktop\\CCD\outputs\\teste.png')
+    # plt.close()
+
+    
     datas = [datetime.fromordinal(data) for data in break_dates]
-    break_dates_epoch = [int(data.timestamp() * 1000) for data in datas]
+    break_dates_epoch = [int(data.replace(tzinfo=timezone.utc).timestamp() * 1000) for data in datas]
     
     datas = [datetime.fromordinal(data) for data in start_dates]
-    start_dates_epoch = [int(data.timestamp() * 1000) for data in datas]
+    start_dates_epoch = [int(data.replace(tzinfo=timezone.utc).timestamp() * 1000) for data in datas]
     
     datas = [datetime.fromordinal(data) for data in end_dates]
-    end_dates_epoch = [int(data.timestamp() * 1000) for data in datas]
+    end_dates_epoch = [int(data.replace(tzinfo=timezone.utc).timestamp() * 1000) for data in datas]
 
     ponto_desejado_wgs = convertPointToCrs(ponto_desejado, 32629, 4326)
 
@@ -314,6 +388,7 @@ def processar_ponto(args):
     # Reorganizar colunas
     ordem_colunas = ['tBreak', 'tEnd', 'tStart', 'changeProb', 'Lat', 'Lon', 'ndvi_magnitude']
     df = df[ordem_colunas]
+    print(df)
     
     return df
     
@@ -375,53 +450,7 @@ def get_most_recent_file(directory, exclude_string=None):
     except Exception as e:
         print(f"An error occurred: {e}")
         return None
-    
-if __name__ == "__main__":
-    DF=main()
-
-print(DF[DF['FP']==1]['ndvi_magnitude'])
-print( DF[['FP','FN','ndvi_magnitude','geometry']])
 #%%
-# def main():
-#     caminho_arquivo = "C:\\Users\\scaetano\\Desktop\\PPT realizados\\Buffer\\pontos_300_buffers 1_metros.gpkg"
-#     dados_geoespaciais = gpd.read_file(caminho_arquivo)
-
-#     tiles = "T29TNE"
-    
-#     dfs = []
-
-#     # with ThreadPoolExecutor() as executor:
-#     #     tqdm_bar = tqdm(total=len(dados_geoespaciais))
-        
-#     #     # Crie argumentos para cada ponto
-#     #     args_list = [(k, dados_geoespaciais.iloc[k].geometry, tiles) for k in range(len(dados_geoespaciais))]
-        
-#     #     # Execute as tarefas em paralelo
-#     #     for _ in executor.map(processar_ponto, args_list):
-#     #         tqdm_bar.update(1)
-        
-#     #     tqdm_bar.close()
-#     num_threads = 12
-#     with ProcessPoolExecutor(max_workers=num_threads) as executor:
-#         tqdm_bar = tqdm(total=5)#len(dados_geoespaciais))
-        
-#         # Crie argumentos para cada ponto
-#         args_list = [(k, dados_geoespaciais.iloc[k].geometry, tiles) for k in range(5)]#(len(dados_geoespaciais))]
-        
-#         # Execute tasks in parallel
-#         for result_df in executor.map(processar_ponto, args_list):
-#             dfs.append(result_df)  # Collect DataFrames
-#             tqdm_bar.update(1)
-        
-#         tqdm_bar.close()
-
-#     # Concatenate all DataFrames
-#     final_df = pd.concat(dfs, ignore_index=True)
-    
-#     final_df.to_csv("C:\\Users\\scaetano\\Desktop\\PPT realizados\\Buffer\\CSV 300\\csv_final.csv",index=False)
-#     # You can use 'final_df' for further processing or analysis
-#     return final_df
-
-# if __name__ == "__main__":
-#     final_df = main()
-#     print(final_df)
+if __name__ == "__main__":
+    DF,N=main()
+    DF.to_csv(base_path / 'outputs' / f'Theia_FP_VN_{N}_sem_zeros.csv', index=False)

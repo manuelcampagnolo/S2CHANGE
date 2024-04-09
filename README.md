@@ -22,6 +22,13 @@ base em análise automática de imagens de satélite
 * Data de início: 23 de outubro de 2023
 * Centro de custos do ISA: 5207 (S2CHANGE)
 
+## Apresentações
+
+### Reunião DGT 20 fevereiro 2024
+
+* Apresentação Sara Caetano. Resultados que permitem comparar a aplicação da metodologia de deteção de alterações (CCD), com o algoritmo Python pyccd, a imagens Sentinel-2 obtidas no GEE (com máscara de nuvens produzida pelo algoritmo S2cloudness) com as imagens Sentinel-2 préprocessadas pela Theia: [ficheiro powerpoint](PPT_CCD_20fev.pptx)
+* Apresentação Inês Silveira sobre a base de dados de referência Navigator; análise em particular da distribuição de datas de cortes dentro do mesmo talhão e da possibilidade de associar um sub-talhão a cada data de corte; análise preliminar sobre a possibilidade de associar uma alteração de sinal a operações de rechega e outras [ficheiro pdf](Apresentacao_BD_NVG_IS_20fev.pdf)
+
 ## Tarefas
 
 **Tarefa 1** – Seleção e justificação das metodologias a operacionalizar nas Tarefas 2, 3 e 4, dados de input, especificações técnicas dos outputs, e potenciais adaptações tecnológicas a implementar na cadeia de produção da DGT.
