@@ -103,6 +103,10 @@ def detect_change(magnitudes, change_threshold):
     Returns:
         bool: True if change has been detected, else False
     """
+    
+    # print("Magnitudes:", magnitudes)
+    # print("Change Threshold:", change_threshold)
+    
     return np.min(magnitudes) > change_threshold
 
 
@@ -267,6 +271,29 @@ def update_processing_mask(mask, index, window=None):
     return new_mask
 
 
+# def find_closest_doy(dates, date_idx, window, num):
+#     """
+#     Find the closest n dates based on day of year.
+
+#     e.g. if the date you are looking for falls on July 1, then find
+#     n number of dates that are closest to that same day of year.
+
+#     Args:
+#         dates: 1-d ndarray of ordinal day values
+#         date_idx: index of date value
+#         window: slice object identifying the subset of values used in the
+#             current model
+#         num: number of index values desired
+
+#     Returns:
+#         1-d ndarray of index values
+#     """
+#     # May be a better way of doing this
+#     d_rt = dates[window] - dates[date_idx]
+#     d_yr = np.abs(np.round(d_rt / 365.25) * 365.25 - d_rt)
+
+#     return np.argsort(d_yr)[:num]
+
 def find_closest_doy(dates, date_idx, window, num):
     """
     Find the closest n dates based on day of year.
@@ -284,6 +311,9 @@ def find_closest_doy(dates, date_idx, window, num):
     Returns:
         1-d ndarray of index values
     """
+    # Ensure date_idx is within bounds of the window
+    date_idx = max(window.start, min(date_idx, window.stop - 1))
+    
     # May be a better way of doing this
     d_rt = dates[window] - dates[date_idx]
     d_yr = np.abs(np.round(d_rt / 365.25) * 365.25 - d_rt)
