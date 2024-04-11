@@ -20,8 +20,8 @@ import pandas as pd
 import numpy as np
 import geopandas as gpd
 #import rtree, pygeos, shapely
-import haversine as hs # Novo
-from haversine.haversine import Unit
+#import haversine as hs # Novo #not used apparently
+#from haversine.haversine import Unit #not used apparently
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -154,12 +154,12 @@ def filterDate(pathDF, dataI, dataF,bandFilter, mag = None):
     # d) Para os IDCCDC que apresentam linhas com probabilidade fracionada, mantem esta linha, no caso de todas estarem fora do período de análise
     pmask = pd.Series(np.zeros(len(df),dtype=bool),index = df.index)
     pmask.loc[~((df.changeProb > 0) & (df.changeProb < 1) & (df.tBreak.isnull()) & (df.groupby(['coord_ccdc'])['tBreak'].transform('count') == 0))]=True
-    subset_Filtro = subset_Filtro.append(df[pmask == False])
+    subset_Filtro = pd.concat([subset_Filtro,df[pmask == False]])#subset_Filtro.append(df[pmask == False])
 
     # e) Para os IDCCDC que tem mais de um break e todos estao fora do periodo e devemos manter o fit final
     fmask = pd.Series(np.zeros(len(df),dtype=bool),index = df.index)
     fmask.loc[((df.changeProb == 0) & (df.numBreak > 1) & (df.tBreak.isnull()) & (df.groupby(['coord_ccdc'])['tBreak'].transform('count') == 0))]=True
-    subset_Filtro = subset_Filtro.append(df[fmask])
+    subset_Filtro = pd.concat([subset_Filtro,df[fmask]])#subset_Filtro.append(df[fmask])
 
 
     return subset_Filtro
@@ -175,7 +175,7 @@ def spatialJoin(pathPoligonosDGT, dfCCDC):
   # 1) ABRIR OS ARQUIVOS
   ## Poligonos DGT
   gdfVal = gpd.read_file(pathPoligonosDGT)
-  gdfVal.to_crs(crs = 'EPSG: 3763', inplace = True) # Originalmente eles estao em WGS84 29N converte para ETRS
+  gdfVal.to_crs(crs = 'EPSG:3763', inplace = True) # Originalmente eles estao em WGS84 29N converte para ETRS
   ## Pontos ISA
 
   # 2) CONVERTER O DF PARA GEO DF
@@ -250,7 +250,7 @@ def spatialJoin(pathPoligonosDGT, dfCCDC):
   for row in subset.itertuples():
     # verifica se há duas datas e duplica a linha
     if row.analistas == 2:
-        dfTemp = dfTemp.append(subset[subset.index == row.Index], ignore_index=False)
+        dfTemp = pd.concat([dfTemp, subset[subset.index==row.Index]],ignore_index=False)#dfTemp.append(subset[subset.index == row.Index], ignore_index=False)
   dfTemp.data1_z = dfTemp.data_3
   # capturar o valor da data_2
   # defTemp.data0_z = dfTemp.data_2
@@ -267,7 +267,7 @@ def spatialJoin(pathPoligonosDGT, dfCCDC):
   subset.classeAtual = subset.classe_1
   subset.classeAnterior = subset.classe_0
 
-  subset = subset.append(dfTemp, ignore_index=False)
+  subset = pd.concat([subset, dfTemp],ignore_index=False)#subset.append(dfTemp, ignore_index=False)
 
   # Contagem do numero de breaks
   subset['Valid_breaks'] = np.ceil(subset.groupby(['coord_ccdc', 'nome'])['changeProb'].transform('sum'))
@@ -467,7 +467,7 @@ def valPol(df, theta):
   #FP, FN
   bf_removed.loc[( (bf_removed.delta_min > theta) ), ['FP', 'FN']] = 1
   # unir os dois dfs novamente
-  bf_final = bf_filter.append(bf_removed)
+  bf_final = pd.concat([bf_filter, bf_removed])#bf_filter.append(bf_removed)
 
   # remover aqueles que nao possuem metrica
   bf_final = bf_final[(bf_final.VP > 0) | (bf_final.FP > 0) | (bf_final.FN > 0) | (bf_final.VN > 0) ].copy()
