@@ -383,17 +383,17 @@ def lookforward(dates, observations, model_window, fitter_fn, processing_mask,
     # Used for comparison purposes
     fit_span = period[model_window.stop - 1] - period[model_window.start]
     
-    print('antes do while model_window.stop:',model_window.stop)
-    print('antes do while peek size:', peek_size)
-    print('antes do while period shape:', period.shape[0])
+    #print('antes do while model_window.stop:',model_window.stop)
+    #print('antes do while peek size:', peek_size)
+    #print('antes do while period shape:', period.shape[0])
 
     # stop is always exclusive
     
     # while model_window.stop + peek_size <= period.shape[0]:
     while model_window.stop < period.shape[0]:
-        print('model_window.stop:',model_window.stop)
-        print('peek size:', peek_size)
-        print('period shape:', period.shape[0])
+        #print('model_window.stop:',model_window.stop)
+        #print('peek size:', peek_size)
+        #print('period shape:', period.shape[0])
         num_coefs = determine_num_coefs(period[model_window], coef_min,
                                         coef_mid, coef_max, num_obs_fact)
 
@@ -641,7 +641,7 @@ def catch(dates, observations, fitter_fn, processing_mask, model_window, proc_pa
     model_period = period[model_window]
     model_spectral = spectral_obs[:, model_window]
 
-    print(alpha,'alpha')
+    #print(alpha,'alpha')
 
     models = [fitter_fn(model_period, spectrum, fit_max_iter, avg_days_yr,num_coef, alpha)
               for spectrum in model_spectral]
@@ -651,9 +651,9 @@ def catch(dates, observations, fitter_fn, processing_mask, model_window, proc_pa
     else:
         break_day = period[model_window.stop]
     
-    print("Model Window Start:", model_window.start)
-    print("Model Window Stop:", model_window.stop)
-    print("Period Shape:", period.shape[0])
+    #print("Model Window Start:", model_window.start)
+    #print("Model Window Stop:", model_window.stop)
+    #print("Period Shape:", period.shape[0])
 
 
     result = results_to_changemodel(
