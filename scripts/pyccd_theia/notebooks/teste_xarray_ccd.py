@@ -1,5 +1,5 @@
 import os
-os.chdir("C:\\Users\\scaetano\\Desktop\\CCD")
+#os.chdir("C:\\Users\\scaetano\\Desktop\\CCD")
 import geopandas as gpd
 from shapely.geometry import Point
 from pyproj import Transformer
@@ -19,11 +19,11 @@ base_path= Path(__name__ ).parent.absolute()  # dir do script; # dir referência
 if module_path not in sys.path:
     sys.path.append(str(module_path))
 import ccd
-from avaliacao_exatidao_pyccd import filterDate, spatialJoin, preprocessCsvS2, valPol
+from notebooks.avaliacao_exatidao_pyccd import filterDate, spatialJoin, preprocessCsvS2, valPol
 from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor
-import haversine as hs # Novo
-from haversine.haversine import Unit
+#import haversine as hs # not used apparentely
+#from haversine.haversine import Unit # not used apparentely
 from datetime import timezone
 
 import warnings
@@ -176,13 +176,15 @@ execution_time_minutes = execution_time_seconds / 60
 
 print("Ler dados Theia:", execution_time_minutes, "minutos")
 #%%
-alpha = 30
+#from ccd import parameters
+alpha = ccd.parameters.defaults['ALPHA'] #looks for alpha in the parameters.py file
 NODATA_VALUE= 65535
 df_result=[]
-for i in tqdm(range(selection.shape[2])):
+
+def runDetectionForPoint(i):
     ponto = sel_values[:,:,i]
     dates = selection.time
-    
+
     ponto_desejado=selection.x[i],selection.y[i]
     
     ponto_with_dates = np.column_stack((dates, ponto[:, 0], ponto[:, 1:]))
@@ -258,11 +260,21 @@ for i in tqdm(range(selection.shape[2])):
     # Reorganizar colunas
     ordem_colunas = ['tBreak', 'tEnd', 'tStart', 'changeProb', 'Lat', 'Lon', 'ndvi_magnitude']
     df=df[ordem_colunas]
-    df_result.append(df)
 
-df_final = pd.concat(df_result, ignore_index=True)
-timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-df_final.to_csv(f'C:\\Users\\scaetano\\Desktop\\CCD\\outputs\\csv\\Theia\\csv_{timestamp}_{random_state_value}.csv', index=False)
+    return df
+
+dfs = []
+with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
+    tqdm_bar = tqdm(total=selection.shape[2])
+
+    for result_df in executor.map(runDetectionForPoint, list(range(selection.shape[2]))):
+        dfs.append(result_df)
+        tqdm_bar.update(1)
+    tqdm_bar.close()
+if dfs:
+    df_final = pd.concat(dfs, ignore_index=True)
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    df_final.to_csv('teste_csv_parallel.csv', index=False)#df_final.to_csv(f'C:\\Users\\scaetano\\Desktop\\CCD\\outputs\\csv\\Theia\\csv_{timestamp}_{random_state_value}.csv', index=False)
 
 # datas do filtro das datas da análise (DGT 300)
 ########### Não alterar ################
@@ -272,7 +284,7 @@ dt_end = '2021-09-30' # data final
 theta = 60 # +/- theta dias de diferenca
 # bandar a filtrar com base na magnitude
 bandFilter = None #não implementado ainda - não mexer
-csv_file_ccd=get_most_recent_file(str('C:\\Users\\scaetano\\Desktop\\CCD\\outputs\\csv\\Theia\\'),exclude_string='pre_proc')
+csv_file_ccd='teste_csv_parallel.csv'#get_most_recent_file(str('C:\\Users\\scaetano\\Desktop\\CCD\\outputs\\csv\\Theia\\'),exclude_string='pre_proc')
 if csv_file_ccd is None: 
     raise ValueError('Pasta vazia')
 print('csv_file_ccd',csv_file_ccd)
@@ -299,7 +311,8 @@ ccdcFiltro = filterDate(csv_preprocessed_path,dt_ini, dt_end, bandFilter)
 """## Spatial join
 Faz join dos pontos do csv com a informação de referencia da DGT (300 buffers). É associada aos pontos a informação da validação - data de alteração, tipo, classes, etc.
 """
-
+gdfVal = gpd.read_file(path_adjusted_bdr)
+gdfVal.to_crs(crs = 'EPSG:3763', inplace = True)
 #executa o join
 ccdcVal, ccdcVal_T = spatialJoin(path_adjusted_bdr, ccdcFiltro)
 
@@ -328,3 +341,5 @@ print('Omission error = {}%'.format(round(100*om,2)))
 print('Commission error = {}%'.format(round(100*cm,2)))
 
 DF_FINAL_T.to_csv(base_path / 'outputs' / f'Theia_FP_FN_{random_state_value}_alpha_{alpha}.csv', index=False)
+
+# %%
