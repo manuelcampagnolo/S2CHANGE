@@ -2,6 +2,7 @@ from pyproj import Transformer
 import os
 import re
 from datetime import datetime, timedelta
+import geopandas as gpd
 #%%
 def get_most_recent_file(directory, exclude_string=None):
     try:
@@ -97,3 +98,10 @@ def read_tif_files(S2_tile,tiles):
 
     date_objects = [datetime.strptime(date, '%Y%m%d').date() for date in dates]
     return list_files, date_objects
+
+def readPoints(caminho_arquivo, n_samples=None, random_state_value=42):
+    dados_geoespaciais_metros = gpd.read_file(caminho_arquivo) # seria melhor ler csv; apenas coordenadas interessam
+    if n_samples:
+        dados_geoespaciais_metros = dados_geoespaciais_metros.sample(n_samples, random_state=random_state_value).copy()
+
+    return dados_geoespaciais_metros
