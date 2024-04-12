@@ -1,5 +1,5 @@
+from notebooks.read_files import read_tif_files_theia, read_tif_files_gee
 from read_files import read_tif_files
-
 
 def fromParamsReturnName(col_name, ccd_params, tifs_info, n_sample, random_state_value):
     """
@@ -29,13 +29,28 @@ def fromParamsReturnName(col_name, ccd_params, tifs_info, n_sample, random_state
     ### TODO (because using ndvi is currently a temporary solution - replacing blue)
     #get tmask bands
     ### TODO
+
+    #get start and end dates
+    S2_tile, tiles = tifs_info
+    
+    # Extract the dataset type from col_name
+    suffix = col_name.split('_')[-1]
+    
+    # Load dataset and retrieve dates
+    if suffix == 'Theia':
+        _ , dates = read_tif_files_theia(S2_tile,tiles)
+    else:
+        _ , dates = read_tif_files_gee(S2_tile,tiles)
+    
+    start_date = min(dates).strftime("%Y%m%d")
+    end_date = max(dates).strftime("%Y%m%d")
+
     
     #get start and end dates
     S2_tile, tiles = tifs_info
     _ , tif_dates = read_tif_files(S2_tile,tiles)
     start_date = min(tif_dates).strftime("%Y%m%d")
     end_date = max(tif_dates).strftime("%Y%m%d")
-
 
     name = "{0}-NDVI_XX{1}YM{2}NOBS{3}LDA{4}ITER{5}_START{6}_END{7}_N{8}_RS{9}".format(col_name, chi, minYears, n_obs, lam, maxIter, start_date, end_date, n_sample, random_state_value)
 
@@ -45,3 +60,5 @@ def fromParamsReturnName(col_name, ccd_params, tifs_info, n_sample, random_state
 
 
 
+
+>>>>>>> 3e9a96f95271398162b39d5a383e9255d88c67a6

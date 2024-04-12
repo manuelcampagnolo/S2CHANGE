@@ -5,28 +5,29 @@ from datetime import datetime, timezone
 import pandas as pd
 from notebooks.read_files import convertPointToCrs
 import ccd
-
-
+#%%
 def getTimeSeriesForPoints(tif_names, tif_dates_ord, bandas_desejadas,dados_geoespaciais_metros):
 
     time_var = xr.Variable('time',tif_dates_ord)
     # Load in and concatenate all individual GeoTIFFs
     tifs_xr = [rioxarray.open_rasterio(i, chunks={'x':10924, 'y':10900}) for i in tif_names]
     geotiffs_da = xr.concat(tifs_xr, dim=time_var).sel(band=bandas_desejadas)
-    #%% 
+
     # COORDENADAS X E Y DOS 10 000 PONTOS ESCOLHIDOS
     points_x_int = xr.DataArray(np.round(dados_geoespaciais_metros.geometry.x.values).astype('int'), dims=['location'])
     points_y_int = xr.DataArray(np.round(dados_geoespaciais_metros.geometry.y.values).astype('int'), dims=['location'])
-    #%%
+
     selection = geotiffs_da.sel(x=points_x_int, y=points_y_int, band=bandas_desejadas)
     dates = selection.time
     xs = selection.x
     ys = selection.y
     sel_values = selection.values
 
+    # with open('C:/Users/Public/Documents/sel_values.npy','rb') as f:
+    #     sel_values = np.load(f)
+
     return sel_values, dates, xs, ys
-
-
+#%%
 def runDetectionForPoint(args):
     i,sel_values, dates, xs, ys, NODATA_VALUE = args
 
