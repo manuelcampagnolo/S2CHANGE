@@ -22,9 +22,7 @@ def getTimeSeriesForPoints(tif_names, tif_dates_ord, bandas_desejadas,dados_geoe
     dates = selection.time
     xs = selection.x
     ys = selection.y
-    #sel_values = selection.values
-    with open('/media/daniel/7C42A09342A05424/Users/morae/Desktop/PhD_NovaIMS/Paper 3/Experimentos_pyccd/Dev_pyccd_ISA/sel_values.npy','rb') as f:
-        sel_values = np.load(f)
+    sel_values = selection.values
 
     return sel_values, dates, xs, ys
 
