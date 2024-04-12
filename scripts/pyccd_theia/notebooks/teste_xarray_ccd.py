@@ -25,9 +25,7 @@ from notebooks.avaliacao_exatidao_pyccd import filterDate, spatialJoin, preproce
 from notebooks.read_files import read_tif_files_theia, read_tif_files_gee, get_most_recent_file, readPoints
 from notebooks.processing import getTimeSeriesForPoints, runDetectionForPoint
 from notebooks.utils import fromParamsReturnName
-from notebooks.read_files import read_tif_files, get_most_recent_file, readPoints
-import utils
-import processing
+
 from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor
 from datetime import timezone
@@ -47,7 +45,7 @@ public_documents = Path('C:/Users/Public/Documents/')
 samples = public_documents / 'inputs_pontos'
 pontos_input = 'pontos_300_buffers_1_metros.gpkg' 
 S2_tile = 'T29TNE'
-var='THEIA' # choose variable: THEIA or GEE
+var='GEE' # choose variable: THEIA or GEE
 
 if var=='THEIA':
     tiles = public_documents / 'pyCCD_Theia' / S2_tile
@@ -55,9 +53,6 @@ else:
     tiles = public_documents / 'pyCCD_GEE' / S2_tile
 
 img_collection = tiles.parts[-2]
-
-img_collection = 'pyCCD_Theia'
-tiles = base_path / img_collection / S2_tile
 
 N=10000
 
@@ -69,8 +64,6 @@ bandas_desejadas = [1, 2, 3, 7, 9, 10]
 
 
 alpha = ccd.parameters.defaults['ALPHA'] # Looks for alpha in the parameters.py file
-
-
 ccd_params = ccd.parameters.defaults
 
 NODATA_VALUE= 65535
@@ -84,7 +77,7 @@ dt_end = '2021-09-30' # data final
 theta = 60 # +/- theta dias de diferenca
 # bandar a filtrar com base na magnitude
 bandFilter = None #não implementado ainda - não mexer
-<<<<<<< HEAD
+
 csv_file_ccd='teste_csv_parallel.csv'#get_most_recent_file(str('C:\\Users\\scaetano\\Desktop\\CCD\\outputs\\csv\\Theia\\'),exclude_string='pre_proc')
 if csv_file_ccd is None: 
     raise ValueError('Pasta vazia')
@@ -106,6 +99,7 @@ def main():
 
     #recolhe nome dos tifs e respetivas datas
     print('A recolher nome e data dos tifs...')
+    
     if var=='THEIA':
         tif_names, tif_dates = read_tif_files_theia(S2_tile,tiles)
     else:
@@ -154,7 +148,7 @@ def main():
 
 def runValidation():
     print('A correr validação dos resultados do ccd...')
-    filename = utils.fromParamsReturnName(img_collection, ccd_params, (S2_tile,tiles), N, random_state_value)
+    filename = fromParamsReturnName(img_collection, ccd_params, (S2_tile,tiles), N, random_state_value)
 
     csv_s2 = pd.read_csv('{}.csv'.format(filename))
     #correr pre-processamento
