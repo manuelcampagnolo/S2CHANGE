@@ -21,6 +21,7 @@ if module_path not in sys.path:
 import ccd
 from notebooks.avaliacao_exatidao_pyccd import filterDate, spatialJoin, preprocessCsvS2, valPol
 from notebooks.read_files import read_tif_files, get_most_recent_file, readPoints
+import utils
 import processing
 from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor
@@ -43,7 +44,8 @@ start_time = time.time()
 samples = base_path / 'inputs_pontos'
 pontos_input = 'pontos_300_buffers_1_metros.gpkg' 
 S2_tile = 'T29TNE'
-tiles = base_path / 'pyCCD_Theia' / S2_tile
+img_collection = 'pyCCD_Theia'
+tiles = base_path / img_collection / S2_tile
 N=10000
 
 random_state_value = 42
@@ -53,6 +55,7 @@ caminho_arquivo = samples / pontos_input
 bandas_desejadas = [1, 2, 3, 7, 9, 10]
 
 alpha = ccd.parameters.defaults['ALPHA'] #looks for alpha in the parameters.py file
+ccd_params = ccd.parameters.defaults
 
 NODATA_VALUE= 65535
 
@@ -65,14 +68,6 @@ dt_end = '2021-09-30' # data final
 theta = 60 # +/- theta dias de diferenca
 # bandar a filtrar com base na magnitude
 bandFilter = None #não implementado ainda - não mexer
-csv_file_ccd='teste_csv_parallel.csv'#get_most_recent_file(str('C:\\Users\\scaetano\\Desktop\\CCD\\outputs\\csv\\Theia\\'),exclude_string='pre_proc')
-if csv_file_ccd is None: 
-    raise ValueError('Pasta vazia')
-# Validação com BDR-300
-#caminho para gravar o csv pre-processado
-filename=Path(csv_file_ccd).with_suffix('')
-csv_preprocessed_path = str(filename)+'_pre_proc.csv'
-#caminho para a base de dados de validação
 path_adjusted_bdr = base_path / 'BDR_300_artigo' / 'BDR_CCDC_TNE_Adjusted.shp'
 
 #%%
@@ -119,14 +114,17 @@ def main():
     if dfs:
         df_final = pd.concat(dfs, ignore_index=True)
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        df_final.to_csv('teste_csv_parallel.csv', index=False)#df_final.to_csv(f'C:\\Users\\scaetano\\Desktop\\CCD\\outputs\\csv\\Theia\\csv_{timestamp}_{random_state_value}.csv', index=False)
+        filename = utils.fromParamsReturnName(img_collection, ccd_params, (S2_tile,tiles), N, random_state_value)
+        df_final.to_csv('{}.csv'.format(filename), index=False)#df_final.to_csv(f'C:\\Users\\scaetano\\Desktop\\CCD\\outputs\\csv\\Theia\\csv_{timestamp}_{random_state_value}.csv', index=False)
     
 
 def runValidation():
     print('A correr validação dos resultados do ccd...')
-    csv_s2 = pd.read_csv(csv_file_ccd)
+    filename = utils.fromParamsReturnName(img_collection, ccd_params, (S2_tile,tiles), N, random_state_value)
+    csv_s2 = pd.read_csv('{}.csv'.format(filename))
     #correr pre-processamento
     csv_s2 = preprocessCsvS2(csv_s2)
+    csv_preprocessed_path = '{}_pre_proc.csv'.format(filename)
     csv_s2.to_csv(csv_preprocessed_path)
 
     """## Filtrar datas
@@ -168,7 +166,7 @@ def runValidation():
     print('Omission error = {}%'.format(round(100*om,2)))
     print('Commission error = {}%'.format(round(100*cm,2)))
 
-    DF_FINAL_T.to_csv(base_path / 'outputs' / f'Theia_FP_FN_{random_state_value}_alpha_{alpha}.csv', index=False)
+    DF_FINAL_T.to_csv(base_path / 'outputs' / f'VAL_{filename}.csv', index=False)
 
 if __name__ == '__main__':
     main()
