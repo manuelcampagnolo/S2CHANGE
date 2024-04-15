@@ -42,15 +42,23 @@ import multiprocessing
 start_time = time.time()
 #%%
 public_documents = Path('C:/Users/Public/Documents/')
-samples = public_documents / 'inputs_pontos'
-pontos_input = 'pontos_300_buffers_1_metros.gpkg' 
-S2_tile = 'T29TNE'
-var='GEE' # choose variable: THEIA or GEE
 
-if var=='THEIA':
-    tiles = public_documents / 'pyCCD_Theia' / S2_tile
+samples = public_documents / 'inputs_pontos'
+pontos_input = 'pontos_300_buffers_1_metros.gpkg'
+caminho_arquivo = samples / pontos_input
+
+FOLDER_THEIA = public_documents / 'pyCCD_Theia' # Caminho dados THEIA
+FOLDER_GEE = public_documents / 'pyCCD_GEE' # Caminho dados GEE
+
+FOLDER_BDR = public_documents / 'BDR_300_artigo' / 'BDR_CCDC_TNE_Adjusted.shp' # Caminho para a base de dados de validação
+
+S2_tile = 'T29TNE'
+var = 'THEIA' # choose variable: THEIA or GEE
+
+if var == 'THEIA':
+    tiles = FOLDER_THEIA / S2_tile
 else:
-    tiles = public_documents / 'pyCCD_GEE' / S2_tile
+    tiles = FOLDER_GEE / S2_tile
 
 img_collection = tiles.parts[-2]
 
@@ -58,17 +66,14 @@ N=10000
 
 random_state_value = 42
 
-caminho_arquivo = samples / pontos_input
-
 bandas_desejadas = [1, 2, 3, 7, 9, 10]
-
 
 alpha = ccd.parameters.defaults['ALPHA'] # Looks for alpha in the parameters.py file
 ccd_params = ccd.parameters.defaults
 
 NODATA_VALUE= 65535
 
-#parametros da validacao
+# Parametros da validacao
 # datas do filtro das datas da análise (DGT 300)
 ########### Não alterar ################
 dt_ini = '2018-09-12' # data inicial
@@ -78,18 +83,13 @@ theta = 60 # +/- theta dias de diferenca
 # bandar a filtrar com base na magnitude
 bandFilter = None #não implementado ainda - não mexer
 
-csv_file_ccd='teste_csv_parallel.csv'#get_most_recent_file(str('C:\\Users\\scaetano\\Desktop\\CCD\\outputs\\csv\\Theia\\'),exclude_string='pre_proc')
-if csv_file_ccd is None: 
-    raise ValueError('Pasta vazia')
+# csv_file_ccd='teste_csv_parallel.csv'#get_most_recent_file(str('C:\\Users\\scaetano\\Desktop\\CCD\\outputs\\csv\\Theia\\'),exclude_string='pre_proc')
+# if csv_file_ccd is None: 
+#     raise ValueError('Pasta vazia')
 # Validação com BDR-300
 #caminho para gravar o csv pre-processado
-filename=Path(csv_file_ccd).with_suffix('')
-csv_preprocessed_path = str(filename)+'_pre_proc.csv'
-#caminho para a base de dados de validação
-path_adjusted_bdr = public_documents / 'BDR_300_artigo' / 'BDR_CCDC_TNE_Adjusted.shp'
-
-path_adjusted_bdr = base_path / 'BDR_300_artigo' / 'BDR_CCDC_TNE_Adjusted.shp'
-
+# filename=Path(csv_file_ccd).with_suffix('')
+# csv_preprocessed_path = str(filename)+'_pre_proc.csv'
 
 #%%
 def main():
@@ -110,7 +110,7 @@ def main():
     #convert dates to ordinal
     tif_dates_ord = [d.toordinal() for d in tif_dates]
     
-    print(f'Processando dados {var}...')
+    print(f'Processando dados {var}... ({tiles})')
 
     #abre tifs com xarray e armazena informacao
     print('A abrir tifs com xarray e carregar série temporal...')
@@ -142,9 +142,12 @@ def main():
         tqdm_bar.close()
     if dfs:
         df_final = pd.concat(dfs, ignore_index=True)
-        df_final.to_csv('teste_csv_parallel.csv', index=False)
+        # df_final.to_csv('teste_csv_parallel.csv', index=False)
         filename = fromParamsReturnName(img_collection, ccd_params, (S2_tile,tiles), N, random_state_value)
         df_final.to_csv('{}.csv'.format(filename), index=False)
+        
+        # ============== PARQUET ===============
+        # df_final.to_parquet('{}.parquet'.format(filename), index=False)
 
 def runValidation():
     print('A correr validação dos resultados do ccd...')
@@ -155,6 +158,15 @@ def runValidation():
     csv_s2 = preprocessCsvS2(csv_s2)
     csv_preprocessed_path = '{}_pre_proc.csv'.format(filename)
     csv_s2.to_csv(csv_preprocessed_path)
+    
+    # ========== PARQUET ============
+    # csv_s2 = pd.read_parquet('{}.parquet'.format(filename))
+    # # Correr pré-processamento
+    # csv_s2 = preprocessCsvS2(csv_s2)
+    # # Especificar o caminho para salvar o arquivo Parquet
+    # csv_preprocessed_path = '{}_pre_proc.parquet'.format(filename)
+    # # Salvar o DataFrame como um arquivo Parquet
+    # csv_s2.to_parquet(csv_preprocessed_path)
 
     """## Filtrar datas
     Limitar análise ao período considerado pelos analistas DGT
@@ -164,10 +176,10 @@ def runValidation():
     """## Spatial join
     Faz join dos pontos do csv com a informação de referencia da DGT (300 buffers). É associada aos pontos a informação da validação - data de alteração, tipo, classes, etc.
     """
-    gdfVal = gpd.read_file(path_adjusted_bdr)
+    gdfVal = gpd.read_file(FOLDER_BDR)
     gdfVal.to_crs(crs = 'EPSG:3763', inplace = True)
     #executa o join
-    ccdcVal, ccdcVal_T = spatialJoin(path_adjusted_bdr, ccdcFiltro)
+    ccdcVal, ccdcVal_T = spatialJoin(FOLDER_BDR, ccdcFiltro)
     """## Validação
     Faz a validação da deteção - compara resultado do modelo (ccd) com dados de referência DGT
     """
@@ -188,7 +200,7 @@ def runValidation():
     print('Omission error = {}%'.format(round(100*om,2)))
     print('Commission error = {}%'.format(round(100*cm,2)))
 
-    DF_FINAL_T.to_csv(base_path / 'outputs' / f'VAL_{filename}.csv', index=False)
+    DF_FINAL_T.to_parquet(base_path / 'outputs' / f'VAL_{filename}.parquet', index=False)
 
 if __name__ == '__main__':
     main()
