@@ -3,17 +3,9 @@ user_profile = os.environ['USERPROFILE']
 directory_path = os.path.join(user_profile, 'Desktop', 'CCD_yml_win')
 os.chdir(directory_path)
 import geopandas as gpd
-from shapely.geometry import Point
-from pyproj import Transformer
 import pandas as pd
-import numpy as np
-import rasterio
-import glob
-import re
 import os
 import sys
-from datetime import datetime, timedelta
-from pathlib import Path
 from pathlib import Path
 # chamar python a partir da pasta 'CCD'
 module_path= Path(__name__ ).parent.absolute() / 'S2CHANGE' / 'scripts' / 'pyccd_theia' #  / 'CCD' / 'S2CHANGE' / 'scripts' / 
@@ -23,20 +15,13 @@ if module_path not in sys.path:
 import ccd
 from notebooks.avaliacao_exatidao_pyccd import filterDate, spatialJoin, preprocessCsvS2, valPol
 from notebooks.read_files import read_tif_files_theia, read_tif_files_gee, get_most_recent_file, readPoints
-from notebooks.processing import getTimeSeriesForPoints, runDetectionForPoint
+from notebooks.processing import getTimeSeriesForPoints, runDetectionForPoint, processar_centros_pixeis
 from notebooks.utils import fromParamsReturnName
-
 from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor
-from datetime import timezone
 import warnings
 warnings.filterwarnings('ignore')
-import xarray as xr
-import rioxarray
 import time
-import pandas as pd
-from concurrent.futures import ProcessPoolExecutor
-import multiprocessing
 #%%
 # Início da medição do tempo
 start_time = time.time()
@@ -47,8 +32,8 @@ samples = public_documents / 'inputs_pontos'
 pontos_input = 'pontos_300_buffers_1_metros.gpkg'
 caminho_arquivo = samples / pontos_input
 
-FOLDER_THEIA = public_documents / 'pyCCD_Theia' # Caminho dados THEIA
-FOLDER_GEE = public_documents / 'pyCCD_GEE' # Caminho dados GEE
+FOLDER_THEIA = public_documents / 'imagens_Theia' # Caminho dados THEIA
+FOLDER_GEE = public_documents / 'imagens_GEE' # Caminho dados GEE
 
 FOLDER_BDR = public_documents / 'BDR_300_artigo' / 'BDR_CCDC_TNE_Adjusted.shp' # Caminho para a base de dados de validação
 
@@ -82,20 +67,30 @@ dt_end = '2021-09-30' # data final
 theta = 60 # +/- theta dias de diferenca
 # bandar a filtrar com base na magnitude
 bandFilter = None #não implementado ainda - não mexer
-
-# csv_file_ccd='teste_csv_parallel.csv'#get_most_recent_file(str('C:\\Users\\scaetano\\Desktop\\CCD\\outputs\\csv\\Theia\\'),exclude_string='pre_proc')
-# if csv_file_ccd is None: 
-#     raise ValueError('Pasta vazia')
-# Validação com BDR-300
-#caminho para gravar o csv pre-processado
-# filename=Path(csv_file_ccd).with_suffix('')
-# csv_preprocessed_path = str(filename)+'_pre_proc.csv'
-
 #%%
 def main():
     #abre geopackage com pontos
-    print('A abrir o geopackage com pontos...')
-    dados_geoespaciais_metros = readPoints(caminho_arquivo, N, random_state_value)
+    # print('A abrir o geopackage com pontos...')
+    raster_path = tiles / 'Theia_T29TNE_20170813-112433.tif'
+    
+    print('Processar centros dos pontos de cada geometria para corresponder aos centros dos pixeis dos rasters...')
+    
+    start_time = time.time()
+
+    gdf_centros_pixeis = processar_centros_pixeis(FOLDER_BDR, raster_path)
+    
+    # Fim da execução do código
+    end_time = time.time()
+
+    # Calcula o tempo decorrido em segundos
+    execution_time_seconds = end_time - start_time
+
+    # Converte o tempo decorrido para minutos
+    execution_time_minutes = execution_time_seconds / 60
+
+    print("Processar centros dos pixeis:", execution_time_minutes, "minutos")
+    
+    dados_geoespaciais_metros = readPoints(gdf_centros_pixeis, N, random_state_value)
 
     #recolhe nome dos tifs e respetivas datas
     print('A recolher nome e data dos tifs...')
@@ -111,11 +106,10 @@ def main():
     tif_dates_ord = [d.toordinal() for d in tif_dates]
     
     print(f'Processando dados {var}... ({tiles})')
-
+    start_time = time.time()
     #abre tifs com xarray e armazena informacao
     print('A abrir tifs com xarray e carregar série temporal...')
     sel_values, dates, xs, ys = getTimeSeriesForPoints(tif_names, tif_dates_ord, bandas_desejadas, dados_geoespaciais_metros)
-
 
     # Fim da execução do código
     end_time = time.time()
@@ -145,10 +139,7 @@ def main():
         # df_final.to_csv('teste_csv_parallel.csv', index=False)
         filename = fromParamsReturnName(img_collection, ccd_params, (S2_tile,tiles), N, random_state_value)
         df_final.to_csv('{}.csv'.format(filename), index=False)
-        
-        # ============== PARQUET ===============
-        # df_final.to_parquet('{}.parquet'.format(filename), index=False)
-
+#%%
 def runValidation():
     print('A correr validação dos resultados do ccd...')
     filename = fromParamsReturnName(img_collection, ccd_params, (S2_tile,tiles), N, random_state_value)
@@ -159,14 +150,6 @@ def runValidation():
     csv_preprocessed_path = '{}_pre_proc.csv'.format(filename)
     csv_s2.to_csv(csv_preprocessed_path)
     
-    # ========== PARQUET ============
-    # csv_s2 = pd.read_parquet('{}.parquet'.format(filename))
-    # # Correr pré-processamento
-    # csv_s2 = preprocessCsvS2(csv_s2)
-    # # Especificar o caminho para salvar o arquivo Parquet
-    # csv_preprocessed_path = '{}_pre_proc.parquet'.format(filename)
-    # # Salvar o DataFrame como um arquivo Parquet
-    # csv_s2.to_parquet(csv_preprocessed_path)
 
     """## Filtrar datas
     Limitar análise ao período considerado pelos analistas DGT
@@ -200,7 +183,7 @@ def runValidation():
     print('Omission error = {}%'.format(round(100*om,2)))
     print('Commission error = {}%'.format(round(100*cm,2)))
 
-    DF_FINAL_T.to_parquet(base_path / 'outputs' / f'VAL_{filename}.parquet', index=False)
+    DF_FINAL_T.to_csv(base_path / 'outputs' / f'VAL_{filename}.csv', index=False)
 
 if __name__ == '__main__':
     main()

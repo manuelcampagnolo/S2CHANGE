@@ -5,6 +5,63 @@ from datetime import datetime, timezone
 import pandas as pd
 from notebooks.read_files import convertPointToCrs
 import ccd
+from rasterio.features import geometry_window
+from shapely.geometry import Point
+from pyproj import CRS
+import rasterio
+import geopandas as gpd
+#%%
+def processar_centros_pixeis(shapefile_path, raster_path):
+    # Carregar o shapefile
+    poligonos = gpd.read_file(shapefile_path)
+    caminho_raster = raster_path
+
+    # Lista para armazenar os centros dos pixels para cada geometria
+    todos_centros_pixeis = []
+    poligonos = poligonos[poligonos.is_valid]
+
+    for index, row in poligonos.iterrows():
+        
+        # Obter a geometria do polígono
+        geometry = row['geometry']
+
+        # Carregar o raster
+        with rasterio.open(caminho_raster) as src:
+            window = geometry_window(src, [geometry])
+
+            transform = src.window_transform(window)
+
+            # Obter o tamanho do pixel
+            x_res = transform.a
+            y_res = transform.e
+
+            # Calcular o deslocamento do centro do pixel
+            x_offset = x_res / 2.0
+            y_offset = y_res / 2.0
+
+            pixel_centers = []
+
+            # Calcular o centro do pixel para cada pixel na janela
+            for y in range(window.height):
+                for x in range(window.width):
+                    # Calcular as coordenadas do centro do pixel
+                    pixel_center_x = transform.c + (x * x_res) + x_offset
+                    pixel_center_y = transform.f + (y * y_res) + y_offset
+                    
+                    # Verificar se o ponto do centro do pixel está dentro do polígono
+                    if Point(pixel_center_x, pixel_center_y).within(geometry):
+                        # Armazenar as coordenadas do centro do pixel na lista
+                        pixel_centers.append((pixel_center_x, pixel_center_y))
+        
+        # Adicionar os centros dos pixels desta geometria à lista geral
+        todos_centros_pixeis.append(pixel_centers)
+        
+    pontos_shapely = [Point(centro) for sublist in todos_centros_pixeis for centro in sublist]
+
+    # Criar um GeoDataFrame a partir da lista de pontos
+    gdf_centros_pixeis = gpd.GeoDataFrame(geometry=pontos_shapely)
+    
+    return gdf_centros_pixeis
 #%%
 def getTimeSeriesForPoints(tif_names, tif_dates_ord, bandas_desejadas,dados_geoespaciais_metros):
 
