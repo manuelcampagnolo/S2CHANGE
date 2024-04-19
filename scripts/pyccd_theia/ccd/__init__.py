@@ -51,7 +51,7 @@ def __attach_metadata(procedure_results):
           observation_count: int,
           change_probability: float,
           curve_qa: int,
-          blue:      {magnitude: float,
+          ndvi:      {magnitude: float,
                      rmse: float,
                      coefficients: (float, float, ...),
                      intercept: float},
@@ -118,9 +118,8 @@ def __check_inputs(dates, spectra):
     # Make sure there is spectral data for each date
     assert dates.shape[0] == spectra.shape[1]
 
-
-def detect(dates, blues, greens, reds, nirs,
-           swir1s, swir2s, params=None):
+# def detect(dates, ndvis, greens, reds, nirs, swir1s, swir2s, params=None):
+def detect(dates, ndvis, greens, swir2s, params=None):
     """Entry point call to detect change
 
     No filtering up-front as different procedures may do things
@@ -128,13 +127,13 @@ def detect(dates, blues, greens, reds, nirs,
 
     Args:
         dates:    1d-array or list of ordinal date values
-        blues:    1d-array or list of blue band values
+        ndvis:    1d-array or list of ndvis  values
         greens:   1d-array or list of green band values
         reds:     1d-array or list of red band values
         nirs:     1d-array or list of nir band values
         swir1s:   1d-array or list of swir1 band values
         swir2s:   1d-array or list of swir2 band values
-        thermals: 1d-array or list of thermal band values
+ 
         params: python dictionary to change module wide processing
             parameters
 
@@ -149,10 +148,10 @@ def detect(dates, blues, greens, reds, nirs,
         proc_params.update(params)
 
     dates = np.asarray(dates)
+    
+    # spectra = np.stack((ndvis, greens, reds,  nirs, swir1s, swir2s))
 
-    spectra = np.stack((blues, greens,
-                        reds, nirs, swir1s,
-                        swir2s))
+    spectra = np.stack((ndvis, greens, swir2s))
 
     __check_inputs(dates, spectra)
 
