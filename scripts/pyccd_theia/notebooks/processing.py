@@ -122,7 +122,7 @@ def runDetectionForPoint(args, plot_flag=False): # se plot_flag =  False não fa
     break_dates = []
     start_dates = []
     end_dates=[]
-    # coeficientes=[]
+    coeficientes=[]
     prob=[]
     
     for num, result in enumerate(results['change_models']):
@@ -135,6 +135,9 @@ def runDetectionForPoint(args, plot_flag=False): # se plot_flag =  False não fa
         
         intercept = result['ndvi']['intercept']
         coef = result['ndvi']['coefficients']
+        coeficientes.append(coef)
+        
+        coef_str = f"({coef[0]:.2f}, {coef[1]:.2f}, {coef[2]:.2f}, {coef[3]:.2f}, {coef[4]:.2f}, {coef[5]:.2f}, {coef[6]:.2f})"
         
         predicted_values.append(intercept + coef[0] * days +
                                 coef[1]*np.cos(days*1*2*np.pi/365.25) + coef[2]*np.sin(days*1*2*np.pi/365.25) +
@@ -190,11 +193,13 @@ def runDetectionForPoint(args, plot_flag=False): # se plot_flag =  False não fa
         colors = ['orange', 'purple', 'brown']
         
         # Predicted curves
-        for idx, (_preddate, _predvalue) in enumerate(zip(prediction_dates, predicted_values)):
+        for idx, (_preddate, _predvalue, _coef) in enumerate(zip(prediction_dates, predicted_values, coeficientes)):
             # Converter números ordinais de volta para objetos de data
             _preddate = [datetime.fromordinal(int(ordinal)) for ordinal in _preddate]
             color = colors[idx % len(colors)]
-            a1.plot(_preddate, _predvalue, color, linewidth=1, label=f'Predicted values {idx + 1}')
+            coef_str = f"({', '.join([f'{c:.2f}' for c in _coef])})"
+            label = f'Predicted values {idx + 1} (Coefs: {coef_str})'
+            a1.plot(_preddate, _predvalue, color, linewidth=1, label=label)
         
         a1.plot(np.array(date_objects1)[mask], np.array(variavel_grafico)[mask], 'g+',label='Observed values')  # Observed values
         a1.plot(np.array(date_objects1)[~mask], np.array(variavel_grafico)[~mask], 'g+')  # Observed values masked out
@@ -230,9 +235,9 @@ def runDetectionForPoint(args, plot_flag=False): # se plot_flag =  False não fa
 
         plt.ylabel('NDVI')
         
-        plt.legend(loc='upper center', bbox_to_anchor=(0.7, -0.1), fancybox=True, shadow=True, ncol=3)
+        plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.1), fancybox=True, shadow=True, ncol=3)
         plt.tight_layout()
-        caminho_graficos=os.path.join(FOLDER_OUTPUTS / 'plots' / f'{img_collection}_ccdc_ponto_{i}.png')
+        caminho_graficos=os.path.join(FOLDER_OUTPUTS / 'plots' / f'{img_collection}_ccdc_ponto_{i}_{start_dates[0]}_{end_dates[-1]}.png')
         plt.savefig(caminho_graficos)
         plt.close()
 
