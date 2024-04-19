@@ -1,15 +1,17 @@
 import xarray as xr
 import rioxarray
 import numpy as np
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import pandas as pd
 from notebooks.read_files import convertPointToCrs
 import ccd
 from rasterio.features import geometry_window
 from shapely.geometry import Point
-from pyproj import CRS
 import rasterio
 import geopandas as gpd
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import os
 #%%
 def processar_centros_pixeis(shapefile_path, raster_path):
     # Carregar o shapefile
@@ -63,7 +65,7 @@ def processar_centros_pixeis(shapefile_path, raster_path):
     
     return gdf_centros_pixeis
 #%%
-def getTimeSeriesForPoints(tif_names, tif_dates_ord, bandas_desejadas,dados_geoespaciais_metros):
+def getTimeSeriesForPoints(tif_names, tif_dates_ord, bandas_desejadas, dados_geoespaciais_metros):
 
     time_var = xr.Variable('time',tif_dates_ord)
     # Load in and concatenate all individual GeoTIFFs
@@ -85,8 +87,8 @@ def getTimeSeriesForPoints(tif_names, tif_dates_ord, bandas_desejadas,dados_geoe
 
     return sel_values, dates, xs, ys
 #%%
-def runDetectionForPoint(args):
-    i,sel_values, dates, xs, ys, NODATA_VALUE = args
+def runDetectionForPoint(args, plot_flag=False): # se plot_flag =  False não faz gráficos se True faz gráficos
+    i,sel_values, dates, xs, ys, NODATA_VALUE, FOLDER_OUTPUTS, img_collection = args
 
     ponto = sel_values[:,:,i]
 
@@ -165,5 +167,73 @@ def runDetectionForPoint(args):
     # Reorganizar colunas
     ordem_colunas = ['tBreak', 'tEnd', 'tStart', 'changeProb', 'Lat', 'Lon', 'ndvi_magnitude']
     df=df[ordem_colunas]
+    
+    # Se plot_flag = True faz gráficos
+    if plot_flag:
+        # BANDA QUE QUEREMOS PLOTAR NO GRÁFICO
+        variavel_grafico = ndvis
+    
+        mask = np.array(results['processing_mask'], dtype='bool')
+        date_objects1 = [datetime.fromordinal(int(ordinal)) for ordinal in dates]
+        
+        plt.style.use('ggplot')
+        fg = plt.figure(figsize=(14, 4), dpi=90)
+        
+        a1 = fg.add_subplot(1, 1, 1, xlim=(min(date_objects1), max(date_objects1)))#, ylim=(0, 1500))
+        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d-%m-%Y'))
+        plt.gca().xaxis.set_major_locator(mdates.DayLocator())
+        
+        a1.xaxis.set_major_locator(mdates.YearLocator(1))
+        a1.xaxis.set_major_formatter(mdates.DateFormatter('%d-%m-%Y'))
+        
+        colors = ['orange', 'purple', 'brown']
+        
+        # Predicted curves
+        for idx, (_preddate, _predvalue) in enumerate(zip(prediction_dates, predicted_values)):
+            # Converter números ordinais de volta para objetos de data
+            _preddate = [datetime.fromordinal(int(ordinal)) for ordinal in _preddate]
+            color = colors[idx % len(colors)]
+            a1.plot(_preddate, _predvalue, color, linewidth=1, label=f'Predicted values {idx + 1}')
+        
+        a1.plot(np.array(date_objects1)[mask], np.array(variavel_grafico)[mask], 'g+',label='Observed values')  # Observed values
+        a1.plot(np.array(date_objects1)[~mask], np.array(variavel_grafico)[~mask], 'g+')  # Observed values masked out
+    
+        ticks = [min(date_objects1) + timedelta(days=i*365) for i in range(10) if min(date_objects1) + timedelta(days=i*365) <= datetime(2021, 12, 31)]
+        plt.xticks(ticks)
+        plt.title('Lat:' + str(round(ponto_desejado_wgs_x, 5)) + ' Lon:' + str(round(ponto_desejado_wgs_y, 5)))
+        
+        a1.plot([], [], color='r', linestyle='--', label='Start dates')
+        a1.plot([], [], color='brown', linestyle='--', label='End Dates')
+        a1.plot([], [], color='b', linestyle='--', label='Break dates')
+        a1.plot([], [], color='black', linestyle='--', label='DGT Dates')
+        
+        for b in break_dates:
+            b_date = datetime.fromordinal(b)
+            a1.axvline(b_date, color='b', linestyle='--')
+            a1.text(mdates.date2num(b_date)+1, a1.get_ylim()[1], b_date.strftime('%d-%m-%Y'), rotation=90, ha='right',weight='bold', va='top', color='b',size=8)
+        
+        # Linhas verticais para datas de início (color='r')
+        for s in start_dates:
+            s_date = datetime.fromordinal(s)
+            a1.axvline(s_date, color='r', linestyle='--')
+            a1.text(mdates.date2num(s_date) + 1, a1.get_ylim()[0], s_date.strftime('%d-%m-%Y'), rotation=90, ha='right',weight='bold', va='bottom', color='r',size=8)
+        
+        for e in end_dates:
+            e_date = datetime.fromordinal(e)
+            a1.axvline(e_date, color='brown', linestyle='--')
+            a1.text(mdates.date2num(e_date) + 1, a1.get_ylim()[0], e_date.strftime('%d-%m-%Y'), rotation=90, ha='right',weight='bold', va='bottom', color='brown',size=8,alpha=0.6)
+ 
+        reference_start_date = datetime.strptime('2018-09-12', '%Y-%m-%d')
+        reference_end_date = datetime.strptime('2021-09-30', '%Y-%m-%d')
+        a1.axvspan(reference_start_date, reference_end_date, facecolor='pink', alpha=0.3,label='Período de Referência')
+        # plt.text(0.5, 0.9, 'Período de Referência', transform=plt.gca().transAxes, color='blue', size=10, ha='center', bbox=dict(facecolor='yellow', alpha=0.3))
+        
+        plt.ylabel('NDVI')
+        
+        plt.legend(loc='upper center', bbox_to_anchor=(0.7, -0.1), fancybox=True, shadow=True, ncol=3)
+        plt.tight_layout()
+        caminho_graficos=os.path.join(FOLDER_OUTPUTS / 'plots' / f'{img_collection}_ccdc_ponto_{i}.png')
+        plt.savefig(caminho_graficos)
+        plt.close()
 
     return df

@@ -37,6 +37,7 @@ FOLDER_GEE = public_documents / 'imagens_GEE' # Caminho dados GEE
 
 FOLDER_BDR = public_documents / 'BDR_300_artigo' / 'BDR_CCDC_TNE_Adjusted.shp' # Caminho para a base de dados de validação
 
+FOLDER_OUTPUTS = public_documents / 'output_BDR300'
 S2_tile = 'T29TNE'
 var = 'THEIA' # choose variable: THEIA or GEE
 
@@ -128,7 +129,7 @@ def main():
     with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
         tqdm_bar = tqdm(total=sel_values.shape[2])
 
-        arg_list = [(i, sel_values, dates, xs, ys, NODATA_VALUE) for i in range(sel_values.shape[2])]
+        arg_list = [(i,sel_values, dates, xs, ys, NODATA_VALUE, FOLDER_OUTPUTS, img_collection) for i in range(sel_values.shape[2])]
 
         for result_df in executor.map(runDetectionForPoint, arg_list):
             dfs.append(result_df)
@@ -138,7 +139,7 @@ def main():
         df_final = pd.concat(dfs, ignore_index=True)
         # df_final.to_csv('teste_csv_parallel.csv', index=False)
         filename = fromParamsReturnName(img_collection, ccd_params, (S2_tile,tiles), N, random_state_value)
-        df_final.to_csv('{}.csv'.format(filename), index=False)
+        df_final.to_csv(FOLDER_OUTPUTS / 'tabular' / '{}.csv'.format(filename), index=False)
 #%%
 def runValidation():
     print('A correr validação dos resultados do ccd...')
@@ -183,7 +184,7 @@ def runValidation():
     print('Omission error = {}%'.format(round(100*om,2)))
     print('Commission error = {}%'.format(round(100*cm,2)))
 
-    DF_FINAL_T.to_csv(base_path / 'outputs' / f'VAL_{filename}.csv', index=False)
+    DF_FINAL_T.to_csv(FOLDER_OUTPUTS / 'tabular' / f'VAL_{filename}.csv', index=False)
 
 if __name__ == '__main__':
     main()
