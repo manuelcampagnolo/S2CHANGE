@@ -113,7 +113,8 @@ def runDetectionForPoint(args, plot_flag=False): # se plot_flag =  False não fa
     
     dates, ndvis, greens, reds, nirs, swir1s, swir2s = ponto_with_dates_filtered3
     
-    results = ccd.detect(dates, ndvis, greens, reds, nirs, swir1s, swir2s)
+    # results = ccd.detect(dates, ndvis, greens, reds, nirs, swir1s, swir2s)
+    results = ccd.detect(dates, ndvis, greens, swir2s)
     
     
     predicted_values = []
@@ -132,8 +133,8 @@ def runDetectionForPoint(args, plot_flag=False): # se plot_flag =  False não fa
         end_dates.append(result['end_day'])
         prob.append(result['change_probability'])
         
-        intercept = result['blue']['intercept']
-        coef = result['blue']['coefficients']
+        intercept = result['ndvi']['intercept']
+        coef = result['ndvi']['coefficients']
         
         predicted_values.append(intercept + coef[0] * days +
                                 coef[1]*np.cos(days*1*2*np.pi/365.25) + coef[2]*np.sin(days*1*2*np.pi/365.25) +
@@ -179,7 +180,7 @@ def runDetectionForPoint(args, plot_flag=False): # se plot_flag =  False não fa
         plt.style.use('ggplot')
         fg = plt.figure(figsize=(14, 4), dpi=90)
         
-        a1 = fg.add_subplot(1, 1, 1, xlim=(min(date_objects1), max(date_objects1)))#, ylim=(0, 1500))
+        a1 = fg.add_subplot(1, 1, 1, xlim=(min(date_objects1), max(date_objects1)))
         plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d-%m-%Y'))
         plt.gca().xaxis.set_major_locator(mdates.DayLocator())
         
@@ -226,8 +227,7 @@ def runDetectionForPoint(args, plot_flag=False): # se plot_flag =  False não fa
         reference_start_date = datetime.strptime('2018-09-12', '%Y-%m-%d')
         reference_end_date = datetime.strptime('2021-09-30', '%Y-%m-%d')
         a1.axvspan(reference_start_date, reference_end_date, facecolor='pink', alpha=0.3,label='Período de Referência')
-        # plt.text(0.5, 0.9, 'Período de Referência', transform=plt.gca().transAxes, color='blue', size=10, ha='center', bbox=dict(facecolor='yellow', alpha=0.3))
-        
+
         plt.ylabel('NDVI')
         
         plt.legend(loc='upper center', bbox_to_anchor=(0.7, -0.1), fancybox=True, shadow=True, ncol=3)

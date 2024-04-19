@@ -145,7 +145,7 @@ def runValidation():
     print('A correr validação dos resultados do ccd...')
     filename = fromParamsReturnName(img_collection, ccd_params, (S2_tile,tiles), N, random_state_value)
 
-    csv_s2 = pd.read_csv('{}.csv'.format(filename))
+    csv_s2 = pd.read_csv(FOLDER_OUTPUTS / 'tabular' / '{}.csv'.format(filename))
     #correr pre-processamento
     csv_s2 = preprocessCsvS2(csv_s2)
     csv_preprocessed_path = '{}_pre_proc.csv'.format(filename)
