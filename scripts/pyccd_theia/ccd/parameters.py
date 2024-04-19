@@ -23,17 +23,20 @@ defaults = {
     ############################
     'BLUE_OR_NDVI_IDX': 0,
     'GREEN_IDX': 1,
-    'RED_IDX': 2,
-    'NIR_IDX': 3,
-    'SWIR1_IDX': 4,
-    'SWIR2_IDX': 5,
+    # 'RED_IDX': 2,
+    # 'NIR_IDX': 3,
+    # 'SWIR1_IDX': 4,
+    # 'SWIR2_IDX': 5,
+    'SWIR2_IDX': 2,
 
     # Spectral bands that are utilized for detecting change
     #'DETECTION_BANDS': [1, 2, 3, 4, 5], # Breakpointbands; tipicamente qt mais bandas, mais breaks estimados
-    'DETECTION_BANDS': [0, 1, 5], # Breakpointbands; tipicamente qt mais bandas, mais breaks estimados
+    # 'DETECTION_BANDS': [0, 1, 5],
+    'DETECTION_BANDS': [0, 1, 2], # Breakpointbands; tipicamente qt mais bandas, mais breaks estimados
 
     # Spectral bands that are utilized for Tmask filtering
-    'TMASK_BANDS': [1, 5],
+    # 'TMASK_BANDS': [1, 5],
+    'TMASK_BANDS': [1, 2],
 
     ############################
     # Representative values in the QA band
