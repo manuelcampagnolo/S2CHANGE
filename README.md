@@ -45,7 +45,7 @@ Entregáveis:
 *Duração: Meses 2-18*
 
 Entregáveis:  
-  * E2.1 – [Relatório com metodologia de criação da BDR](Entregavel_2_1.pdf)
+  * E2.1 – [Relatório com metodologia de criação da BDR](Entregavel_2_1.pdf) (1 de maio de 2024)
   * E2.2 – Base de dados de referência em formato ESRI shapefile ou Geopackage para uma tile Sentinel-2 sobre Portugal Continental;
   * E2.3 – Extensão da base de dados para outras regiões de Portugal Continental
 
