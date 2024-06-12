@@ -6,6 +6,9 @@ Contrato N.º 3044 de cooperação entre a Direção Geral do Território e o In
 
 ## Referências
 
+<details markdown="block">
+<summary> Descrição do projeto e referências</summary>
+
 * Gestor do Contrato: Hugo Costa, DGT
 * Responsável pela execução: Manuel Campagnolo, CEF, DCEB, ISA
 * Procedimento CEXC/2152/2023
@@ -21,13 +24,33 @@ vetorial de delimitação de manchas superiores a 0.5 ha de perda recente de flo
 base em análise automática de imagens de satélite
 * Data de início: contrato assinado a 20 de outubro de 2023
 * Centro de custos do ISA: 5207 (S2CHANGE)
+</details>
 
-## Apresentações
+## Apresentações e outros contributos
 
-### Reunião DGT 20 fevereiro 2024
+<details markdown="block">
+<summary> Reunião DGT 20 fevereiro de 2024</summary>
 
 * Apresentação Sara Caetano. Resultados que permitem comparar a aplicação da metodologia de deteção de alterações (CCD), com o algoritmo Python pyccd, a imagens Sentinel-2 obtidas no GEE (com máscara de nuvens produzida pelo algoritmo S2cloudness) com as imagens Sentinel-2 préprocessadas pela Theia: [ficheiro powerpoint](PPT_CCD_20fev.pptx)
 * Apresentação Inês Silveira sobre a base de dados de referência Navigator; análise em particular da distribuição de datas de cortes dentro do mesmo talhão e da possibilidade de associar um sub-talhão a cada data de corte; análise preliminar sobre a possibilidade de associar uma alteração de sinal a operações de rechega e outras [ficheiro pdf](Apresentacao_BD_NVG_IS_20fev.pdf)
+
+</details>
+
+<details markdown="block">
+<summary> Reunião DGT 23 de maio de 2024</summary>
+
+* Apresentação Sara Caetano [ficheiro pdf](PPT_CCD_23maio2024.pdf)
+* Apresentação Inês Silveira [ficheiro pdf](Apresentacao_DatasCorte_DGT_23maio2024.pdf)
+
+</details>
+
+<details markdown="block">
+<summary> Call Advanced Computing Projects (4th ed) - A0 Experimental Access (maio 2024)</summary>
+
+* [Candidatura](Application_2024.07034.CPCA.pdf)
+
+</details>
+
 
 ## Tarefas
 
