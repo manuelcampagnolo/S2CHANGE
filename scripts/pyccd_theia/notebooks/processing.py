@@ -12,6 +12,9 @@ import geopandas as gpd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import os
+import dask
+import dask.array as da
+from rasterio.windows import Window
 #%%
 def processar_centros_pixeis(shapefile_path, raster_path):
     # Carregar o shapefile
@@ -65,8 +68,26 @@ def processar_centros_pixeis(shapefile_path, raster_path):
     
     return gdf_centros_pixeis
 #%%
-def getTimeSeriesForPoints(tif_names, tif_dates_ord, bandas_desejadas, dados_geoespaciais_metros):
+# def getTimeSeriesForPoints(tif_names, tif_dates_ord, bandas_desejadas, dados_geoespaciais_metros):
 
+#     time_var = xr.Variable('time',tif_dates_ord)
+#     # Load in and concatenate all individual GeoTIFFs
+#     tifs_xr = [rioxarray.open_rasterio(i, chunks={'x':10924, 'y':10900}) for i in tif_names]
+#     geotiffs_da = xr.concat(tifs_xr, dim=time_var).sel(band=bandas_desejadas)
+
+#     # COORDENADAS X E Y DOS 10 000 PONTOS ESCOLHIDOS
+#     points_x_int = xr.DataArray(np.round(dados_geoespaciais_metros.geometry.x.values).astype('int'), dims=['location'])
+#     points_y_int = xr.DataArray(np.round(dados_geoespaciais_metros.geometry.y.values).astype('int'), dims=['location'])
+
+#     selection = geotiffs_da.sel(x=points_x_int, y=points_y_int, band=bandas_desejadas)
+#     dates = selection.time
+#     xs = selection.x
+#     ys = selection.y
+#     sel_values = selection.values
+
+#     return sel_values, dates, xs, ys
+
+def getTimeSeriesForPoints(tif_names, tif_dates_ord, bandas_desejadas, dados_geoespaciais_metros, output_file):
     time_var = xr.Variable('time',tif_dates_ord)
     # Load in and concatenate all individual GeoTIFFs
     tifs_xr = [rioxarray.open_rasterio(i, chunks={'x':10924, 'y':10900}) for i in tif_names]
@@ -81,11 +102,13 @@ def getTimeSeriesForPoints(tif_names, tif_dates_ord, bandas_desejadas, dados_geo
     xs = selection.x
     ys = selection.y
     sel_values = selection.values
+    
+    np.save(output_file + '_xs.npy', xs)
+    np.save(output_file + '_ys.npy', ys)
+    
+    np.save(output_file, sel_values)
 
-    # with open('C:/Users/Public/Documents/sel_values.npy','rb') as f:
-    #     sel_values = np.load(f)
-
-    return sel_values, dates, xs, ys
+    return dates
 #%%
 def runDetectionForPoint(args, plot_flag=False): # se plot_flag =  False não faz gráficos se True faz gráficos
     i,sel_values, dates, xs, ys, NODATA_VALUE, FOLDER_OUTPUTS, img_collection = args
@@ -101,6 +124,7 @@ def runDetectionForPoint(args, plot_flag=False): # se plot_flag =  False não fa
     
     dates, blues, greens, reds, nirs, swir1s, swir2s = ponto_with_dates_filtered
     
+    # Calcular o NDVI
     ndvis = np.where((nirs + reds) > 0, 10000 * (nirs - reds) / (nirs + reds), NODATA_VALUE)
     
     ponto_with_dates_filtered[1]=ndvis
@@ -171,7 +195,7 @@ def runDetectionForPoint(args, plot_flag=False): # se plot_flag =  False não fa
     # Reorganizar colunas
     ordem_colunas = ['tBreak', 'tEnd', 'tStart', 'changeProb', 'Lat', 'Lon', 'ndvi_magnitude']
     df=df[ordem_colunas]
-    
+
     # Se plot_flag = True faz gráficos
     if plot_flag:
         # BANDA QUE QUEREMOS PLOTAR NO GRÁFICO
@@ -183,7 +207,10 @@ def runDetectionForPoint(args, plot_flag=False): # se plot_flag =  False não fa
         plt.style.use('ggplot')
         fg = plt.figure(figsize=(14, 4), dpi=90)
         
-        a1 = fg.add_subplot(1, 1, 1, xlim=(min(date_objects1), max(date_objects1)))
+        limite_inicial = datetime.strptime('2018-01-01', '%Y-%m-%d')
+        limite_final = datetime.strptime('2021-12-31', '%Y-%m-%d')
+        
+        a1 = fg.add_subplot(1, 1, 1, xlim=(limite_inicial, limite_final))
         plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d-%m-%Y'))
         plt.gca().xaxis.set_major_locator(mdates.DayLocator())
         
@@ -211,7 +238,7 @@ def runDetectionForPoint(args, plot_flag=False): # se plot_flag =  False não fa
         a1.plot([], [], color='r', linestyle='--', label='Start dates')
         a1.plot([], [], color='brown', linestyle='--', label='End Dates')
         a1.plot([], [], color='b', linestyle='--', label='Break dates')
-        a1.plot([], [], color='black', linestyle='--', label='DGT Dates')
+        # a1.plot([], [], color='black', linestyle='--', label='DGT Dates')
         
         for b in break_dates:
             b_date = datetime.fromordinal(b)
