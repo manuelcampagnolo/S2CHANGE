@@ -1,3 +1,13 @@
+# Load a layer to the project
+
+def add_layer(fn, ln):
+    """Inputs:
+    fn = path to file
+    ln = layername
+    """
+    # Add the joined layer to the project
+    layer = QgsVectorLayer(fn, ln, 'ogr')
+    my_project.addMapLayer(layer)
 
 
 #function to create NVG table with dt_referenc and dt_plant in chronological order
@@ -119,7 +129,7 @@ def merge_and_transform_dfs(df1, df2, df3, id_col, join_type):
 
         # Convert columns starting with "date" to datetime
         date_columns = [col for col in merged_df.columns if col.startswith('date')]
-        merged_df[date_columns] = merged_df[date_columns].apply(pd.to_datetime)
+        merged_df[date_columns] = merged_df[date_columns].apply(pd.to_datetime, dayfirst=True)
 
         # Rename date columns to "data_{i}"
         for i, col in enumerate(date_columns, start=1):
@@ -377,40 +387,29 @@ def add_primary_key_talhao(input_shp):
         return None
 
 # extract a list of unique id_glebas from nvg shapefile
-def extract_unique_id_gleba_from_nvg(input_shp):
+def extract_unique_id_gleba_from_nvg(input_shp, unique_value):
     # Extract unique id_gleba values from the geopackage
     unique_id_gleba = set()
     with fiona.open(input_shp, 'r') as src:
         for feature in src:
-            unique_id_gleba.add(feature['properties']['id_gleba'])
+            unique_id_gleba.add(feature['properties'][unique_value])
     return list(unique_id_gleba)
 
+def create_id_gleba_dates(fn_nvg, df_sorted):
+    id_gleba_list = extract_unique_id_gleba_from_nvg(fn_nvg)
+    id_gleba_dates = {}
 
-####### for id_gleba - no conditions just the first and last date
-def filter_and_select_dates(df, id_gleba):
-    # Filter rows based on matching id_gleba
-    matching_rows = df[df['id_gleba'] == id_gleba]
-
-    # Get date and activity columns
-    date_columns = [col for col in matching_rows.columns if col.startswith('data')]
-    activity_columns = [col for col in matching_rows.columns if col.startswith('atividade')]
-
-    # Keep only non-null date values
-    matching_rows = matching_rows.dropna(subset=date_columns + activity_columns, how='all')
-
-    # Select columns where activity starts with 'CORTE' and their respective dates
-    corte_activity_columns = [col for col in activity_columns if matching_rows[col].str.startswith('CORTE').any()]
-    corte_date_columns = [col.replace('atividade', 'data') for col in corte_activity_columns]
-
-    # Select columns
-    selected_columns = corte_activity_columns + corte_date_columns
-    selected_data = matching_rows[selected_columns]
-
-    # Select first and last date
-    first_start_date = selected_data[corte_date_columns].min(axis=1)
-    first_end_date = selected_data[corte_date_columns].max(axis=1)
+    for id_gleba in id_gleba_list:
+        date_pairs = filter_and_select_dates1(df_sorted, id_gleba)
+        
+        # Check if date_pairs is not empty
+        if date_pairs:
+            id_gleba_dates[id_gleba] = date_pairs
+        else:
+            pass #print(f"No 'CORTE' activity found for ID {id_gleba}")
     
-    return first_start_date, first_end_date
+    return id_gleba_dates
+
 
 
 def filter_and_select_dates1(df, id_gleba):
@@ -449,14 +448,14 @@ def filter_and_select_dates1(df, id_gleba):
     selected_data = selected_data.dropna(subset=corte_date_columns, how='all')
 
     # Flatten the selected_data into a list of dates
-    dates = sorted(selected_data[corte_date_columns].stack().dropna())
+    clear_cut_dates = sorted(selected_data[corte_date_columns].stack().dropna())
 
-    if not dates:
+    if not clear_cut_dates:
         print(f"No valid dates found for 'CORTE' activity for ID {id_gleba}")
         return []  # Return an empty list if no valid dates are found
 
     # Convert dates from string to datetime objects
-    dates = [datetime.strptime(date, '%Y-%m-%d') for date in dates]
+    dates = [datetime.strptime(date, '%Y-%m-%d') for date in clear_cut_dates]
 
     # Initialize list to store pairs of dates with one-year span
     date_pairs = []
@@ -476,10 +475,76 @@ def filter_and_select_dates1(df, id_gleba):
     # Append the last pair of start and end dates
     date_pairs.append((start_date_current_year.strftime('%Y-%m-%d'), dates[-1].strftime('%Y-%m-%d')))
 
-    return date_pairs
+    return date_pairs, clear_cut_dates, corte_activity_columns, corte_date_columns
 
 
 # CORRECT FUNCTION!!! for extract date pairs and identifying 2 years interval
+
+# def find_date_pairs(df, id_gleba):
+#     #print("Processing id_gleba:", id_gleba)
+    
+#     # Filter rows based on matching id_gleba
+#     matching_rows = df[df['id_gleba'] == id_gleba]
+    
+#     # Get date and activity columns
+#     date_columns = [col for col in matching_rows.columns if col.startswith('data')]
+#     activity_columns = [col for col in matching_rows.columns if col.startswith('atividade')]
+  
+#     # Keep only non-null date values
+#     matching_rows = matching_rows.dropna(subset=date_columns + activity_columns, how='all')
+    
+#     # Select columns where activity starts with 'CORTE' and their respective dates
+#     corte_activity_columns = [col for col in activity_columns if matching_rows[col].str.startswith('CORTE').any()]
+#     corte_date_columns = [col.replace('atividade', 'data') for col in corte_activity_columns]
+    
+#     # Select columns
+#     selected_columns = corte_activity_columns + corte_date_columns
+#     selected_data = matching_rows[selected_columns]
+    
+#     # Filter out invalid dates (e.g., 'nan')
+#     selected_data = selected_data.replace('nan', np.nan)
+    
+#     # Filter out rows with no valid date values
+#     selected_data = selected_data.dropna(subset=corte_date_columns, how='all')
+    
+#     # Flatten the selected_data into a list of dates
+#     dates = sorted(selected_data[corte_date_columns].stack().dropna())
+    
+#     #print("Dates:", dates)
+    
+#     if not dates:
+#         print("No dates found for id_gleba:", id_gleba)
+#         return []
+    
+#     # Convert dates from string to datetime objects
+#     dates = [datetime.strptime(date, '%Y-%m-%d') for date in dates]
+    
+#     # Initialize list to store pairs of dates with one-year span
+#     date_pairs = []
+
+#     # Initialize the start date of the current pair
+#     start_date = dates[0]
+
+#     # Iterate through the dates starting from the second date
+#     for i in range(1, len(dates)):
+#         # Calculate the difference in days between consecutive dates
+#         time_diff_days = (dates[i] - dates[i - 1]).days
+
+#         # If the difference is greater than 730 days, it marks the end of the current pair and start of a new pair
+#         if time_diff_days > 730:
+#             # Append the pair of start and end dates
+#             date_pairs.append((start_date.strftime('%Y-%m-%d'), dates[i - 1].strftime('%Y-%m-%d')))
+#             # Update the start date for the new pair
+#             start_date = dates[i]
+
+#     # Append the last pair of start and end dates if there are more than one unique dates
+#     if len(set(dates)) > 1:
+#         date_pairs.append((start_date.strftime('%Y-%m-%d'), dates[-1].strftime('%Y-%m-%d')))
+    
+#     #print("Date Pairs:", date_pairs)
+    
+#     return date_pairs
+
 
 def find_date_pairs(df, id_gleba):
     # Filter rows based on matching id_gleba
@@ -488,7 +553,7 @@ def find_date_pairs(df, id_gleba):
     # Get date and activity columns
     date_columns = [col for col in matching_rows.columns if col.startswith('data')]
     activity_columns = [col for col in matching_rows.columns if col.startswith('atividade')]
-    
+  
     # Keep only non-null date values
     matching_rows = matching_rows.dropna(subset=date_columns + activity_columns, how='all')
     
@@ -508,6 +573,9 @@ def find_date_pairs(df, id_gleba):
     
     # Flatten the selected_data into a list of dates
     dates = sorted(selected_data[corte_date_columns].stack().dropna())
+    
+    if not dates:
+        return []
     
     # Convert dates from string to datetime objects
     dates = [datetime.strptime(date, '%Y-%m-%d') for date in dates]
@@ -530,13 +598,15 @@ def find_date_pairs(df, id_gleba):
             # Update the start date for the new pair
             start_date = dates[i]
 
-    # Append the last pair of start and end dates if there are more than one unique dates
-    if len(set(dates)) > 1:
-        date_pairs.append((start_date.strftime('%Y-%m-%d'), dates[-1].strftime('%Y-%m-%d')))
+    # Handle cases where there's only one date or two identical dates
+    if len(dates) == 1 or (len(dates) == 2 and dates[0] == dates[1]):
+        date_pairs = [(dates[0].strftime('%Y-%m-%d'), dates[0].strftime('%Y-%m-%d'))]
+    else:
+        # Append the last pair of start and end dates if there are more than one unique dates
+        if len(set(dates)) > 1:
+            date_pairs.append((start_date.strftime('%Y-%m-%d'), dates[-1].strftime('%Y-%m-%d')))
     
     return date_pairs
-
-
 
 
 def get_start_end_dates(modified_date_pairs):
@@ -555,13 +625,13 @@ def get_start_end_dates(modified_date_pairs):
 
 
 
-# Function to add or subtract months from a date to pairs of dates
-def add_subtract_months(date_str, months):
+
+# # Function to add or subtract months from a date to pairs of dates
+
+def add_subtract_days(date_str, days):
     date = datetime.strptime(date_str, '%Y-%m-%d')
-    year = date.year + (date.month + months - 1) // 12
-    month = (date.month + months - 1) % 12 + 1
-    day = min(date.day, (date.replace(year=year, month=month, day=1) + timedelta(days=-1)).day)
-    return datetime(year, month, day).strftime('%Y-%m-%d')
+    new_date = date + timedelta(days=days)
+    return new_date.strftime('%Y-%m-%d')
 
 
 def dates_with_two_months_diff(date_pairs):
@@ -569,17 +639,62 @@ def dates_with_two_months_diff(date_pairs):
     modified_date_pairs = []
     new_start_dates = []
     new_end_dates = []
+    
+    # # Print original date pairs
+    # print("Original Date Pairs:", date_pairs)
+    
     # Loop through the date pairs, modify the dates and append to modified_date_pairs
     for start_date, end_date in date_pairs:
-        new_start_date = add_subtract_months(start_date, -2)
-        new_end_date = add_subtract_months(end_date, 2)
-        # Convert modified dates back to strings
+        new_start_date = add_subtract_days(start_date, -60)
+        new_end_date = add_subtract_days(end_date,60)
+        # Print modified dates
+        #print("Original Start Date:", start_date)
+        #print("Original End Date:", end_date)
+        #print("Modified Start Date:", new_start_date)
+        #print("Modified End Date:", new_end_date)
+        # Append modified dates to lists
         modified_date_pairs.append((str(new_start_date), str(new_end_date)))
         new_start_dates.append(str(new_start_date))
         new_end_dates.append(str(new_end_date))
+    
+    # # Print modified date pairs
+    # print("Modified Date Pairs for id_gleba:", id_gleba)
+    # print(modified_date_pairs)
+    
     return new_start_dates, new_end_dates, modified_date_pairs
 
+# def dates_with_two_months_diff(date_pairs):
+#     # List to store modified date pairs
+#     modified_date_pairs = []
+#     new_start_dates = []
+#     new_end_dates = []
+    
+#     # Check if date_pairs contains only one pair of dates
+#     if len(date_pairs) == 1:
+#         # Unpack the single pair of dates
+#         start_date = date_pairs[0]
+#         end_date = date_pairs[0]
+#         # Add 60 days to start_date and subtract 60 days from end_date
+#         new_start_date = (datetime.strptime(start_date, '%Y-%m-%d') - timedelta(days=60)).strftime('%Y-%m-%d')
+#         new_end_date = (datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=60)).strftime('%Y-%m-%d')
+        
+#         # Append modified dates to lists
+#         modified_date_pairs.append((new_start_date, new_end_date))
+#         new_start_dates.append(new_start_date)
+#         new_end_dates.append(new_end_date)
+#     else:
+#         # Loop through the date pairs
+#         for start_date, end_date in date_pairs:
+#             # Add 60 days to start_date and subtract 60 days from end_date
+#             new_start_date = (datetime.strptime(start_date, '%Y-%m-%d') - timedelta(days=60)).strftime('%Y-%m-%d')
+#             new_end_date = (datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=60)).strftime('%Y-%m-%d')
 
+#             # Append modified dates to lists
+#             modified_date_pairs.append((new_start_date, new_end_date))
+#             new_start_dates.append(new_start_date)
+#             new_end_dates.append(new_end_date)
+    
+#     return new_start_dates, new_end_dates, modified_date_pairs
 
 
 def start_and_end_dates_two_months (first_start_date, first_end_date):
@@ -600,47 +715,26 @@ def start_and_end_dates_two_months (first_start_date, first_end_date):
     return start_date, end_date
 
 
-# def start_and_end_dates_two_months(first_start_date, first_end_date):
-#     if not isinstance(first_start_date, str) or not isinstance(first_end_date, str):
-#         raise ValueError("Input dates must be strings")
 
-#     try:
-#         # Convert start_date and end_date strings to datetime objects
-#         first_start_date = datetime.strptime(first_start_date, '%Y-%m-%d')
-#         first_end_date = datetime.strptime(first_end_date, '%Y-%m-%d')
+def mask_s2_clouds(image):
+  qa = image.select('QA60')
 
-#         # Subtract 2 months from start_date
-#         start_date_minus_2_months = first_start_date - relativedelta(months=2)
+  # Bits 10 and 11 are clouds and cirrus, respectively.
+  cloud_bit_mask = 1 << 10
+  cirrus_bit_mask = 1 << 11
 
-#         # Add 2 months to end_date
-#         end_date_plus_2_months = first_end_date + relativedelta(months=2)
+  # Both flags should be set to zero, indicating clear conditions.
+  mask = (
+      qa.bitwiseAnd(cloud_bit_mask)
+      .eq(0)
+      .And(qa.bitwiseAnd(cirrus_bit_mask).eq(0))
+  )
 
-#         # Convert datetime objects back to strings in the desired format
-#         start_date = start_date_minus_2_months.strftime('%Y-%m-%d')
-#         end_date = end_date_plus_2_months.strftime('%Y-%m-%d')
+  return image.updateMask(mask).divide(10000).copyProperties(image, ["system:time_start", "system:time_end", "system:id", "system:version", "system:asset_size", "system:footprint", "system:index"])
 
-#         return start_date, end_date
-#     except ValueError as e:
-#         print(f"Error processing dates: {e}")
-#         return None, None
-
-
-
-# Define a function to mask clouds using the Sentinel-2 QA band.
-def maskS2clouds(image):
-    qa = image.select('QA60')
-    # Bits 10 and 11 are clouds and cirrus, respectively.
-    cloudBitMask = 1 << 10
-    cirrusBitMask = 1 << 11
-    # Both flags should be set to zero, indicating clear conditions.
-    mask = qa.bitwiseAnd(cloudBitMask).eq(0).And(qa.bitwiseAnd(cirrusBitMask).eq(0))
-    return image \
-        .updateMask(mask) \
-        .divide(10000) \
-        .copyProperties(image, ["system:index"])
-
-
-
+  
+  
+  
 # Add NDVI band
 def addNDVI(image):
     ndvi = image.normalizedDifference(['B8', 'B4']).rename('NDVI')
@@ -653,6 +747,7 @@ def calculateMedianNDVI(image):
         reducer=ee.Reducer.median().unweighted(),
         scale=10
     )
+    # return medianNDVI
     return medianNDVI.map(lambda feature: ee.Feature(feature).set('date', image.date().format('YYYY-MM-dd')))
 
 
@@ -660,11 +755,10 @@ def calculateMedianNDVI(image):
 
 def ndvi_median_gee(start_date, end_date, nvg, cloud_percentage):
     # Filter by Geo and Growing days
-    S2_SR = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED') \
+    S2_SR = ee.ImageCollection('COPERNICUS/S2_HARMONIZED') \
             .filterDate(start_date, end_date) \
             .filterBounds(nvg) \
-            .map(lambda image: image.clip(nvg)) \
-            .filterMetadata('CLOUDY_PIXEL_PERCENTAGE', "less_than", cloud_percentage) 
+            .filterMetadata('CLOUDY_PIXEL_PERCENTAGE', "less_than", cloud_percentage)
 
     # Apply across the whole collection 
     S2_NDVI = S2_SR.map(addNDVI)
@@ -672,128 +766,24 @@ def ndvi_median_gee(start_date, end_date, nvg, cloud_percentage):
     
     return medianNDVI
 
-
-
-
-
-
-def ndvi_mediana_from_gee(start_date, end_date, modified_date_pairs, nvg, cloud_percentage, id_gleba):
-    csv_paths = []  # List to store CSV paths
-    
-    for i, (start_date, end_date) in enumerate(modified_date_pairs):
-        # Filter by Geo and Growing days
-        S2_SR = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED') \
-                .filterDate(start_date, end_date) \
-                .filterBounds(nvg) \
-                .map(lambda image: image.clip(nvg)) \
-                .filterMetadata('CLOUDY_PIXEL_PERCENTAGE', "less_than", cloud_percentage) 
-        
-        # Apply across the whole collection 
-        S2_NDVI = S2_SR.map(addNDVI)
-        medianNDVI = S2_NDVI.map(calculateMedianNDVI).flatten()
-        
-        # Convert 'medianNDVI' to a FeatureCollection if needed
-        # medianNDVI_fc = medianNDVI.map(lambda image: ee.Feature(None, image))
-        
-        output_dir = str(my_folder / ndvi_folder)
-        
-        # Export the result as a CSV file using geemap
-        geemap.ee_to_csv(
-            ee_object=medianNDVI,
-            filename=os.path.join(output_dir, f'Median_NDVI_{id_gleba}_{i}.csv')
-        )
-        
-        # get csv file
-        ln_median_ndvi = f'Median_NDVI_{id_gleba}_{i}.csv'
-        csv_path = str(my_folder / ndvi_folder / ln_median_ndvi)
-        csv_paths.append(csv_path)
-        
-    return csv_paths
-
-#s2cloudless
-
-def add_cloud_bands(image):
-    # Get s2cloudless image, subset the probability band.
-    cld_prb = ee.Image(image.get('s2cloudless')).select('probability')
-
-    # Condition s2cloudless by the probability threshold value.
-    is_cloud = cld_prb.gt(CLD_PRB_THRESH).rename('clouds')
-
-    # Add the cloud probability layer and cloud mask as image bands.
-    return image.addBands(ee.Image([cld_prb, is_cloud]))
-
-def add_shadow_bands(image):
-    # Identify water pixels from the SCL band.
-    not_water = image.select('SCL').neq(6)
-
-    # Identify dark NIR pixels that are not water (potential cloud shadow pixels).
-    SR_BAND_SCALE = 1e4
-    dark_pixels = image.select('B8').lt(NIR_DRK_THRESH*SR_BAND_SCALE).multiply(not_water).rename('dark_pixels')
-
-    # Determine the direction to project cloud shadow from clouds (assumes UTM projection).
-    shadow_azimuth = ee.Number(90).subtract(ee.Number(image.get('MEAN_SOLAR_AZIMUTH_ANGLE')));
-
-    # Project shadows from clouds for the distance specified by the CLD_PRJ_DIST input.
-    cld_proj = (image.select('clouds').directionalDistanceTransform(shadow_azimuth, CLD_PRJ_DIST*10)
-        .reproject(**{'crs': image.select(0).projection(), 'scale': 100})
-        .select('distance')
-        .mask()
-        .rename('cloud_transform'))
-
-    # Identify the intersection of dark pixels with cloud shadow projection.
-    shadows = cld_proj.multiply(dark_pixels).rename('shadows')
-
-    # Add dark pixels, cloud projection, and identified shadows as image bands.
-    return image.addBands(ee.Image([dark_pixels, cld_proj, shadows]))
-
-def add_cld_shdw_mask(image):
-    # Add cloud component bands.
-    img_cloud = add_cloud_bands(image)
-
-    # Add cloud shadow component bands.
-    img_cloud_shadow = add_shadow_bands(img_cloud)
-
-    # Combine cloud and shadow mask, set cloud and shadow as value 1, else 0.
-    is_cld_shdw = img_cloud_shadow.select('clouds').add(img_cloud_shadow.select('shadows')).gt(0)
-
-    # Remove small cloud-shadow patches and dilate remaining pixels by BUFFER input.
-    # 20 m scale is for speed, and assumes clouds don't require 10 m precision.
-    is_cld_shdw = (is_cld_shdw.focalMin(2).focalMax(BUFFER*2/20)
-        .reproject(**{'crs': image.select([0]).projection(), 'scale': 20})
-        .rename('cloudmask'))
-
-    # Add the final cloud-shadow mask to the image.
-    return img_cloud_shadow.addBands(is_cld_shdw)
-
-def apply_cld_shdw_mask(image):
-    # Subset the cloudmask band and invert it so clouds/shadow are 0, else 1.
-    not_cld_shdw = image.select('cloudmask').Not()
-
-    # Subset reflectance bands and update their masks, return the result.
-    return image.select('B.*').updateMask(not_cld_shdw)
-
-
-
-def get_s2_sr_cld_col(nvg, start_date, end_date):
+def ndvi_median_gee_masks2clouds(start_date, end_date, nvg, cloud_percentage):
     # Filter by Geo and Growing days
-    S2_SR = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED') \
+    S2_SR = ee.ImageCollection('COPERNICUS/S2_HARMONIZED') \
             .filterDate(start_date, end_date) \
             .filterBounds(nvg) \
-            .map(lambda image: image.clip(nvg))
- 
-    # Import and filter s2cloudless.
-    s2_cloudless_col = (ee.ImageCollection('COPERNICUS/S2_CLOUD_PROBABILITY')
-        .filterBounds(nvg)
-        .filterDate(start_date, end_date))
-    # Join the filtered s2cloudless collection to the SR collection by the 'system:index' property.
-    return ee.ImageCollection(ee.Join.saveFirst('s2cloudless').apply(**{
-        'primary': S2_SR,
-        'secondary': s2_cloudless_col,
-        'condition': ee.Filter.equals(**{
-            'leftField': 'system:index',
-            'rightField': 'system:index'
-        })
-    }))
+            .filterMetadata('CLOUDY_PIXEL_PERCENTAGE', 'less_than', cloud_percentage)\
+            .map(mask_s2_clouds)
+
+    # Apply across the whole collection 
+    S2_NDVI = S2_SR.map(addNDVI)
+    medianNDVI = S2_NDVI.map(calculateMedianNDVI).flatten()
+    
+    return medianNDVI
+
+def map_features(feature):
+    properties = feature.toDictionary(['id', 'date', 'id_gleba', 'median'])
+    return ee.Feature(feature.geometry(), properties)
+
 
 def convert_to_pivot_table(df_median_ndvi):
     # Convert the date column to string format with 'yyyymmdd' format
@@ -806,15 +796,43 @@ def convert_to_pivot_table(df_median_ndvi):
     return pivot_table
 
 
-def find_closest_date(row):
-    id_gleba = row['id_gleba']
-    date_of_biggest_drop = row['date_of_biggest_drop']
-    closest_date = None
-    min_time_diff = float('inf')
-    
-    # Iterate through df_sorted to find the closest date before 'date_of_biggest_drop'
-    for col in df_sorted.columns:
-        if col.startswith('data'):
+
+
+def extract_clear_cut_dates_and_find_closest_date(df_sorted, id_gleba, pivot_table):
+    # Filter rows based on matching id_gleba
+    matching_rows = df_sorted[df_sorted['id_gleba'] == id_gleba]
+    # Get date and activity columns
+    date_columns = [col for col in matching_rows.columns if col.startswith('data')]
+    activity_columns = [col for col in matching_rows.columns if col.startswith('atividade')]
+    # Keep only non-null date values
+    matching_rows = matching_rows.dropna(subset=date_columns + activity_columns, how='all')
+    # Select columns where activity starts with 'CORTE' and their respective dates
+    corte_activity_columns = [col for col in activity_columns if matching_rows[col].str.startswith('CORTE').any()]
+    corte_date_columns = [col.replace('atividade', 'data') for col in corte_activity_columns]
+    # Select columns
+    selected_columns = corte_activity_columns + corte_date_columns
+    selected_data = matching_rows[selected_columns]
+    # Filter out invalid dates (e.g., 'nan')
+    selected_data = selected_data.replace('nan', np.nan)
+    # Filter out rows with no valid date values
+    selected_data = selected_data.dropna(subset=corte_date_columns, how='all')
+    # Flatten the selected_data into a list of dates
+    clear_cut_dates = sorted(selected_data[corte_date_columns].stack().dropna())
+    # Convert dates from string to datetime objects
+    dates = [datetime.strptime(date, '%Y-%m-%d') for date in clear_cut_dates]
+
+    # Find closest date
+    def find_closest_date(row):
+        id_gleba = row['id_gleba']
+        date_of_biggest_drop = row['date_of_biggest_drop']
+        closest_date = None
+        min_time_diff = float('inf')
+        
+        if isinstance(date_of_biggest_drop, str):
+            date_of_biggest_drop = datetime.strptime(date_of_biggest_drop, '%Y-%m-%d')
+
+        # Iterate through corte_date_columns to find the closest date before 'date_of_biggest_drop'
+        for col in corte_date_columns:
             for _, sorted_row in df_sorted[df_sorted['id_gleba'] == id_gleba].iterrows():
                 if pd.notna(sorted_row[col]):  # Skip NaN values
                     sorted_date = datetime.strptime(str(sorted_row[col]), '%Y-%m-%d')
@@ -822,11 +840,17 @@ def find_closest_date(row):
                         time_diff = abs((date_of_biggest_drop - sorted_date).total_seconds())
                         if time_diff < min_time_diff:
                             min_time_diff = time_diff
-                            closest_date = sorted_row[col]
-    
-    return closest_date
+                            #closest_date = sorted_row[col]
+                            closest_date = sorted_date.strftime('%Y-%m-%d')  
 
-def calculate_biggest_ndvi_drop_and_estimated_date(pivot_table):
+        return closest_date
+
+    # Apply the function to create the 'estimated_date' column in df_pivot_table
+    pivot_table['estimated_date'] = pivot_table.apply(find_closest_date, axis=1)
+
+    return corte_activity_columns, corte_date_columns, clear_cut_dates, pivot_table
+
+def calculate_biggest_ndvi_drop_and_estimated_date(df_sorted, id_gleba, pivot_table):
     #BIGGEST DROP AND DATE
     # Filter columns that start with '20'
     ndvi_columns = [col for col in pivot_table.columns if col.startswith('20')]
@@ -844,13 +868,56 @@ def calculate_biggest_ndvi_drop_and_estimated_date(pivot_table):
     pivot_table['date_of_biggest_drop'] = pivot_table['date_of_biggest_drop'].astype(str)
     # Convert 'date_of_biggest_drop' column to datetime format
     pivot_table['date_of_biggest_drop'] = pd.to_datetime(pivot_table['date_of_biggest_drop'], format='%Y%m%d', errors='coerce')
-    # Apply the function to create the 'estimated_date' column in df_pivot_table
-    pivot_table['estimated_date'] = pivot_table.apply(find_closest_date, axis=1)
-    #rename
-    pivot_table.rename(columns={col: 'date_' + col for col in pivot_table.columns if col.startswith('20')}, inplace=True)
-    pivot_table_with_estimated_date = pivot_table
     
-    return pivot_table_with_estimated_date
+    # Call the combined function to extract clear cut dates and find closest date
+    corte_activity_columns, corte_date_columns, clear_cut_dates, pivot_table = extract_clear_cut_dates_and_find_closest_date(df_sorted, id_gleba, pivot_table)
+    
+    # Rename columns
+    pivot_table.rename(columns={col: 'date_' + col for col in pivot_table.columns if col.startswith('20')}, inplace=True)
+    
+    return pivot_table
+
+
+# def calculate_biggest_ndvi_drop_and_estimated_date(df_sorted, id_gleba, pivot_table, date_pairs):
+#     # Utility function to check if a date is within any of the date ranges in date_pairs
+#     def is_within_date_pairs(date_str, date_pairs):
+#         # Convert the date string from 'YYYYMMDD' to datetime object
+#         date = datetime.strptime(date_str, '%Y%m%d')
+#         for start_date, end_date in date_pairs:
+#             if datetime.strptime(start_date, '%Y-%m-%d') <= date <= datetime.strptime(end_date, '%Y-%m-%d'):
+#                 return True
+#         return False
+
+#     # Filter columns that start with '20' and are within the date_pairs range
+#     ndvi_columns = [col for col in pivot_table.columns if col.startswith('20')]
+#     ndvi_columns = [col for col in ndvi_columns if is_within_date_pairs(col, date_pairs)]
+
+#     if not ndvi_columns:
+#         raise ValueError("No NDVI columns found within the specified date ranges.")
+
+#     # Calculate the differences between consecutive columns
+#     ndvi_diff = pivot_table[ndvi_columns].diff(axis=1)
+#     # Find the biggest drop per row
+#     biggest_drop_per_row = ndvi_diff.min(axis=1)
+#     # Add a column named 'biggest_drop_NDVI' to the DataFrame
+#     pivot_table['biggest_drop_NDVI'] = biggest_drop_per_row
+#     # Find the column name where the biggest drop occurred per row
+#     date_of_biggest_drop = ndvi_diff.idxmin(axis=1)
+#     # Add a column named 'date_of_biggest_drop' to the DataFrame
+#     pivot_table['date_of_biggest_drop'] = date_of_biggest_drop
+#     # Convert 'date_of_biggest_drop' column to string format
+#     pivot_table['date_of_biggest_drop'] = pivot_table['date_of_biggest_drop'].astype(str)
+#     # Convert 'date_of_biggest_drop' column to datetime format
+#     pivot_table['date_of_biggest_drop'] = pd.to_datetime(pivot_table['date_of_biggest_drop'], format='%Y%m%d', errors='coerce')
+
+#     # Call the combined function to extract clear cut dates and find closest date
+#     corte_activity_columns, corte_date_columns, clear_cut_dates, pivot_table = extract_clear_cut_dates_and_find_closest_date(df_sorted, id_gleba, pivot_table)
+    
+#     # Rename columns
+#     pivot_table.rename(columns={col: 'date_' + col for col in pivot_table.columns if col.startswith('20')}, inplace=True)
+    
+#     return pivot_table
+
 
 
 
@@ -900,11 +967,70 @@ def create_expanded_df(df1, df2, col1, col2, col_to_join, join_type):
 
 
 
+# Function to convert shapefile to Earth Engine geometry
+def get_ee_geometry_from_shapefile(shapefile_path):
+    try:
+        ee_geometry = geemap.shp_to_ee(shapefile_path, encoding='latin-1')
+        return ee_geometry.geometry()
+    except Exception as e:
+        print(f"Error converting shapefile to EE geometry: {e}")
+        raise
 
 
 
+# Function to apply the cloud mask
+def apply_cloud_mask(img):
+    return img.updateMask(img.select(QA_BAND).gte(CLEAR_THRESHOLD))
+
+# Function to apply cloud mask and compute median NDVI
+def ndvi_cloud_score(start_date, end_date, geometry):
+    s2 = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED') \
+        .filterBounds(geometry) \
+        .filterDate(start_date, end_date)
+    
+    csPlus = ee.ImageCollection('GOOGLE/CLOUD_SCORE_PLUS/V1/S2_HARMONIZED') \
+        .filterBounds(geometry) \
+        .filterDate(start_date, end_date)
+    
+    QA_BAND = 'cs_cdf'
+    CLEAR_THRESHOLD = 0.60
+
+    def apply_cloud_mask(img):
+        return img.updateMask(img.select(QA_BAND).gte(CLEAR_THRESHOLD))
+    
+    composite = s2.map(lambda img: img.addBands(
+                        csPlus.filterBounds(img.geometry()) \
+                              .filterDate(img.date(), img.date()) \
+                              .first().select([QA_BAND]))) \
+                  .map(apply_cloud_mask)
+        
+    # Apply across the whole collection 
+    S2_NDVI = composite.map(addNDVI)
+    medianNDVI = S2_NDVI.map(calculateMedianNDVI).flatten()
+    
+    return medianNDVI
 
 
+# count non-null values in activity columns that start with 'CORTE'
+def count_corte_activities(row):
+    activity_columns = [col for col in row.index if col.startswith('atividade')]
+    corte_activities = [col for col in activity_columns if pd.notnull(row[col]) and isinstance(row[col], str) and row[col].startswith('CORTE')]
+    return len(corte_activities)
 
 
+# Function to update the 'first_estimated_date' if the conditions are met
+def update_first_estimated_date(row):
+    if pd.notna(row['date_of_biggest_drop']) and row['first_start_date'] == row['first_end_date'] and pd.isna(row['first_estimated_date']):
+        row['first_estimated_date'] = row['first_start_date']
+    return row
 
+# Create a function to classify mean_month into groups
+def classify_month(month):
+    if month in group_1:
+        return 'group_1'
+    elif month in group_2:
+        return 'group_2'
+    elif month in group_3:
+        return 'group_3'
+    else:
+        return 'other'
