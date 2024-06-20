@@ -60,8 +60,9 @@ random_state_value = 42
 
 bandas_desejadas = [1, 2, 3, 7, 9, 10]
 
-alpha = ccd.parameters.defaults['ALPHA'] # Looks for alpha in the parameters.py file
 ccd_params = ccd.parameters.defaults
+alpha = ccd_params['ALPHA'] # Looks for alpha in the parameters.py file
+
 
 NODATA_VALUE= 65535
 
