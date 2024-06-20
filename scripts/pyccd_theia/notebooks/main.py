@@ -276,11 +276,18 @@ def main(batch_size=None):
 #%%
 def runValidation():
     print('A correr validação dos resultados do ccd...')
+    #gerar nome do ficheiro a partir dos parametros de execucao
     filename = fromParamsReturnName(img_collection, ccd_params, (S2_tile,tiles), N, random_state_value)
+    #pegar data do fim da serie temporal (ultima imagem)
+    reference_index = filename.find('END')
+    end_of_series = filename[reference_index + 3 : reference_index + 11]
+    year, month, day = [end_of_series[:4], end_of_series[4:6], end_of_series[6:]]
+    end_of_series = f"{year}-{month}-{day}"
+
 
     csv_s2 = pd.read_csv(FOLDER_OUTPUTS / 'tabular' / '{}.csv'.format(filename))
     #correr pre-processamento
-    csv_s2 = preprocessCsvS2(csv_s2)
+    csv_s2 = preprocessCsvS2(csv_s2, end_of_series)
     csv_preprocessed_path = '{}_pre_proc.csv'.format(filename)
     csv_s2.to_csv(csv_preprocessed_path)
     
