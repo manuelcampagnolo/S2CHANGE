@@ -230,7 +230,17 @@ def spatialJoin(pathPoligonosDGT, dfCCDC):
   return subset[ordem], subset
 
 
-def preprocessCsvS2(csv_s2):
+def preprocessCsvS2(csv_s2, end_of_series):
+  """
+  Does a pre-processing of the csv containing detection results to ensure it has the necessary columns
+  and coherent values for the validation procedure.
+  Args:
+    csv_s2: a pandas dataframe obtained after reading the csv file containing ccd detection results;
+    end_of_series: date of the last image in the series - a string in the form YYYY-mm-dd.
+  Returns:
+    Pre-processed dataframe.
+  """
+  
   csv_s2 = csv_s2.copy()
   from ast import literal_eval
   #do some processing on the csv
@@ -259,7 +269,7 @@ def preprocessCsvS2(csv_s2):
   #explode
   csv_s2 = csv_s2.explode(tabExplode)
 
-  csv_s2['End_S'] = '2023-09-29'
+  csv_s2['End_S'] = end_of_series
   csv_s2['coord_ccdc'] = list(zip(csv_s2.Lat, csv_s2.Lon))
   csv_s2['Dist_Point'] = -1#''
   csv_s2['Point_Val'] = -1#''
