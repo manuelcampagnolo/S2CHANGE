@@ -140,7 +140,8 @@ def main(batch_size=None):
     dfs = []
     with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
         tqdm_bar = tqdm(total=num_batches)
-    
+
+        # np.load(output_file, mmap_mode='r')
         for batch_index, start_index in enumerate(range(0, num_pixels, batch_size)):
             end_index = min(start_index + batch_size, num_pixels)
     
