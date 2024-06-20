@@ -94,7 +94,7 @@ def getTimeSeriesForPoints(tif_names, tif_dates_ord, bandas_desejadas, dados_geo
     '''
     time_var = xr.Variable('time',tif_dates_ord)
     # Load in and concatenate all individual GeoTIFFs
-    tifs_xr = [rioxarray.open_rasterio(i, chunks={'x':10924, 'y':10900}) for i in tif_names]
+    tifs_xr = [rioxarray.open_rasterio(i, chunks={'x':-1, 'y':-1}) for i in tif_names]
     geotiffs_da = xr.concat(tifs_xr, dim=time_var).sel(band=bandas_desejadas)
 
     # COORDENADAS X E Y DOS 10 000 PONTOS ESCOLHIDOS
