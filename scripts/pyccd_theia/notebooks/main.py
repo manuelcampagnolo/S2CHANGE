@@ -21,28 +21,36 @@ from notebooks.processing import getTimeSeriesForPoints, runDetectionForPoint, p
 from notebooks.utils import fromParamsReturnName
 from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor
-from concurrent.futures import as_completed
 import warnings
 warnings.filterwarnings('ignore')
 import time
 import numpy as np
 import math
+import os
+from datetime import datetime, timedelta
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 #%%
-# Início da medição do tempo
-start_time = time.time()
-#%%
+############ INPUTS ######################
 public_documents = Path('C:/Users/Public/Documents/')
+# -> BDR DGT:
+BDR_DGT = public_documents / 'BDR_300_artigo' / 'BDR_CCDC_TNE_Adjusted.shp' # Caminho para a base de dados de validação
+# -> BDR NAVIGATOR:
+# BDR_NAVIGATOR = .... caminho ainda não definido
 
-samples = public_documents / 'inputs_pontos'
-pontos_input = 'pontos_300_buffers_1_metros.gpkg'
-caminho_arquivo = samples / pontos_input
+############ PARAMETROS PRÉ PROCESSAMENTO ########################
+# N=241941 # numero total de pontos presentes na BDR
+N = 100000 # número de pontos aleatórios
+random_state_value = 42
 
+num_pixels = N  # Número total de pixels
+batch_size = 10000  # Tamanho do lote
+num_batches = math.ceil(num_pixels / batch_size)  # Número de lotes necessários
+
+# -> IMAGENS SENTINEL:
 FOLDER_THEIA = public_documents / 'imagens_Theia' # Caminho dados THEIA
 FOLDER_GEE = public_documents / 'imagens_GEE' # Caminho dados GEE
 
-FOLDER_BDR = public_documents / 'BDR_300_artigo' / 'BDR_CCDC_TNE_Adjusted.shp' # Caminho para a base de dados de validação
-
-FOLDER_OUTPUTS = public_documents / 'output_BDR300'
 S2_tile = 'T29TNE'
 var = 'THEIA' # choose variable: THEIA or GEE
 
@@ -50,23 +58,15 @@ if var == 'THEIA':
     tiles = FOLDER_THEIA / S2_tile
 else:
     tiles = FOLDER_GEE / S2_tile
-
 img_collection = tiles.parts[-2]
-
-# N=241941 # numero total de pontos presentes na BDR
-N = 100000
-
-random_state_value = 42
-
 bandas_desejadas = [1, 2, 3, 7, 9, 10]
-
-ccd_params = ccd.parameters.defaults
-alpha = ccd_params['ALPHA'] # Looks for alpha in the parameters.py file
-
-
 NODATA_VALUE= 65535
 
-# Parametros da validacao
+############ PARAMETROS CCD ########################
+alpha = ccd.parameters.defaults['ALPHA'] # Looks for alpha in the parameters.py file
+ccd_params = ccd.parameters.defaults
+
+############ PARAMETROS DA VALIDAÇÃO ########################
 # datas do filtro das datas da análise (DGT 300)
 ########### Não alterar ################
 dt_ini = '2018-09-12' # data inicial
@@ -75,97 +75,204 @@ dt_end = '2021-09-30' # data final
 theta = 60 # +/- theta dias de diferenca
 # bandar a filtrar com base na magnitude
 bandFilter = None #não implementado ainda - não mexer
+
+############ OUTPUTS ######################
+FOLDER_OUTPUTS = public_documents / 'output_BDR300'
+output_file = f"{var}_sel_values_N{N}_RS{random_state_value}.npy" # ficheiro numpy (matriz) dos dados (nr de imagens x nr de bandas x nr de pontos)
+#%%
+def check_or_initialize_file(output_file, tiles, var, S2_tile, BDR_DGT, N, random_state_value, bandas_desejadas, FOLDER_OUTPUTS, img_collection, NODATA_VALUE):
+    """
+    Verifica a existência de um arquivo numpy específico e, dependendo dessa verificação,
+    realiza diferentes operações para processar dados geoespaciais.
+
+    Inputs:
+    - output_file (str): O caminho do arquivo numpy que será verificado e, se necessário, criado.
+    - tiles (str): O diretório onde os arquivos TIFF (raster) estão localizados.
+    - var (str): A variável que indica a origem dos dados, podendo ser 'THEIA' ou 'GEE'.
+    - S2_tile (str): Identificador da tile de Sentinel-2 a ser processado.
+    - BDR_DGT (GeoDataFrame): Um GeoDataFrame contendo as geometrias que serão processados.
+    - N (int): O número de pontos a serem processados.
+    - random_state_value (int): O valor usado para inicializar o gerador de números aleatórios.
+    - bandas_desejadas (list): A lista de bandas desejadas para o processamento.
+    - FOLDER_OUTPUTS (str): O diretório onde os resultados serão salvos.
+    - img_collection (str): A coleção de imagens a ser utilizada.
+    - NODATA_VALUE (int): O valor a ser usado para representar dados ausentes.
+
+    Output:
+    - tif_dates_ord (list): Uma lista de datas no formato ordinal, que pode ser usada para análises temporais subsequentes.
+    """
+    
+    if os.path.exists(output_file):
+        # Se o arquivo numpy existe, apenas carregar e processar os dados
+        print(f"O arquivo '{output_file}' já existe. Carregando e processando os dados existentes...")
+        # Recolher nome e data dos tifs
+        print('A recolher nome e data dos tifs...')
+        if var == 'THEIA':
+            tif_names, tif_dates = read_tif_files_theia(S2_tile, tiles)
+        else:
+            tif_names, tif_dates = read_tif_files_gee(S2_tile, tiles)
+        tif_names = [os.path.join(tiles, i) for i in tif_names]
+        tif_dates_ord = [d.toordinal() for d in tif_dates]
+    else:
+        # Se o arquivo numpy não existe, executar todo o processamento inicial de criar o ficheiro numpy
+        print(f"O arquivo '{output_file}' não existe. Iniciando processamento...")
+        
+        # Processar centros dos pontos de cada geometria para corresponder aos centros dos pixels dos rasters
+        raster_path = tiles / 'Theia_T29TNE_20170813-112433.tif'
+        print('Processar centros dos pontos de cada geometria para corresponder aos centros dos pixels dos rasters...')
+        start_time = time.time()
+        gdf_centros_pixeis = processar_centros_pixeis(BDR_DGT, raster_path)
+        end_time = time.time()
+        execution_time_seconds = end_time - start_time
+        execution_time_minutes = execution_time_seconds / 60
+        print("Processar centros dos pixels:", execution_time_minutes, "minutos")
+        dados_geoespaciais_metros = readPoints(gdf_centros_pixeis, N, random_state_value)
+        # Recolher nome e data dos tifs
+        print('A recolher nome e data dos tifs...')
+        if var == 'THEIA':
+            tif_names, tif_dates = read_tif_files_theia(S2_tile, tiles)
+        else:
+            tif_names, tif_dates = read_tif_files_gee(S2_tile, tiles)
+        tif_names = [os.path.join(tiles, i) for i in tif_names]
+        tif_dates_ord = [d.toordinal() for d in tif_dates]
+        print(f'Processando dados {var}... ({tiles})')
+        start_time = time.time()
+        # Abrir tifs com xarray e carregar série temporal
+        print('A abrir tifs com xarray e carregar série temporal...')
+        getTimeSeriesForPoints(tif_names, tif_dates_ord, bandas_desejadas, dados_geoespaciais_metros, output_file)
+        
+        end_time = time.time()
+        execution_time_seconds = end_time - start_time
+        execution_time_minutes = execution_time_seconds / 60
+        print(f"Ler dados {var} para um total de {N} pixels:", execution_time_minutes, "minutos")
+
+    return tif_dates_ord
 #%%
 def main(batch_size=None):
-    #abre geopackage com pontos
-    # print('A abrir o geopackage com pontos...')
-    raster_path = tiles / 'Theia_T29TNE_20170813-112433.tif'
+    # Definir o nome do arquivo numpy e outras variáveis necessárias
+    output_file = f"{var}_sel_values_N{N}_RS{random_state_value}.npy"  # Nome do arquivo numpy
     
-    print('Processar centros dos pontos de cada geometria para corresponder aos centros dos pixels dos rasters...')
+    # Verificar a existência do arquivo e inicializar ou carregar os dados
+    tif_dates_ord = check_or_initialize_file(output_file, tiles, var, S2_tile, BDR_DGT, N, random_state_value, bandas_desejadas, FOLDER_OUTPUTS, img_collection, NODATA_VALUE)
     
-    start_time = time.time()
-
-    gdf_centros_pixeis = processar_centros_pixeis(FOLDER_BDR, raster_path)
+    # Carregar os dados numpy para o processamento em lotes
+    sel_values = np.load(output_file, mmap_mode='r')
+    xs = np.load(output_file + '_xs.npy', mmap_mode='r')
+    ys = np.load(output_file + '_ys.npy', mmap_mode='r')
     
-    # Fim da execução do código
-    end_time = time.time()
-
-    # Calcula o tempo decorrido em segundos
-    execution_time_seconds = end_time - start_time
-
-    # Converte o tempo decorrido para minutos
-    execution_time_minutes = execution_time_seconds / 60
-
-    print("Processar centros dos pixels:", execution_time_minutes, "minutos")
-    
-    dados_geoespaciais_metros = readPoints(gdf_centros_pixeis, N, random_state_value)
-
-    #recolhe nome dos tifs e respetivas datas
-    print('A recolher nome e data dos tifs...')
-    
-    if var=='THEIA':
-        tif_names, tif_dates = read_tif_files_theia(S2_tile,tiles)
-    else:
-        tif_names, tif_dates = read_tif_files_gee(S2_tile,tiles)
-        
-    #add full path to tif names
-    tif_names = [os.path.join(tiles,i) for i in tif_names]
-    #convert dates to ordinal
-    tif_dates_ord = [d.toordinal() for d in tif_dates]
-    
-    print(f'Processando dados {var}... ({tiles})')
-    start_time = time.time()
-    #abre tifs com xarray e armazena informacao
-    print('A abrir tifs com xarray e carregar série temporal...')
-    
-    output_file = f"sel_values_{N}.npy"
-    dates = getTimeSeriesForPoints(tif_names, tif_dates_ord, bandas_desejadas, dados_geoespaciais_metros, output_file)
-
-    # Fim da execução do código
-    end_time = time.time()
-
-    # Calcula o tempo decorrido em segundos
-    execution_time_seconds = end_time - start_time
-
-    # Converte o tempo decorrido para minutos
-    execution_time_minutes = execution_time_seconds / 60
-
-    print(f"Ler dados {var} para um total de {N} pixels:", execution_time_minutes, "minutos")
-    
-    # Definir outras variáveis ​​necessárias para o processamento em lotes
-    num_pixels = N  # Número total de pixels
-    batch_size = 10000  # Tamanho do lote
-    num_batches = math.ceil(num_pixels / batch_size)  # Número de lotes necessários
-    
+    # Executar o processamento em lotes com ProcessPoolExecutor
     dfs = []
     with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
         tqdm_bar = tqdm(total=num_batches)
-
-        # np.load(output_file, mmap_mode='r')
+        
         for batch_index, start_index in enumerate(range(0, num_pixels, batch_size)):
             end_index = min(start_index + batch_size, num_pixels)
-    
-            # Carregar apenas o bloco atual de 5000 pontos
-            sel_values_block = np.load(output_file, mmap_mode='r')[:, :, start_index:end_index]
-            xs_slice = np.load(output_file + '_xs.npy', mmap_mode='r')[start_index:end_index]
-            ys_slice = np.load(output_file + '_ys.npy', mmap_mode='r')[start_index:end_index]
-            # xs_slice = xs[start_index:end_index]  # Fatiar xs
-            # ys_slice = ys[start_index:end_index]  # Fatiar ys
-    
-            # Cria argumentos para cada lote de 5000 pontos
-            arg_list = [(i, sel_values_block, dates, xs_slice, ys_slice, NODATA_VALUE, FOLDER_OUTPUTS, img_collection) for i in range(sel_values_block.shape[2])]
-    
+            
+            # Carregar apenas o bloco atual de pontos
+            sel_values_block = sel_values[:, :, start_index:end_index]
+            xs_slice = xs[start_index:end_index]
+            ys_slice = ys[start_index:end_index]
+            
+            # Criar argumentos para cada lote de pontos
+            arg_list = [(i, sel_values_block, tif_dates_ord, xs_slice, ys_slice, NODATA_VALUE, FOLDER_OUTPUTS, img_collection) for i in range(sel_values_block.shape[2])]
+            
+            # Mapear os resultados usando executor.map
             for result_df in executor.map(runDetectionForPoint, arg_list):
                 dfs.append(result_df)
                 tqdm_bar.update(1)
-    
-        tqdm_bar.close()
         
+        tqdm_bar.close()
+    
     # Concatenar os resultados de todos os lotes em um único DataFrame
     if dfs:
         result_df = pd.concat(dfs, ignore_index=True)
-        filename = fromParamsReturnName(img_collection, ccd_params, (S2_tile,tiles), N, random_state_value)
+        filename = fromParamsReturnName(img_collection, ccd_params, (S2_tile, tiles), N, random_state_value)
         result_df.to_csv(FOLDER_OUTPUTS / 'tabular' / '{}.csv'.format(filename), index=False)
+#%%
+# def main(batch_size=None):
+#     #abre geopackage com pontos
+#     # print('A abrir o geopackage com pontos...')
+#     raster_path = tiles / 'Theia_T29TNE_20170813-112433.tif'
+    
+#     print('Processar centros dos pontos de cada geometria para corresponder aos centros dos pixels dos rasters...')
+    
+#     start_time = time.time()
+
+#     gdf_centros_pixeis = processar_centros_pixeis(BDR_DGT, raster_path)
+    
+#     # Fim da execução do código
+#     end_time = time.time()
+
+#     # Calcula o tempo decorrido em segundos
+#     execution_time_seconds = end_time - start_time
+
+#     # Converte o tempo decorrido para minutos
+#     execution_time_minutes = execution_time_seconds / 60
+
+#     print("Processar centros dos pixels:", execution_time_minutes, "minutos")
+    
+#     dados_geoespaciais_metros = readPoints(gdf_centros_pixeis, N, random_state_value)
+
+#     #recolhe nome dos tifs e respetivas datas
+#     print('A recolher nome e data dos tifs...')
+    
+#     if var=='THEIA':
+#         tif_names, tif_dates = read_tif_files_theia(S2_tile,tiles)
+#     else:
+#         tif_names, tif_dates = read_tif_files_gee(S2_tile,tiles)
+        
+#     #add full path to tif names
+#     tif_names = [os.path.join(tiles,i) for i in tif_names]
+#     #convert dates to ordinal
+#     tif_dates_ord = [d.toordinal() for d in tif_dates]
+    
+#     print(f'Processando dados {var}... ({tiles})')
+#     start_time = time.time()
+#     #abre tifs com xarray e armazena informacao
+#     print('A abrir tifs com xarray e carregar série temporal...')
+
+#     dates = getTimeSeriesForPoints(tif_names, tif_dates_ord, bandas_desejadas, dados_geoespaciais_metros, output_file)
+
+#     # Fim da execução do código
+#     end_time = time.time()
+
+#     # Calcula o tempo decorrido em segundos
+#     execution_time_seconds = end_time - start_time
+
+#     # Converte o tempo decorrido para minutos
+#     execution_time_minutes = execution_time_seconds / 60
+
+#     print(f"Ler dados {var} para um total de {N} pixels:", execution_time_minutes, "minutos")
+
+    
+#     dfs = []
+#     with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
+#         tqdm_bar = tqdm(total=num_batches)
+    
+#         for batch_index, start_index in enumerate(range(0, num_pixels, batch_size)):
+#             end_index = min(start_index + batch_size, num_pixels)
+    
+#             # Carregar apenas o bloco atual de 10 000 pontos
+#             sel_values_block = np.load(output_file, mmap_mode='r')[:, :, start_index:end_index]
+#             xs_slice = np.load(output_file + '_xs.npy', mmap_mode='r')[start_index:end_index]
+#             ys_slice = np.load(output_file + '_ys.npy', mmap_mode='r')[start_index:end_index]
+#             # xs_slice = xs[start_index:end_index]  # Fatiar xs
+#             # ys_slice = ys[start_index:end_index]  # Fatiar ys
+    
+#             # Cria argumentos para cada lote de 10 000 pontos
+#             arg_list = [(i, sel_values_block, dates, xs_slice, ys_slice, NODATA_VALUE, FOLDER_OUTPUTS, img_collection) for i in range(sel_values_block.shape[2])]
+    
+#             for result_df in executor.map(runDetectionForPoint, arg_list):
+#                 dfs.append(result_df)
+#                 tqdm_bar.update(1)
+    
+#         tqdm_bar.close()
+        
+#     # Concatenar os resultados de todos os lotes em um único DataFrame
+#     if dfs:
+#         result_df = pd.concat(dfs, ignore_index=True)
+#         filename = fromParamsReturnName(img_collection, ccd_params, (S2_tile,tiles), N, random_state_value)
+#         result_df.to_csv(FOLDER_OUTPUTS / 'tabular' / '{}.csv'.format(filename), index=False)
 #%%
 def runValidation():
     print('A correr validação dos resultados do ccd...')
@@ -186,10 +293,10 @@ def runValidation():
     """## Spatial join
     Faz join dos pontos do csv com a informação de referencia da DGT (300 buffers). É associada aos pontos a informação da validação - data de alteração, tipo, classes, etc.
     """
-    gdfVal = gpd.read_file(FOLDER_BDR)
+    gdfVal = gpd.read_file(BDR_DGT)
     gdfVal.to_crs(crs = 'EPSG:3763', inplace = True)
     #executa o join
-    ccdcVal, ccdcVal_T = spatialJoin(FOLDER_BDR, ccdcFiltro)
+    ccdcVal, ccdcVal_T = spatialJoin(BDR_DGT, ccdcFiltro)
     """## Validação
     Faz a validação da deteção - compara resultado do modelo (ccd) com dados de referência DGT
     """ 
@@ -214,5 +321,5 @@ def runValidation():
     DF_FINAL_T.to_csv(FOLDER_OUTPUTS / 'tabular' / f'VAL_{filename}.csv', index=False)
 #%%
 if __name__ == '__main__':
-    main(batch_size=10000)
+    main(batch_size)
     runValidation()
