@@ -88,6 +88,10 @@ def processar_centros_pixeis(shapefile_path, raster_path):
 #     return sel_values, dates, xs, ys
 
 def getTimeSeriesForPoints(tif_names, tif_dates_ord, bandas_desejadas, dados_geoespaciais_metros, output_file):
+    '''
+    inputs:
+    tif_names: list..
+    '''
     time_var = xr.Variable('time',tif_dates_ord)
     # Load in and concatenate all individual GeoTIFFs
     tifs_xr = [rioxarray.open_rasterio(i, chunks={'x':10924, 'y':10900}) for i in tif_names]
