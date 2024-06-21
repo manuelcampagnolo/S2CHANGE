@@ -13,7 +13,7 @@ base_path= Path(__name__ ).parent.absolute()  # dir do script; # dir referência
 if module_path not in sys.path:
     sys.path.append(str(module_path))
 import ccd
-from notebooks.avaliacao_exatidao_pyccd import filterDate, spatialJoin, preprocessCsvS2, valPol
+from notebooks.avaliacao_exatidao_pyccd import runValidation
 from notebooks.processing import check_or_initialize_file, runDetectionForPoint
 from notebooks.utils import fromParamsReturnName
 from tqdm import tqdm
@@ -70,6 +70,10 @@ theta = 60 # +/- theta dias de diferenca
 # bandar a filtrar com base na magnitude
 bandFilter = None #não implementado ainda - não mexer
 
+######### NOME BASE DOS FICHEIROS A SEREM GERADOS #########
+filename = fromParamsReturnName(img_collection, ccd_params, (S2_tile, tiles), N, random_state_value)
+
+
 ############ OUTPUTS ######################
 FOLDER_OUTPUTS = public_documents / 'output_BDR300'
 output_file = f"{var}_sel_values_N{N}_RS{random_state_value}.npy" # ficheiro numpy (matriz) dos dados (nr de imagens x nr de bandas x nr de pontos)
@@ -112,7 +116,6 @@ def main(batch_size=None):
     # Concatenar os resultados de todos os lotes em um único DataFrame
     if dfs:
         result_df = pd.concat(dfs, ignore_index=True)
-        filename = fromParamsReturnName(img_collection, ccd_params, (S2_tile, tiles), N, random_state_value)
         result_df.to_csv(FOLDER_OUTPUTS / 'tabular' / '{}.csv'.format(filename), index=False)
 #%%
 # def main(batch_size=None):
@@ -200,58 +203,9 @@ def main(batch_size=None):
 #         filename = fromParamsReturnName(img_collection, ccd_params, (S2_tile,tiles), N, random_state_value)
 #         result_df.to_csv(FOLDER_OUTPUTS / 'tabular' / '{}.csv'.format(filename), index=False)
 #%%
-def runValidation():
-    print('A correr validação dos resultados do ccd...')
-    #gerar nome do ficheiro a partir dos parametros de execucao
-    filename = fromParamsReturnName(img_collection, ccd_params, (S2_tile,tiles), N, random_state_value)
-    #pegar data do fim da serie temporal (ultima imagem)
-    reference_index = filename.find('END')
-    end_of_series = filename[reference_index + 3 : reference_index + 11]
-    year, month, day = [end_of_series[:4], end_of_series[4:6], end_of_series[6:]]
-    end_of_series = f"{year}-{month}-{day}"
 
-
-    csv_s2 = pd.read_csv(FOLDER_OUTPUTS / 'tabular' / '{}.csv'.format(filename))
-    #correr pre-processamento
-    csv_s2 = preprocessCsvS2(csv_s2, end_of_series)
-    csv_preprocessed_path = '{}_pre_proc.csv'.format(filename)
-    csv_s2.to_csv(csv_preprocessed_path)
-
-    """## Filtrar datas
-    Limitar análise ao período considerado pelos analistas DGT
-    """
-    #correr filtro de datas
-    ccdcFiltro = filterDate(csv_preprocessed_path, dt_ini, dt_end, bandFilter)
-    """## Spatial join
-    Faz join dos pontos do csv com a informação de referencia da DGT (300 buffers). É associada aos pontos a informação da validação - data de alteração, tipo, classes, etc.
-    """
-    gdfVal = gpd.read_file(BDR_DGT)
-    gdfVal.to_crs(crs = 'EPSG:3763', inplace = True)
-    #executa o join
-    ccdcVal, ccdcVal_T = spatialJoin(BDR_DGT, ccdcFiltro)
-    """## Validação
-    Faz a validação da deteção - compara resultado do modelo (ccd) com dados de referência DGT
-    """ 
-    #faz a validação da deteção
-    DF_FINAL, DF_FINAL_T = valPol(ccdcVal_T, theta) #funcoes.valPol
-    """**Resultados da validação**"""
-    #delimita análise apenas para pontos referentes a transições entre Pinheiro Bravo e Eucalipto para Superfície sem vegetação, herbáceas e matos
-    #elimina também pontos da bordadura
-    df_aux = DF_FINAL_T.copy()
-    df_aux = df_aux.loc[(df_aux.altera=="Sem Alteracao")|((df_aux.altera=="Com Alteracao")&(df_aux.classeAnterior.isin(['Pinheiro bravo','Eucalipto']))&(df_aux.classeAtual.isin(['Superficie sem vegetacao escura','Superficie sem vegetacao clara','Vegetacao herbacea espontanea','Matos'])))]
-    df_aux = df_aux.loc[df_aux.bordadura==0]
-    #imprime f1-score, erro e omissão e erro de comissão
-    cm = df_aux.FP.sum()/(df_aux.FP.sum()+df_aux.VP.sum())
-    om = df_aux.FN.sum()/(df_aux.FN.sum()+df_aux.VP.sum())
-    f1 = 2*(1-om)*(1-cm)/(2-om-cm)
-    print(f'Alpha: {alpha}')
-    print(f'Random state value = {random_state_value}')
-    print('F1-score = {}%'.format(round(100*f1,2)))
-    print('Omission error = {}%'.format(round(100*om,2)))
-    print('Commission error = {}%'.format(round(100*cm,2)))
-
-    DF_FINAL_T.to_csv(FOLDER_OUTPUTS / 'tabular' / f'VAL_{filename}.csv', index=False)
 #%%
 if __name__ == '__main__':
     main(batch_size)
-    runValidation()
+    runValidation(filename, FOLDER_OUTPUTS, BDR_DGT, dt_ini, dt_end, bandFilter, theta)
+    

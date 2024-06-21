@@ -419,3 +419,75 @@ def testeRemove(groupedby):
   return groupedby
 
 
+def runValidation(filename, FOLDER_OUTPUTS, BDR_DGT, dt_ini, dt_end, bandFilter, theta):
+    """
+    Corre a validação dos resultados da deteção realizando spatial join
+    com a base de dados de referência.
+    Imprime as métricas de validação e gera ficheiro csv VAL.
+
+    Args:
+        filename: nome do ficheiro csv guardado anteriormente com resultados
+                  da deteção. Nome do ficheiro é definido em função dos parâmetros
+                  de execução utilizados;
+        FOLDER_OUTPUTS: pasta para buscar o ficheiro csv e guardar o resultado da
+                        validação;
+        BDR_DGT: caminho para o ficheiro da base de dados de validação;
+        dt_ini: data inicial do período de referência dos analistas (str YYYY-mm-dd);
+        df_end: data final do período de referência dos analistas (str YYYY-mm-dd);
+        bandFIlter: não implementado ainda;
+        theta: margem de tolerância da validação, em dias (int);
+    
+    Returns: 
+        None (imprime métricas e gera ficheiro csv)
+
+    """
+    print('A correr validação dos resultados do ccd...')
+    #pegar data do fim da serie temporal (ultima imagem)
+    reference_index = filename.find('END')
+    end_of_series = filename[reference_index + 3 : reference_index + 11]
+    year, month, day = [end_of_series[:4], end_of_series[4:6], end_of_series[6:]]
+    end_of_series = f"{year}-{month}-{day}"
+
+
+    csv_s2 = pd.read_csv(FOLDER_OUTPUTS / 'tabular' / '{}.csv'.format(filename))
+    #correr pre-processamento
+    csv_s2 = preprocessCsvS2(csv_s2, end_of_series)
+    csv_preprocessed_path = '{}_pre_proc.csv'.format(filename)
+    csv_s2.to_csv(csv_preprocessed_path)
+
+    """## Filtrar datas
+    Limitar análise ao período considerado pelos analistas DGT
+    """
+    #correr filtro de datas
+    ccdcFiltro = filterDate(csv_preprocessed_path, dt_ini, dt_end, bandFilter)
+    """## Spatial join
+    Faz join dos pontos do csv com a informação de referencia da DGT (300 buffers). É associada aos pontos a informação da validação - data de alteração, tipo, classes, etc.
+    """
+    #gdfVal = gpd.read_file(BDR_DGT)
+    #gdfVal.to_crs(crs = 'EPSG:3763', inplace = True)
+    #executa o join
+    ccdcVal, ccdcVal_T = spatialJoin(BDR_DGT, ccdcFiltro)
+    """## Validação
+    Faz a validação da deteção - compara resultado do modelo (ccd) com dados de referência DGT
+    """ 
+    #faz a validação da deteção
+    DF_FINAL, DF_FINAL_T = valPol(ccdcVal_T, theta) #funcoes.valPol
+    """**Resultados da validação**"""
+    #delimita análise apenas para pontos referentes a transições entre Pinheiro Bravo e Eucalipto para Superfície sem vegetação, herbáceas e matos
+    #elimina também pontos da bordadura
+    df_aux = DF_FINAL_T.copy()
+    df_aux = df_aux.loc[(df_aux.altera=="Sem Alteracao")|((df_aux.altera=="Com Alteracao")&(df_aux.classeAnterior.isin(['Pinheiro bravo','Eucalipto']))&(df_aux.classeAtual.isin(['Superficie sem vegetacao escura','Superficie sem vegetacao clara','Vegetacao herbacea espontanea','Matos'])))]
+    df_aux = df_aux.loc[df_aux.bordadura==0]
+    #imprime f1-score, erro e omissão e erro de comissão
+    cm = df_aux.FP.sum()/(df_aux.FP.sum()+df_aux.VP.sum())
+    om = df_aux.FN.sum()/(df_aux.FN.sum()+df_aux.VP.sum())
+    f1 = 2*(1-om)*(1-cm)/(2-om-cm)
+    print("Métricas de validação para ficheiro:")
+    print(filename)
+    print('F1-score = {}%'.format(round(100*f1,2)))
+    print('Omission error = {}%'.format(round(100*om,2)))
+    print('Commission error = {}%'.format(round(100*cm,2)))
+
+    DF_FINAL_T.to_csv(FOLDER_OUTPUTS / 'tabular' / f'VAL_{filename}.csv', index=False)
+
+
