@@ -2,7 +2,6 @@ import os
 user_profile = os.environ['USERPROFILE']
 directory_path = os.path.join(user_profile, 'Desktop', 'CCD_yml_win')
 os.chdir(directory_path)
-import geopandas as gpd
 import pandas as pd
 import os
 import sys
@@ -16,6 +15,7 @@ import ccd
 from notebooks.avaliacao_exatidao_pyccd import runValidation
 from notebooks.processing import check_or_initialize_file, runDetectionForPoint
 from notebooks.utils import fromParamsReturnName
+from notebooks.plot import plotFromCSV
 from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor
 import warnings
@@ -25,9 +25,11 @@ import math
 import os
 #%%
 ############ INPUTS ######################
+# Caminho onde estão os dados todos
 public_documents = Path('C:/Users/Public/Documents/')
+# Caminhos para a base de dados de validação
 # -> BDR DGT:
-BDR_DGT = public_documents / 'BDR_300_artigo' / 'BDR_CCDC_TNE_Adjusted.shp' # Caminho para a base de dados de validação
+BDR_DGT = public_documents / 'BDR_300_artigo' / 'BDR_CCDC_TNE_Adjusted.shp'
 # -> BDR NAVIGATOR:
 # BDR_NAVIGATOR = .... caminho ainda não definido
 
@@ -73,22 +75,22 @@ bandFilter = None #não implementado ainda - não mexer
 ######### NOME BASE DOS FICHEIROS A SEREM GERADOS #########
 filename = fromParamsReturnName(img_collection, ccd_params, (S2_tile, tiles), N, random_state_value)
 
-
 ############ OUTPUTS ######################
 FOLDER_OUTPUTS = public_documents / 'output_BDR300'
 output_file = f"{var}_sel_values_N{N}_RS{random_state_value}.npy" # ficheiro numpy (matriz) dos dados (nr de imagens x nr de bandas x nr de pontos)
 #%%
 def main(batch_size=None):
     # Definir o nome do arquivo numpy e outras variáveis necessárias
-    output_file = f"{var}_sel_values_N{N}_RS{random_state_value}.npy"  # Nome do arquivo numpy
+    # output_file = f"{var}_sel_values_N{N}_RS{random_state_value}"  # Nome do arquivo numpy
     
     # Verificar a existência do arquivo e inicializar ou carregar os dados
     tif_dates_ord = check_or_initialize_file(output_file, tiles, var, S2_tile, BDR_DGT, N, random_state_value, bandas_desejadas, FOLDER_OUTPUTS, img_collection, NODATA_VALUE)
     
     # Carregar os dados numpy para o processamento em lotes
     sel_values = np.load(output_file, mmap_mode='r')
-    xs = np.load(output_file + '_xs.npy', mmap_mode='r')
-    ys = np.load(output_file + '_ys.npy', mmap_mode='r')
+    output_file_base = f"{var}_sel_values_N{N}_RS{random_state_value}.npy"[:-4]
+    xs = np.load(output_file_base + '_xs.npy', mmap_mode='r')
+    ys = np.load(output_file_base + '_ys.npy', mmap_mode='r')
     
     # Executar o processamento em lotes com ProcessPoolExecutor
     dfs = []
@@ -117,6 +119,14 @@ def main(batch_size=None):
     if dfs:
         result_df = pd.concat(dfs, ignore_index=True)
         result_df.to_csv(FOLDER_OUTPUTS / 'tabular' / '{}.csv'.format(filename), index=False)
+#%%
+# Função para fazer o plot para uma linha do CSV (escolher a linha no row_index) 
+# -> descomentar caso seja preciso fazer o plot
+# plotFromCSV(FOLDER_OUTPUTS / 'tabular' / '{}.csv'.format(filename), row_index=1, save_dir=FOLDER_OUTPUTS / 'plots' / '{}.png'.format(filename))
+#%%
+if __name__ == '__main__':
+    main(batch_size)
+    runValidation(filename, FOLDER_OUTPUTS, BDR_DGT, dt_ini, dt_end, bandFilter, theta)
 #%%
 # def main(batch_size=None):
 #     #abre geopackage com pontos
@@ -202,10 +212,3 @@ def main(batch_size=None):
 #         result_df = pd.concat(dfs, ignore_index=True)
 #         filename = fromParamsReturnName(img_collection, ccd_params, (S2_tile,tiles), N, random_state_value)
 #         result_df.to_csv(FOLDER_OUTPUTS / 'tabular' / '{}.csv'.format(filename), index=False)
-#%%
-
-#%%
-if __name__ == '__main__':
-    main(batch_size)
-    runValidation(filename, FOLDER_OUTPUTS, BDR_DGT, dt_ini, dt_end, bandFilter, theta)
-    
