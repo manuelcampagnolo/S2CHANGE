@@ -3,7 +3,6 @@ import xarray as xr
 import rioxarray
 import os
 user_profile = os.environ['USERPROFILE']
-
 directory_path = os.path.join(user_profile, 'Desktop', 'CCD_yml_win')
 os.chdir(directory_path)
 import os
@@ -73,25 +72,64 @@ FOLDER_OUTPUTS = public_documents / 'output_BDR300'
 output_file = FOLDER_OUTPUTS / 'numpy' / "{}.npy".format(filename) # ficheiro numpy (matriz) dos dados (nr de imagens x nr de bandas x nr de pontos)
 print(output_file)
 #%%
-def addNewImageToFile(tif_names, tif_dates_ord, bandas_desejadas, dados_geoespaciais_metros, output_file):
-    # Carregar e concatenar o último GeoTIFF
-    geotiff_da = rioxarray.open_rasterio(tif_names, chunks={'x': 10924, 'y': 10900}).sel(band=bandas_desejadas)
+def addNewImageToFile(output_file, tiles, var, S2_tile, BDR_DGT, N, random_state_value, bandas_desejadas, FOLDER_OUTPUTS, img_collection, NODATA_VALUE):
+    """
+    Carrega o último GeoTIFF, processa os dados geoespaciais e adiciona ao arquivo numpy existente.
+
+    Args:
+        - output_file (str): caminho do arquivo numpy onde os dados serão adicionados.
+        - tiles (str): diretório onde os arquivos TIFF (raster) estão localizados.
+        - var (str): variável que indica a origem dos dados, podendo ser 'THEIA' ou 'GEE'.
+        - S2_tile (str): Identificador da tile de Sentinel-2 a ser processado.
+        - BDR_DGT (GeoDataFrame): GeoDataFrame contendo as geometrias que serão processadas.
+        - N (int): número de pontos a serem processados.
+        - random_state_value (int): valor do gerador de números aleatórios.
+        - bandas_desejadas (list): lista de bandas desejadas para o processamento.
+        - FOLDER_OUTPUTS (str): diretório onde os resultados serão salvos.
+        - img_collection (str): coleção de imagens a ser utilizada.
+        - NODATA_VALUE (int): valor a ser usado para representar dados ausentes.
+
+    Returns:
+        - updated_data (ndarray): array numpy atualizado com os novos dados.
+    """
+    
+    # Processar centros dos pontos de cada geometria para corresponder aos centros dos pixels dos rasters
+    raster_path = tiles / 'Theia_T29TNE_20170813-112433.tif'
+    gdf_centros_pixeis = processar_centros_pixeis(BDR_DGT, raster_path)
+    dados_geoespaciais_metros = readPoints(gdf_centros_pixeis, N, random_state_value)
+    
+    if var == 'THEIA':
+        tif_names, tif_dates = read_tif_files_theia(S2_tile, tiles)
+    else:
+        tif_names, tif_dates = read_tif_files_gee(S2_tile, tiles)
+    
+    # Selecionar o último tif e as datas
+    tif_names = [os.path.join(tiles, i) for i in tif_names][-1]
+    tif_dates_ord = [d.toordinal() for d in tif_dates][-1]
+    
+    # Carregar o último GeoTIFF
+    geotiff_da = rioxarray.open_rasterio(tif_names, chunks={'x': -1, 'y': -1}).sel(band=bandas_desejadas)
     geotiff_da = geotiff_da.expand_dims('time').assign_coords(time=[tif_dates_ord])
 
-    # Coordenadas X e Y dos 10.000 pontos escolhidos
+    # Coordenadas X e Y dos pontos escolhidos
     points_x_int = xr.DataArray(np.round(dados_geoespaciais_metros.geometry.x.values).astype('int'), dims=['location'])
     points_y_int = xr.DataArray(np.round(dados_geoespaciais_metros.geometry.y.values).astype('int'), dims=['location'])
 
     selection = geotiff_da.sel(x=points_x_int, y=points_y_int, band=bandas_desejadas)
     sel_values = selection.values
 
-    # Carregar o arquivo existente
-    try:
-        existing_data = np.load(output_file)
-        print("Arquivo existente carregado com sucesso.")
-    except FileNotFoundError:
-        print(f"Erro: O arquivo '{output_file}.npy' não foi encontrado.")
-
+    # Carregar o arquivo numpy existente se existir
+    if os.path.exists(output_file):
+        try:
+            existing_data = np.load(output_file)
+            print("Arquivo existente carregado com sucesso.")
+        except FileNotFoundError:
+            print(f"Erro: O arquivo '{output_file}.npy' não foi encontrado.")
+            return None
+    else:
+        print(f"O arquivo '{output_file}' não existe. Criando novo arquivo...")
+        existing_data = np.array([], dtype=np.float64)  # Inicializa um array vazio caso não exista
+    
     # Adicionar os novos dados ao array existente
     updated_data = np.concatenate((existing_data, sel_values), axis=0)
     
@@ -101,21 +139,5 @@ def addNewImageToFile(tif_names, tif_dates_ord, bandas_desejadas, dados_geoespac
 
     return updated_data
 #%%
-raster_path = tiles / 'Theia_T29TNE_20170813-112433.tif'
-gdf_centros_pixeis = processar_centros_pixeis(BDR_DGT, raster_path)
-dados_geoespaciais_metros = readPoints(gdf_centros_pixeis, N, random_state_value)
-#%%
-print('A recolher nome e data dos tifs...')
-
-if var=='THEIA':
-    tif_names, tif_dates = read_tif_files_theia(S2_tile,tiles)
-else:
-    tif_names, tif_dates = read_tif_files_gee(S2_tile,tiles)
-    
-#add full path to tif names, read only the last file
-tif_names = [os.path.join(tiles,i) for i in tif_names][-1]
-#convert dates to ordinal, read only the last file
-tif_dates_ord = [d.toordinal() for d in tif_dates][-1]
-
-numpy_file = addNewImageToFile(tif_names, tif_dates_ord, bandas_desejadas, dados_geoespaciais_metros, output_file)
+numpy_file = addNewImageToFile(output_file, tiles, var, S2_tile, BDR_DGT, N, random_state_value, bandas_desejadas, FOLDER_OUTPUTS, img_collection, NODATA_VALUE)
 
