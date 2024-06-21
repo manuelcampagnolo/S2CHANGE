@@ -3,12 +3,9 @@ import xarray as xr
 import rioxarray
 import os
 user_profile = os.environ['USERPROFILE']
-import logging
 
 directory_path = os.path.join(user_profile, 'Desktop', 'CCD_yml_win')
 os.chdir(directory_path)
-import geopandas as gpd
-import pandas as pd
 import os
 import sys
 from pathlib import Path
@@ -18,18 +15,63 @@ base_path= Path(__name__ ).parent.absolute()  # dir do script; # dir referência
 if module_path not in sys.path:
     sys.path.append(str(module_path))
 import ccd
-from notebooks.avaliacao_exatidao_pyccd import filterDate, spatialJoin, preprocessCsvS2, valPol
-from notebooks.read_files import read_tif_files_theia, read_tif_files_gee, get_most_recent_file, readPoints
-from notebooks.processing import getTimeSeriesForPoints, runDetectionForPoint, processar_centros_pixeis
+from notebooks.read_files import read_tif_files_theia, read_tif_files_gee, readPoints
+from notebooks.processing import processar_centros_pixeis
 from notebooks.utils import fromParamsReturnName
-from tqdm import tqdm
-from concurrent.futures import ProcessPoolExecutor
-from concurrent.futures import as_completed
 import warnings
 warnings.filterwarnings('ignore')
-import time
-import numpy as np
-import math
+#%%
+############ INPUTS ######################
+# Caminho onde estão os dados todos
+public_documents = Path('C:/Users/Public/Documents/')
+# Caminhos para a base de dados de validação
+# -> BDR DGT:
+BDR_DGT = public_documents / 'BDR_300_artigo' / 'BDR_CCDC_TNE_Adjusted.shp'
+# -> BDR NAVIGATOR:
+# BDR_NAVIGATOR = .... caminho ainda não definido
+
+# -> IMAGENS SENTINEL:
+FOLDER_THEIA = public_documents / 'imagens_Theia' # Caminho dados THEIA
+FOLDER_GEE = public_documents / 'imagens_GEE' # Caminho dados GEE
+
+S2_tile = 'T29TNE'
+var = 'THEIA' # choose variable: THEIA or GEE
+
+if var == 'THEIA':
+    tiles = FOLDER_THEIA / S2_tile
+else:
+    tiles = FOLDER_GEE / S2_tile
+img_collection = tiles.parts[-2]
+
+############ PARAMETROS PRÉ PROCESSAMENTO ########################
+# N=241941 # numero total de pontos presentes na BDR
+N = 10000 # número de pontos aleatórios
+random_state_value = 42
+
+bandas_desejadas=[1, 2, 3, 7, 10]
+NODATA_VALUE= 65535
+
+############ PARAMETROS CCD ########################
+alpha = ccd.parameters.defaults['ALPHA'] # Looks for alpha in the parameters.py file
+ccd_params = ccd.parameters.defaults
+
+############ PARAMETROS DA VALIDAÇÃO ########################
+# datas do filtro das datas da análise (DGT 300)
+########### Não alterar ################
+dt_ini = '2018-09-12' # data inicial
+dt_end = '2021-09-30' # data final
+# Margem de tolerância entre a quebra do Modelo e do Analista
+theta = 60 # +/- theta dias de diferenca
+# bandar a filtrar com base na magnitude
+bandFilter = None #não implementado ainda - não mexer
+
+######### NOME BASE DOS FICHEIROS A SEREM GERADOS #########
+filename = fromParamsReturnName(img_collection, ccd_params, (S2_tile, tiles), N, random_state_value)
+
+############ OUTPUTS ######################
+FOLDER_OUTPUTS = public_documents / 'output_BDR300'
+output_file = FOLDER_OUTPUTS / 'numpy' / "{}.npy".format(filename) # ficheiro numpy (matriz) dos dados (nr de imagens x nr de bandas x nr de pontos)
+print(output_file)
 #%%
 def addNewImageToFile(tif_names, tif_dates_ord, bandas_desejadas, dados_geoespaciais_metros, output_file):
     # Carregar e concatenar o último GeoTIFF
@@ -59,48 +101,10 @@ def addNewImageToFile(tif_names, tif_dates_ord, bandas_desejadas, dados_geoespac
 
     return updated_data
 #%%
-public_documents = Path('C:/Users/Public/Documents/')
-
-samples = public_documents / 'inputs_pontos'
-pontos_input = 'pontos_300_buffers_1_metros.gpkg'
-caminho_arquivo = samples / pontos_input
-
-FOLDER_THEIA = public_documents / 'imagens_Theia' # Caminho dados THEIA
-FOLDER_GEE = public_documents / 'imagens_GEE' # Caminho dados GEE
-
-FOLDER_BDR = public_documents / 'BDR_300_artigo' / 'BDR_CCDC_TNE_Adjusted.shp' # Caminho para a base de dados de validação
-
-FOLDER_OUTPUTS = public_documents / 'output_BDR300'
-S2_tile = 'T29TNE'
-var = 'THEIA' # choose variable: THEIA or GEE
-
-if var == 'THEIA':
-    tiles = FOLDER_THEIA / S2_tile
-else:
-    tiles = FOLDER_GEE / S2_tile
-
-img_collection = tiles.parts[-2]
-
-# N=241941 # numero total de pontos presentes na BDR
-N = 100000
-
-random_state_value = 42
-
-bandas_desejadas = [1, 2, 3, 7, 9, 10]
-
-NODATA_VALUE= 65535
-
 raster_path = tiles / 'Theia_T29TNE_20170813-112433.tif'
-    
-print('Processar centros dos pontos de cada geometria para corresponder aos centros dos pixels dos rasters...')
-
-start_time = time.time()
-
-gdf_centros_pixeis = processar_centros_pixeis(FOLDER_BDR, raster_path)
-
+gdf_centros_pixeis = processar_centros_pixeis(BDR_DGT, raster_path)
 dados_geoespaciais_metros = readPoints(gdf_centros_pixeis, N, random_state_value)
 #%%
-#recolhe nome dos tifs e respetivas datas
 print('A recolher nome e data dos tifs...')
 
 if var=='THEIA':
@@ -113,11 +117,5 @@ tif_names = [os.path.join(tiles,i) for i in tif_names][-1]
 #convert dates to ordinal, read only the last file
 tif_dates_ord = [d.toordinal() for d in tif_dates][-1]
 
-print(f'Processando dados {var}... ({tiles})')
-start_time = time.time()
-#abre tifs com xarray e armazena informacao
-print('A abrir tifs com xarray e carregar série temporal...')
-
-output_file = f"sel_values_{N}.npy"
 numpy_file = addNewImageToFile(tif_names, tif_dates_ord, bandas_desejadas, dados_geoespaciais_metros, output_file)
 
