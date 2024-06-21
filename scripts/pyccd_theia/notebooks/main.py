@@ -77,7 +77,7 @@ filename = fromParamsReturnName(img_collection, ccd_params, (S2_tile, tiles), N,
 
 ############ OUTPUTS ######################
 FOLDER_OUTPUTS = public_documents / 'output_BDR300'
-output_file = f"{var}_sel_values_N{N}_RS{random_state_value}.npy" # ficheiro numpy (matriz) dos dados (nr de imagens x nr de bandas x nr de pontos)
+output_file = FOLDER_OUTPUTS / 'numpy' / "{}.npy".format(filename) # ficheiro numpy (matriz) dos dados (nr de imagens x nr de bandas x nr de pontos)
 #%%
 def main(batch_size=None):
     # Definir o nome do arquivo numpy e outras variáveis necessárias
@@ -88,9 +88,9 @@ def main(batch_size=None):
     
     # Carregar os dados numpy para o processamento em lotes
     sel_values = np.load(output_file, mmap_mode='r')
-    output_file_base = f"{var}_sel_values_N{N}_RS{random_state_value}.npy"[:-4]
-    xs = np.load(output_file_base + '_xs.npy', mmap_mode='r')
-    ys = np.load(output_file_base + '_ys.npy', mmap_mode='r')
+
+    xs = np.load(str(output_file.with_suffix('')) + '_xs.npy', mmap_mode='r')
+    ys = np.load(str(output_file.with_suffix('')) + '_ys.npy', mmap_mode='r')
     
     # Executar o processamento em lotes com ProcessPoolExecutor
     dfs = []
@@ -120,9 +120,9 @@ def main(batch_size=None):
         result_df = pd.concat(dfs, ignore_index=True)
         result_df.to_csv(FOLDER_OUTPUTS / 'tabular' / '{}.csv'.format(filename), index=False)
 #%%
-# Função para fazer o plot para uma linha do CSV (escolher a linha no row_index) 
-# -> descomentar caso seja preciso fazer o plot
-# plotFromCSV(FOLDER_OUTPUTS / 'tabular' / '{}.csv'.format(filename), row_index=1, save_dir=FOLDER_OUTPUTS / 'plots' / '{}.png'.format(filename))
+# Função para fazer o plot para uma linha do CSV (escolher a linha no row_index)
+# row_index=1
+# plotFromCSV(FOLDER_OUTPUTS / 'tabular' / '{}.csv'.format(filename), row_index, save_dir=FOLDER_OUTPUTS / 'plots' / '{}_RowIndex{}.png'.format(filename, row_index))
 #%%
 if __name__ == '__main__':
     main(batch_size)

@@ -114,8 +114,8 @@ def getTimeSeriesForPoints(tif_names, tif_dates_ord, bandas_desejadas, dados_geo
     ys = selection.y
     sel_values = selection.values
     
-    np.save(output_file + '_xs.npy', xs)
-    np.save(output_file + '_ys.npy', ys)
+    np.save(str(output_file.with_suffix('')) + '_xs.npy', xs)
+    np.save(str(output_file.with_suffix('')) + '_ys.npy', ys)
     
     np.save(output_file, sel_values)
 
@@ -189,7 +189,7 @@ def check_or_initialize_file(output_file, tiles, var, S2_tile, BDR_DGT, N, rando
 
     return tif_dates_ord
 #%%
-def runDetectionForPoint(args, plot_flag=False): # se plot_flag =  False não faz gráficos se True faz gráficos
+def runDetectionForPoint(args): 
     i,sel_values, dates, xs, ys, NODATA_VALUE, FOLDER_OUTPUTS, img_collection = args
 
     ponto = sel_values[:,:,i]
@@ -219,7 +219,6 @@ def runDetectionForPoint(args, plot_flag=False): # se plot_flag =  False não fa
     # results = ccd.detect(dates, ndvis, greens, reds, nirs, swir1s, swir2s)
     results = ccd.detect(dates, ndvis, greens, swir2s)
     
-    
     predicted_values = []
     prediction_dates = []
     break_dates = []
@@ -240,7 +239,7 @@ def runDetectionForPoint(args, plot_flag=False): # se plot_flag =  False não fa
         coef = result['ndvi']['coefficients']
         coeficientes.append(coef)
         
-        coef_str = f"({coef[0]:.2f}, {coef[1]:.2f}, {coef[2]:.2f}, {coef[3]:.2f}, {coef[4]:.2f}, {coef[5]:.2f}, {coef[6]:.2f})"
+        # coef_str = f"({coef[0]:.2f}, {coef[1]:.2f}, {coef[2]:.2f}, {coef[3]:.2f}, {coef[4]:.2f}, {coef[5]:.2f}, {coef[6]:.2f})"
         
         predicted_values.append(intercept + coef[0] * days +
                                 coef[1]*np.cos(days*1*2*np.pi/365.25) + coef[2]*np.sin(days*1*2*np.pi/365.25) +
@@ -265,86 +264,29 @@ def runDetectionForPoint(args, plot_flag=False): # se plot_flag =  False não fa
     
     ponto_desejado_wgs_x, ponto_desejado_wgs_y = ponto_desejado_wgs
     
+    # dados = [
+    #     {'tBreak': break_dates_epoch,'tEnd': end_dates_epoch,'tStart':start_dates_epoch,'changeProb':prob, 'Lat': ponto_desejado_wgs_y,'Lon': ponto_desejado_wgs_x, 'ndvi_magnitude' : ndvi_magnitudes}
+    # ]
+    
+    # df = pd.DataFrame(dados)
+    
+    # # Reorganizar colunas
+    # ordem_colunas = ['tBreak', 'tEnd', 'tStart', 'changeProb', 'Lat', 'Lon', 'ndvi_magnitude']
+    # df=df[ordem_colunas]
+    
     dados = [
-        {'tBreak': break_dates_epoch,'tEnd': end_dates_epoch,'tStart':start_dates_epoch,'changeProb':prob, 'Lat': ponto_desejado_wgs_y,'Lon': ponto_desejado_wgs_x, 'ndvi_magnitude' : ndvi_magnitudes}
+        {'tBreak': break_dates_epoch, 'tEnd': end_dates_epoch, 'tStart': start_dates_epoch, 'changeProb': prob,
+         'Lat': ponto_desejado_wgs_y, 'Lon': ponto_desejado_wgs_x, 'ndvi_magnitude': ndvi_magnitudes,
+         'ndvis': ndvis.tolist(), 'dates': dates.tolist(), 'prediction_dates': [d.tolist() for d in prediction_dates],
+         'predicted_values': [v.tolist() for v in predicted_values], 'coeficientes': coeficientes, 
+         'mask': np.array(results['processing_mask'], dtype='bool').tolist()}
     ]
     
     df = pd.DataFrame(dados)
     
     # Reorganizar colunas
-    ordem_colunas = ['tBreak', 'tEnd', 'tStart', 'changeProb', 'Lat', 'Lon', 'ndvi_magnitude']
+    ordem_colunas = ['tBreak', 'tEnd', 'tStart', 'changeProb', 'Lat', 'Lon', 'ndvi_magnitude', 'ndvis', 'dates', 
+                      'prediction_dates', 'predicted_values', 'coeficientes', 'mask']
+    
     df=df[ordem_colunas]
-
-    # Se plot_flag = True faz gráficos
-    if plot_flag:
-        # BANDA QUE QUEREMOS PLOTAR NO GRÁFICO
-        variavel_grafico = ndvis
-    
-        mask = np.array(results['processing_mask'], dtype='bool')
-        date_objects1 = [datetime.fromordinal(int(ordinal)) for ordinal in dates]
-        
-        plt.style.use('ggplot')
-        fg = plt.figure(figsize=(14, 4), dpi=90)
-        
-        limite_inicial = datetime.strptime('2018-01-01', '%Y-%m-%d')
-        limite_final = datetime.strptime('2021-12-31', '%Y-%m-%d')
-        
-        a1 = fg.add_subplot(1, 1, 1, xlim=(limite_inicial, limite_final))
-        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d-%m-%Y'))
-        plt.gca().xaxis.set_major_locator(mdates.DayLocator())
-        
-        a1.xaxis.set_major_locator(mdates.YearLocator(1))
-        a1.xaxis.set_major_formatter(mdates.DateFormatter('%d-%m-%Y'))
-        
-        colors = ['orange', 'purple', 'brown']
-        
-        # Predicted curves
-        for idx, (_preddate, _predvalue, _coef) in enumerate(zip(prediction_dates, predicted_values, coeficientes)):
-            # Converter números ordinais de volta para objetos de data
-            _preddate = [datetime.fromordinal(int(ordinal)) for ordinal in _preddate]
-            color = colors[idx % len(colors)]
-            coef_str = f"({', '.join([f'{c:.2f}' for c in _coef])})"
-            label = f'Predicted values {idx + 1} (Coefs: {coef_str})'
-            a1.plot(_preddate, _predvalue, color, linewidth=1, label=label)
-        
-        a1.plot(np.array(date_objects1)[mask], np.array(variavel_grafico)[mask], 'g+',label='Observed values')  # Observed values
-        a1.plot(np.array(date_objects1)[~mask], np.array(variavel_grafico)[~mask], 'g+')  # Observed values masked out
-    
-        ticks = [min(date_objects1) + timedelta(days=i*365) for i in range(10) if min(date_objects1) + timedelta(days=i*365) <= datetime(2021, 12, 31)]
-        plt.xticks(ticks)
-        plt.title('Lat:' + str(round(ponto_desejado_wgs_x, 5)) + ' Lon:' + str(round(ponto_desejado_wgs_y, 5)))
-        
-        a1.plot([], [], color='r', linestyle='--', label='Start dates')
-        a1.plot([], [], color='brown', linestyle='--', label='End Dates')
-        a1.plot([], [], color='b', linestyle='--', label='Break dates')
-        # a1.plot([], [], color='black', linestyle='--', label='DGT Dates')
-        
-        for b in break_dates:
-            b_date = datetime.fromordinal(b)
-            a1.axvline(b_date, color='b', linestyle='--')
-            a1.text(mdates.date2num(b_date)+1, a1.get_ylim()[1], b_date.strftime('%d-%m-%Y'), rotation=90, ha='right',weight='bold', va='top', color='b',size=8)
-        
-        # Linhas verticais para datas de início (color='r')
-        for s in start_dates:
-            s_date = datetime.fromordinal(s)
-            a1.axvline(s_date, color='r', linestyle='--')
-            a1.text(mdates.date2num(s_date) + 1, a1.get_ylim()[0], s_date.strftime('%d-%m-%Y'), rotation=90, ha='right',weight='bold', va='bottom', color='r',size=8)
-        
-        for e in end_dates:
-            e_date = datetime.fromordinal(e)
-            a1.axvline(e_date, color='brown', linestyle='--')
-            a1.text(mdates.date2num(e_date) + 1, a1.get_ylim()[0], e_date.strftime('%d-%m-%Y'), rotation=90, ha='right',weight='bold', va='bottom', color='brown',size=8,alpha=0.6)
- 
-        reference_start_date = datetime.strptime('2018-09-12', '%Y-%m-%d')
-        reference_end_date = datetime.strptime('2021-09-30', '%Y-%m-%d')
-        a1.axvspan(reference_start_date, reference_end_date, facecolor='pink', alpha=0.3,label='Período de Referência')
-
-        plt.ylabel('NDVI')
-        
-        plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.1), fancybox=True, shadow=True, ncol=3)
-        plt.tight_layout()
-        caminho_graficos=os.path.join(FOLDER_OUTPUTS / 'plots' / f'{img_collection}_ccdc_ponto_{i}_{start_dates[0]}_{end_dates[-1]}.png')
-        plt.savefig(caminho_graficos)
-        plt.close()
-
     return df
