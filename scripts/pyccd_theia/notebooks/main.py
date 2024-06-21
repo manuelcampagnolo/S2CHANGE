@@ -55,7 +55,8 @@ num_pixels = N  # Número total de pixels
 batch_size = 10000  # Tamanho do lote
 num_batches = math.ceil(num_pixels / batch_size)  # Número de lotes necessários
 
-bandas_desejadas = [1, 2, 3, 7, 9, 10]
+# bandas_desejadas = [1, 2, 3, 7, 9, 10]
+bandas_desejadas=[1, 2, 3, 7, 10]
 NODATA_VALUE= 65535
 
 ############ PARAMETROS CCD ########################

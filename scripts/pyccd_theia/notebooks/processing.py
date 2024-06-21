@@ -126,21 +126,21 @@ def check_or_initialize_file(output_file, tiles, var, S2_tile, BDR_DGT, N, rando
     Verifica a existência de um arquivo numpy específico e, dependendo dessa verificação,
     realiza diferentes operações para processar dados geoespaciais.
 
-    Inputs:
-    - output_file (str): O caminho do arquivo numpy que será verificado e, se necessário, criado.
-    - tiles (str): O diretório onde os arquivos TIFF (raster) estão localizados.
-    - var (str): A variável que indica a origem dos dados, podendo ser 'THEIA' ou 'GEE'.
-    - S2_tile (str): Identificador da tile de Sentinel-2 a ser processado.
-    - BDR_DGT (GeoDataFrame): Um GeoDataFrame contendo as geometrias que serão processados.
-    - N (int): O número de pontos a serem processados.
-    - random_state_value (int): O valor usado para inicializar o gerador de números aleatórios.
-    - bandas_desejadas (list): A lista de bandas desejadas para o processamento.
-    - FOLDER_OUTPUTS (str): O diretório onde os resultados serão salvos.
-    - img_collection (str): A coleção de imagens a ser utilizada.
-    - NODATA_VALUE (int): O valor a ser usado para representar dados ausentes.
+    Args:
+        - output_file (str): caminho do arquivo numpy que será verificado e, se necessário, criado.
+        - tiles (str): diretório onde os arquivos TIFF (raster) estão localizados.
+        - var (str): variável que indica a origem dos dados, podendo ser 'THEIA' ou 'GEE'.
+        - S2_tile (str): Identificador da tile de Sentinel-2 a ser processado.
+        - BDR_DGT (GeoDataFrame): GeoDataFrame contendo as geometrias que serão processados.
+        - N (int): número de pontos a serem processados.
+        - random_state_value (int): valor usado para inicializar o gerador de números aleatórios.
+        - bandas_desejadas (list): lista de bandas desejadas para o processamento.
+        - FOLDER_OUTPUTS (str): diretório onde os resultados serão salvos.
+        - img_collection (str): coleção de imagens a ser utilizada.
+        - NODATA_VALUE (int): valor a ser usado para representar dados ausentes.
 
     Output:
-    - tif_dates_ord (list): Uma lista de datas no formato ordinal, que pode ser usada para análises temporais subsequentes.
+        - tif_dates_ord (list): lista de datas no formato ordinal.
     """
     
     if os.path.exists(output_file):
@@ -189,43 +189,92 @@ def check_or_initialize_file(output_file, tiles, var, S2_tile, BDR_DGT, N, rando
 
     return tif_dates_ord
 #%%
-def runDetectionForPoint(args): 
-    i,sel_values, dates, xs, ys, NODATA_VALUE, FOLDER_OUTPUTS, img_collection = args
-
-    ponto = sel_values[:,:,i]
-
-    ponto_desejado=xs[i],ys[i]
+def processPointData(args):
+    """
+    Processa os dados de um ponto específico, incluindo a filtragem de NODATA_VALUE e o cálculo do NDVI.
     
+    Args:
+        - i (int): Índice do ponto de interesse.
+        - sel_values (ndarray): Array de valores selecionados.
+        - dates (ndarray): Array de datas.
+        - xs (ndarray): Array de coordenadas x.
+        - ys (ndarray): Array de coordenadas y.
+        - NODATA_VALUE (float): Valor que representa dados ausentes.
+        - FOLDER_OUTPUTS (str): Diretório para salvar os resultados.
+        - img_collection (ndarray): Coleção de imagens Sentinel-2.
+    
+    Returns:
+        - dates (ndarray): Array de datas filtradas.
+        - ndvis (ndarray): Array de valores NDVI.
+        - greens (ndarray): Array de valores da banda verde.
+        - reds (ndarray): Array de valores da banda vermelha.
+        - nirs (ndarray): Array de valores da banda NIR.
+        - swir2s (ndarray): Array de valores da banda SWIR2.
+        - ponto_desejado (tuple): Coordenadas do ponto desejado (x, y).
+    """
+    i, sel_values, dates, xs, ys, NODATA_VALUE, FOLDER_OUTPUTS, img_collection = args
+
+    # Extrair o ponto de interesse
+    ponto = sel_values[:, :, i]
+
+    # Coordenadas do ponto desejado
+    ponto_desejado = xs[i], ys[i]
+    
+    # Combinar datas e valores do ponto numa matriz
     ponto_with_dates = np.column_stack((dates, ponto[:, 0], ponto[:, 1:]))
-    
+
+    # Aplicar máscara para remover NODATA_VALUE
     mask = (ponto_with_dates != NODATA_VALUE).all(axis=1)
     ponto_with_dates_filtered = ponto_with_dates[mask].transpose()
-    
-    dates, blues, greens, reds, nirs, swir1s, swir2s = ponto_with_dates_filtered
-    
+
+    # Separar as bandas e as datas
+    dates, blues, greens, reds, nirs, swir2s = ponto_with_dates_filtered
+
     # Calcular o NDVI
     ndvis = np.where((nirs + reds) > 0, 10000 * (nirs - reds) / (nirs + reds), NODATA_VALUE)
-    
-    ponto_with_dates_filtered[1]=ndvis
-    
-    ponto_with_dates_filtered1=ponto_with_dates_filtered.transpose()
-    
+
+    # Substituir a banda azul pelo NDVI
+    ponto_with_dates_filtered[1] = ndvis
+
+    ponto_with_dates_filtered1 = ponto_with_dates_filtered.transpose()
     ponto_with_dates_filtered2 = ponto_with_dates_filtered1[~np.any(ponto_with_dates_filtered1 == NODATA_VALUE, axis=1)]
+    ponto_with_dates_filtered3 = ponto_with_dates_filtered2.transpose()
+
+    # Separar as bandas e as datas novamente após a filtragem
+    dates, ndvis, greens, reds, nirs, swir2s = ponto_with_dates_filtered3
+
+    return dates, ndvis, greens, reds, nirs, swir2s, ponto_desejado
+#%%
+def runDetectionForPoint(args):
+    """
+    Executa o CCD para um ponto específico.
     
-    ponto_with_dates_filtered3=ponto_with_dates_filtered2.transpose()
-    
-    dates, ndvis, greens, reds, nirs, swir1s, swir2s = ponto_with_dates_filtered3
-    
-    # results = ccd.detect(dates, ndvis, greens, reds, nirs, swir1s, swir2s)
+    Args:
+        - i (int): Índice do ponto de interesse.
+        - sel_values (ndarray): Array de valores selecionados.
+        - dates (ndarray): Array de datas.
+        - xs (ndarray): Array de coordenadas x.
+        - ys (ndarray): Array de coordenadas y.
+        - NODATA_VALUE (float): Valor que representa dados ausentes.
+        - FOLDER_OUTPUTS (str): Diretório para salvar os resultados.
+        - img_collection (ndarray): Coleção de imagens Sentinel-2.
+
+    Returns:
+        - df (DataFrame): DataFrame com os resultados do CCD.
+    """
+    # Processar os dados do ponto
+    dates, ndvis, greens, reds, nirs, swir2s, ponto_desejado = processPointData(args)
+
+    # Executar a detecção de mudanças
     results = ccd.detect(dates, ndvis, greens, swir2s)
     
     predicted_values = []
     prediction_dates = []
     break_dates = []
     start_dates = []
-    end_dates=[]
-    coeficientes=[]
-    prob=[]
+    end_dates = []
+    coeficientes = []
+    prob = []
     
     for num, result in enumerate(results['change_models']):
         days = np.arange(result['start_day'], result['end_day'] + 1)
@@ -238,9 +287,7 @@ def runDetectionForPoint(args):
         intercept = result['ndvi']['intercept']
         coef = result['ndvi']['coefficients']
         coeficientes.append(coef)
-        
-        # coef_str = f"({coef[0]:.2f}, {coef[1]:.2f}, {coef[2]:.2f}, {coef[3]:.2f}, {coef[4]:.2f}, {coef[5]:.2f}, {coef[6]:.2f})"
-        
+
         predicted_values.append(intercept + coef[0] * days +
                                 coef[1]*np.cos(days*1*2*np.pi/365.25) + coef[2]*np.sin(days*1*2*np.pi/365.25) +
                                 coef[3]*np.cos(days*2*2*np.pi/365.25) + coef[4]*np.sin(days*2*2*np.pi/365.25) +
@@ -264,23 +311,11 @@ def runDetectionForPoint(args):
     
     ponto_desejado_wgs_x, ponto_desejado_wgs_y = ponto_desejado_wgs
     
-    # dados = [
-    #     {'tBreak': break_dates_epoch,'tEnd': end_dates_epoch,'tStart':start_dates_epoch,'changeProb':prob, 'Lat': ponto_desejado_wgs_y,'Lon': ponto_desejado_wgs_x, 'ndvi_magnitude' : ndvi_magnitudes}
-    # ]
-    
-    # df = pd.DataFrame(dados)
-    
-    # # Reorganizar colunas
-    # ordem_colunas = ['tBreak', 'tEnd', 'tStart', 'changeProb', 'Lat', 'Lon', 'ndvi_magnitude']
-    # df=df[ordem_colunas]
-    
-    dados = [
-        {'tBreak': break_dates_epoch, 'tEnd': end_dates_epoch, 'tStart': start_dates_epoch, 'changeProb': prob,
+    dados = [{'tBreak': break_dates_epoch, 'tEnd': end_dates_epoch, 'tStart': start_dates_epoch, 'changeProb': prob,
          'Lat': ponto_desejado_wgs_y, 'Lon': ponto_desejado_wgs_x, 'ndvi_magnitude': ndvi_magnitudes,
          'ndvis': ndvis.tolist(), 'dates': dates.tolist(), 'prediction_dates': [d.tolist() for d in prediction_dates],
          'predicted_values': [v.tolist() for v in predicted_values], 'coeficientes': coeficientes, 
-         'mask': np.array(results['processing_mask'], dtype='bool').tolist()}
-    ]
+         'mask': np.array(results['processing_mask'], dtype='bool').tolist()}]
     
     df = pd.DataFrame(dados)
     
@@ -288,5 +323,5 @@ def runDetectionForPoint(args):
     ordem_colunas = ['tBreak', 'tEnd', 'tStart', 'changeProb', 'Lat', 'Lon', 'ndvi_magnitude', 'ndvis', 'dates', 
                       'prediction_dates', 'predicted_values', 'coeficientes', 'mask']
     
-    df=df[ordem_colunas]
+    df = df[ordem_colunas]
     return df
