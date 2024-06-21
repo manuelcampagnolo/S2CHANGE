@@ -1,7 +1,5 @@
 import os
 user_profile = os.environ['USERPROFILE']
-import logging
-
 directory_path = os.path.join(user_profile, 'Desktop', 'CCD_yml_win')
 os.chdir(directory_path)
 import geopandas as gpd
@@ -16,20 +14,15 @@ if module_path not in sys.path:
     sys.path.append(str(module_path))
 import ccd
 from notebooks.avaliacao_exatidao_pyccd import filterDate, spatialJoin, preprocessCsvS2, valPol
-from notebooks.read_files import read_tif_files_theia, read_tif_files_gee, get_most_recent_file, readPoints
-from notebooks.processing import getTimeSeriesForPoints, runDetectionForPoint, processar_centros_pixeis
+from notebooks.processing import check_or_initialize_file, runDetectionForPoint
 from notebooks.utils import fromParamsReturnName
 from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor
 import warnings
 warnings.filterwarnings('ignore')
-import time
 import numpy as np
 import math
 import os
-from datetime import datetime, timedelta
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
 #%%
 ############ INPUTS ######################
 public_documents = Path('C:/Users/Public/Documents/')
@@ -37,15 +30,6 @@ public_documents = Path('C:/Users/Public/Documents/')
 BDR_DGT = public_documents / 'BDR_300_artigo' / 'BDR_CCDC_TNE_Adjusted.shp' # Caminho para a base de dados de validação
 # -> BDR NAVIGATOR:
 # BDR_NAVIGATOR = .... caminho ainda não definido
-
-############ PARAMETROS PRÉ PROCESSAMENTO ########################
-# N=241941 # numero total de pontos presentes na BDR
-N = 100000 # número de pontos aleatórios
-random_state_value = 42
-
-num_pixels = N  # Número total de pixels
-batch_size = 10000  # Tamanho do lote
-num_batches = math.ceil(num_pixels / batch_size)  # Número de lotes necessários
 
 # -> IMAGENS SENTINEL:
 FOLDER_THEIA = public_documents / 'imagens_Theia' # Caminho dados THEIA
@@ -59,6 +43,16 @@ if var == 'THEIA':
 else:
     tiles = FOLDER_GEE / S2_tile
 img_collection = tiles.parts[-2]
+
+############ PARAMETROS PRÉ PROCESSAMENTO ########################
+# N=241941 # numero total de pontos presentes na BDR
+N = 10000 # número de pontos aleatórios
+random_state_value = 42
+
+num_pixels = N  # Número total de pixels
+batch_size = 10000  # Tamanho do lote
+num_batches = math.ceil(num_pixels / batch_size)  # Número de lotes necessários
+
 bandas_desejadas = [1, 2, 3, 7, 9, 10]
 NODATA_VALUE= 65535
 
@@ -79,74 +73,6 @@ bandFilter = None #não implementado ainda - não mexer
 ############ OUTPUTS ######################
 FOLDER_OUTPUTS = public_documents / 'output_BDR300'
 output_file = f"{var}_sel_values_N{N}_RS{random_state_value}.npy" # ficheiro numpy (matriz) dos dados (nr de imagens x nr de bandas x nr de pontos)
-#%%
-def check_or_initialize_file(output_file, tiles, var, S2_tile, BDR_DGT, N, random_state_value, bandas_desejadas, FOLDER_OUTPUTS, img_collection, NODATA_VALUE):
-    """
-    Verifica a existência de um arquivo numpy específico e, dependendo dessa verificação,
-    realiza diferentes operações para processar dados geoespaciais.
-
-    Inputs:
-    - output_file (str): O caminho do arquivo numpy que será verificado e, se necessário, criado.
-    - tiles (str): O diretório onde os arquivos TIFF (raster) estão localizados.
-    - var (str): A variável que indica a origem dos dados, podendo ser 'THEIA' ou 'GEE'.
-    - S2_tile (str): Identificador da tile de Sentinel-2 a ser processado.
-    - BDR_DGT (GeoDataFrame): Um GeoDataFrame contendo as geometrias que serão processados.
-    - N (int): O número de pontos a serem processados.
-    - random_state_value (int): O valor usado para inicializar o gerador de números aleatórios.
-    - bandas_desejadas (list): A lista de bandas desejadas para o processamento.
-    - FOLDER_OUTPUTS (str): O diretório onde os resultados serão salvos.
-    - img_collection (str): A coleção de imagens a ser utilizada.
-    - NODATA_VALUE (int): O valor a ser usado para representar dados ausentes.
-
-    Output:
-    - tif_dates_ord (list): Uma lista de datas no formato ordinal, que pode ser usada para análises temporais subsequentes.
-    """
-    
-    if os.path.exists(output_file):
-        # Se o arquivo numpy existe, apenas carregar e processar os dados
-        print(f"O arquivo '{output_file}' já existe. Carregando e processando os dados existentes...")
-        # Recolher nome e data dos tifs
-        print('A recolher nome e data dos tifs...')
-        if var == 'THEIA':
-            tif_names, tif_dates = read_tif_files_theia(S2_tile, tiles)
-        else:
-            tif_names, tif_dates = read_tif_files_gee(S2_tile, tiles)
-        tif_names = [os.path.join(tiles, i) for i in tif_names]
-        tif_dates_ord = [d.toordinal() for d in tif_dates]
-    else:
-        # Se o arquivo numpy não existe, executar todo o processamento inicial de criar o ficheiro numpy
-        print(f"O arquivo '{output_file}' não existe. Iniciando processamento...")
-        
-        # Processar centros dos pontos de cada geometria para corresponder aos centros dos pixels dos rasters
-        raster_path = tiles / 'Theia_T29TNE_20170813-112433.tif'
-        print('Processar centros dos pontos de cada geometria para corresponder aos centros dos pixels dos rasters...')
-        start_time = time.time()
-        gdf_centros_pixeis = processar_centros_pixeis(BDR_DGT, raster_path)
-        end_time = time.time()
-        execution_time_seconds = end_time - start_time
-        execution_time_minutes = execution_time_seconds / 60
-        print("Processar centros dos pixels:", execution_time_minutes, "minutos")
-        dados_geoespaciais_metros = readPoints(gdf_centros_pixeis, N, random_state_value)
-        # Recolher nome e data dos tifs
-        print('A recolher nome e data dos tifs...')
-        if var == 'THEIA':
-            tif_names, tif_dates = read_tif_files_theia(S2_tile, tiles)
-        else:
-            tif_names, tif_dates = read_tif_files_gee(S2_tile, tiles)
-        tif_names = [os.path.join(tiles, i) for i in tif_names]
-        tif_dates_ord = [d.toordinal() for d in tif_dates]
-        print(f'Processando dados {var}... ({tiles})')
-        start_time = time.time()
-        # Abrir tifs com xarray e carregar série temporal
-        print('A abrir tifs com xarray e carregar série temporal...')
-        getTimeSeriesForPoints(tif_names, tif_dates_ord, bandas_desejadas, dados_geoespaciais_metros, output_file)
-        
-        end_time = time.time()
-        execution_time_seconds = end_time - start_time
-        execution_time_minutes = execution_time_seconds / 60
-        print(f"Ler dados {var} para um total de {N} pixels:", execution_time_minutes, "minutos")
-
-    return tif_dates_ord
 #%%
 def main(batch_size=None):
     # Definir o nome do arquivo numpy e outras variáveis necessárias
@@ -276,18 +202,11 @@ def main(batch_size=None):
 #%%
 def runValidation():
     print('A correr validação dos resultados do ccd...')
-    #gerar nome do ficheiro a partir dos parametros de execucao
     filename = fromParamsReturnName(img_collection, ccd_params, (S2_tile,tiles), N, random_state_value)
-    #pegar data do fim da serie temporal (ultima imagem)
-    reference_index = filename.find('END')
-    end_of_series = filename[reference_index + 3 : reference_index + 11]
-    year, month, day = [end_of_series[:4], end_of_series[4:6], end_of_series[6:]]
-    end_of_series = f"{year}-{month}-{day}"
-
 
     csv_s2 = pd.read_csv(FOLDER_OUTPUTS / 'tabular' / '{}.csv'.format(filename))
     #correr pre-processamento
-    csv_s2 = preprocessCsvS2(csv_s2, end_of_series)
+    csv_s2 = preprocessCsvS2(csv_s2)
     csv_preprocessed_path = '{}_pre_proc.csv'.format(filename)
     csv_s2.to_csv(csv_preprocessed_path)
     

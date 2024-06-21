@@ -3,20 +3,31 @@ import rioxarray
 import numpy as np
 from datetime import datetime, timezone, timedelta
 import pandas as pd
-from notebooks.read_files import convertPointToCrs
 import ccd
 from rasterio.features import geometry_window
 from shapely.geometry import Point
 import rasterio
 import geopandas as gpd
+import os
+import time
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-import os
-import dask
-import dask.array as da
-from rasterio.windows import Window
+from notebooks.read_files import read_tif_files_theia, read_tif_files_gee, readPoints, convertPointToCrs
 #%%
 def processar_centros_pixeis(shapefile_path, raster_path):
+    """
+    A função processar_centros_pixeis é responsável por calcular os centros dos pixels dentro das geometrias
+    de um shapefile específico, com base num raster fornecido. Para cada polígono no shapefile, a função 
+    calcula as coordenadas dos centros dos pixels dentro dessa área, retornando um GeoDataFrame que contem esses pontos.
+    
+    Inputs:
+    - shapefile_path (str): O caminho do arquivo shapefile que contém as geometrias dos polígonos.
+    - raster_path (str): O caminho do arquivo raster que será usado para calcular os centros dos pixels.
+    
+    Outputs:
+    - gdf_centros_pixeis (GeoDataFrame): Um GeoDataFrame que contem as coordenadas dos centros dos pixels 
+      dentro das geometrias do shapefile.
+    """
     # Carregar o shapefile
     poligonos = gpd.read_file(shapefile_path)
     caminho_raster = raster_path
@@ -88,10 +99,6 @@ def processar_centros_pixeis(shapefile_path, raster_path):
 #     return sel_values, dates, xs, ys
 
 def getTimeSeriesForPoints(tif_names, tif_dates_ord, bandas_desejadas, dados_geoespaciais_metros, output_file):
-    '''
-    inputs:
-    tif_names: list..
-    '''
     time_var = xr.Variable('time',tif_dates_ord)
     # Load in and concatenate all individual GeoTIFFs
     tifs_xr = [rioxarray.open_rasterio(i, chunks={'x':-1, 'y':-1}) for i in tif_names]
@@ -113,6 +120,74 @@ def getTimeSeriesForPoints(tif_names, tif_dates_ord, bandas_desejadas, dados_geo
     np.save(output_file, sel_values)
 
     return dates
+#%%
+def check_or_initialize_file(output_file, tiles, var, S2_tile, BDR_DGT, N, random_state_value, bandas_desejadas, FOLDER_OUTPUTS, img_collection, NODATA_VALUE):
+    """
+    Verifica a existência de um arquivo numpy específico e, dependendo dessa verificação,
+    realiza diferentes operações para processar dados geoespaciais.
+
+    Inputs:
+    - output_file (str): O caminho do arquivo numpy que será verificado e, se necessário, criado.
+    - tiles (str): O diretório onde os arquivos TIFF (raster) estão localizados.
+    - var (str): A variável que indica a origem dos dados, podendo ser 'THEIA' ou 'GEE'.
+    - S2_tile (str): Identificador da tile de Sentinel-2 a ser processado.
+    - BDR_DGT (GeoDataFrame): Um GeoDataFrame contendo as geometrias que serão processados.
+    - N (int): O número de pontos a serem processados.
+    - random_state_value (int): O valor usado para inicializar o gerador de números aleatórios.
+    - bandas_desejadas (list): A lista de bandas desejadas para o processamento.
+    - FOLDER_OUTPUTS (str): O diretório onde os resultados serão salvos.
+    - img_collection (str): A coleção de imagens a ser utilizada.
+    - NODATA_VALUE (int): O valor a ser usado para representar dados ausentes.
+
+    Output:
+    - tif_dates_ord (list): Uma lista de datas no formato ordinal, que pode ser usada para análises temporais subsequentes.
+    """
+    
+    if os.path.exists(output_file):
+        # Se o arquivo numpy existe, apenas carregar e processar os dados
+        print(f"O arquivo '{output_file}' já existe. Carregando e processando os dados existentes...")
+        # Recolher nome e data dos tifs
+        print('A recolher nome e data dos tifs...')
+        if var == 'THEIA':
+            tif_names, tif_dates = read_tif_files_theia(S2_tile, tiles)
+        else:
+            tif_names, tif_dates = read_tif_files_gee(S2_tile, tiles)
+        tif_names = [os.path.join(tiles, i) for i in tif_names]
+        tif_dates_ord = [d.toordinal() for d in tif_dates]
+    else:
+        # Se o arquivo numpy não existe, executar todo o processamento inicial de criar o ficheiro numpy
+        print(f"O arquivo '{output_file}' não existe. Iniciando processamento...")
+        
+        # Processar centros dos pontos de cada geometria para corresponder aos centros dos pixels dos rasters
+        raster_path = tiles / 'Theia_T29TNE_20170813-112433.tif'
+        print('Processar centros dos pontos de cada geometria para corresponder aos centros dos pixels dos rasters...')
+        start_time = time.time()
+        gdf_centros_pixeis = processar_centros_pixeis(BDR_DGT, raster_path)
+        end_time = time.time()
+        execution_time_seconds = end_time - start_time
+        execution_time_minutes = execution_time_seconds / 60
+        print("Processar centros dos pixels:", execution_time_minutes, "minutos")
+        dados_geoespaciais_metros = readPoints(gdf_centros_pixeis, N, random_state_value)
+        # Recolher nome e data dos tifs
+        print('A recolher nome e data dos tifs...')
+        if var == 'THEIA':
+            tif_names, tif_dates = read_tif_files_theia(S2_tile, tiles)
+        else:
+            tif_names, tif_dates = read_tif_files_gee(S2_tile, tiles)
+        tif_names = [os.path.join(tiles, i) for i in tif_names]
+        tif_dates_ord = [d.toordinal() for d in tif_dates]
+        print(f'Processando dados {var}... ({tiles})')
+        start_time = time.time()
+        # Abrir tifs com xarray e carregar série temporal
+        print('A abrir tifs com xarray e carregar série temporal...')
+        getTimeSeriesForPoints(tif_names, tif_dates_ord, bandas_desejadas, dados_geoespaciais_metros, output_file)
+        
+        end_time = time.time()
+        execution_time_seconds = end_time - start_time
+        execution_time_minutes = execution_time_seconds / 60
+        print(f"Ler dados {var} para um total de {N} pixels:", execution_time_minutes, "minutos")
+
+    return tif_dates_ord
 #%%
 def runDetectionForPoint(args, plot_flag=False): # se plot_flag =  False não faz gráficos se True faz gráficos
     i,sel_values, dates, xs, ys, NODATA_VALUE, FOLDER_OUTPUTS, img_collection = args
