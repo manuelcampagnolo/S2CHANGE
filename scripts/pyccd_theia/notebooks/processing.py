@@ -1,7 +1,7 @@
 import xarray as xr
 import rioxarray
 import numpy as np
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 import pandas as pd
 import ccd
 from rasterio.features import geometry_window
@@ -10,8 +10,6 @@ import rasterio
 import geopandas as gpd
 import os
 import time
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
 from notebooks.read_files import read_tif_files_theia, read_tif_files_gee, readPoints, convertPointToCrs
 #%%
 def processar_centros_pixeis(shapefile_path, raster_path):
@@ -20,11 +18,11 @@ def processar_centros_pixeis(shapefile_path, raster_path):
     de um shapefile específico, com base num raster fornecido. Para cada polígono no shapefile, a função 
     calcula as coordenadas dos centros dos pixels dentro dessa área, retornando um GeoDataFrame que contem esses pontos.
     
-    Inputs:
+    Args:
     - shapefile_path (str): O caminho do arquivo shapefile que contém as geometrias dos polígonos.
     - raster_path (str): O caminho do arquivo raster que será usado para calcular os centros dos pixels.
     
-    Outputs:
+    Returns:
     - gdf_centros_pixeis (GeoDataFrame): Um GeoDataFrame que contem as coordenadas dos centros dos pixels 
       dentro das geometrias do shapefile.
     """
@@ -79,25 +77,6 @@ def processar_centros_pixeis(shapefile_path, raster_path):
     
     return gdf_centros_pixeis
 #%%
-# def getTimeSeriesForPoints(tif_names, tif_dates_ord, bandas_desejadas, dados_geoespaciais_metros):
-
-#     time_var = xr.Variable('time',tif_dates_ord)
-#     # Load in and concatenate all individual GeoTIFFs
-#     tifs_xr = [rioxarray.open_rasterio(i, chunks={'x':10924, 'y':10900}) for i in tif_names]
-#     geotiffs_da = xr.concat(tifs_xr, dim=time_var).sel(band=bandas_desejadas)
-
-#     # COORDENADAS X E Y DOS 10 000 PONTOS ESCOLHIDOS
-#     points_x_int = xr.DataArray(np.round(dados_geoespaciais_metros.geometry.x.values).astype('int'), dims=['location'])
-#     points_y_int = xr.DataArray(np.round(dados_geoespaciais_metros.geometry.y.values).astype('int'), dims=['location'])
-
-#     selection = geotiffs_da.sel(x=points_x_int, y=points_y_int, band=bandas_desejadas)
-#     dates = selection.time
-#     xs = selection.x
-#     ys = selection.y
-#     sel_values = selection.values
-
-#     return sel_values, dates, xs, ys
-
 def getTimeSeriesForPoints(tif_names, tif_dates_ord, bandas_desejadas, dados_geoespaciais_metros, output_file):
     time_var = xr.Variable('time',tif_dates_ord)
     # Load in and concatenate all individual GeoTIFFs
@@ -139,7 +118,7 @@ def check_or_initialize_file(output_file, tiles, var, S2_tile, BDR_DGT, N, rando
         - img_collection (str): coleção de imagens a ser utilizada.
         - NODATA_VALUE (int): valor a ser usado para representar dados ausentes.
 
-    Output:
+    Returns:
         - tif_dates_ord (list): lista de datas no formato ordinal.
     """
     
@@ -154,6 +133,7 @@ def check_or_initialize_file(output_file, tiles, var, S2_tile, BDR_DGT, N, rando
             tif_names, tif_dates = read_tif_files_gee(S2_tile, tiles)
         tif_names = [os.path.join(tiles, i) for i in tif_names]
         tif_dates_ord = [d.toordinal() for d in tif_dates]
+
     else:
         # Se o arquivo numpy não existe, executar todo o processamento inicial de criar o ficheiro numpy
         print(f"O arquivo '{output_file}' não existe. Iniciando processamento...")
@@ -195,7 +175,7 @@ def processPointData(args):
     
     Args:
         - i (int): Índice do ponto de interesse.
-        - sel_values (ndarray): Array de valores selecionados.
+        - sel_values (3D array): 3D-Array de valores selecionados (numero de imagens x numero de bandas x batch_size).
         - dates (ndarray): Array de datas.
         - xs (ndarray): Array de coordenadas x.
         - ys (ndarray): Array de coordenadas y.
@@ -212,7 +192,7 @@ def processPointData(args):
         - swir2s (ndarray): Array de valores da banda SWIR2.
         - ponto_desejado (tuple): Coordenadas do ponto desejado (x, y).
     """
-    i, sel_values, dates, xs, ys, NODATA_VALUE, FOLDER_OUTPUTS, img_collection = args
+    i, sel_values, dates, xs, ys, NODATA_VALUE, MAX_VALUE_NDVI, FOLDER_OUTPUTS, CRS_THEIA, CRS_WGS84, img_collection = args
 
     # Extrair o ponto de interesse
     ponto = sel_values[:, :, i]
@@ -231,7 +211,7 @@ def processPointData(args):
     dates, blues, greens, reds, nirs, swir2s = ponto_with_dates_filtered
 
     # Calcular o NDVI
-    ndvis = np.where((nirs + reds) > 0, 10000 * (nirs - reds) / (nirs + reds), NODATA_VALUE)
+    ndvis = np.where((nirs + reds) > 0, MAX_VALUE_NDVI * (nirs - reds) / (nirs + reds), NODATA_VALUE)
 
     # Substituir a banda azul pelo NDVI
     ponto_with_dates_filtered[1] = ndvis
@@ -243,7 +223,7 @@ def processPointData(args):
     # Separar as bandas e as datas novamente após a filtragem
     dates, ndvis, greens, reds, nirs, swir2s = ponto_with_dates_filtered3
 
-    return dates, ndvis, greens, reds, nirs, swir2s, ponto_desejado
+    return dates, ndvis, greens, reds, nirs, swir2s, ponto_desejado, NODATA_VALUE, CRS_THEIA, CRS_WGS84
 #%%
 def runDetectionForPoint(args):
     """
@@ -263,11 +243,32 @@ def runDetectionForPoint(args):
         - df (DataFrame): DataFrame com os resultados do CCD.
     """
     # Processar os dados do ponto
-    dates, ndvis, greens, reds, nirs, swir2s, ponto_desejado = processPointData(args)
+    dates, ndvis, greens, reds, nirs, swir2s, ponto_desejado, NODATA_VALUE, CRS_THEIA, CRS_WGS84 = processPointData(args)
 
     # Executar a detecção de mudanças
     results = ccd.detect(dates, ndvis, greens, swir2s)
-    
+
+    # Chamar a função auxiliar para processar os resultados
+    df = process_detection_results(results, dates, ndvis, ponto_desejado, NODATA_VALUE, CRS_THEIA, CRS_WGS84)
+
+    return df
+#%%
+def process_detection_results(results, dates, ndvis, ponto_desejado, NODATA_VALUE, CRS_THEIA, CRS_WGS84):
+    """
+    Processa os resultados da detecção de mudanças para um ponto específico.
+
+    Args:
+        - results (dict): Resultados da detecção de mudanças, esperado como um dicionário com 'change_models' e 'processing_mask'.
+        - dates (ndarray): Array de datas.
+        - ndvis (ndarray): Array de valores NDVI.
+        - ponto_desejado (tuple): Coordenadas do ponto desejado.
+        - NODATA_VALUE (float): Valor que representa dados ausentes.
+        - CRS_THEIA (str): Sistema de coordenadas de referência (THEIA).
+        - CRS_WGS84 (str): Sistema de coordenadas de referência (WGS84).
+
+    Returns:
+        - df (DataFrame): DataFrame que contém os resultados processados da detecção de mudanças.
+    """
     predicted_values = []
     prediction_dates = []
     break_dates = []
@@ -296,7 +297,7 @@ def runDetectionForPoint(args):
     ndvi_magnitudes = [predicted_values[num][-1] - predicted_values[num + 1][0] for num in range(len(predicted_values) - 1)]
     
     # Se não houver mais segmentos a seguir adiciona NODATA_VALUE se só existir um segmento adiciona 0
-    ndvi_magnitudes.append(65535 if ndvi_magnitudes and any(ndvi_magnitudes) else 0)
+    ndvi_magnitudes.append(NODATA_VALUE if ndvi_magnitudes and any(ndvi_magnitudes) else 0)
     
     datas = [datetime.fromordinal(data) for data in break_dates]
     break_dates_epoch = [int(data.replace(tzinfo=timezone.utc).timestamp() * 1000) for data in datas]
@@ -307,21 +308,20 @@ def runDetectionForPoint(args):
     datas = [datetime.fromordinal(data) for data in end_dates]
     end_dates_epoch = [int(data.replace(tzinfo=timezone.utc).timestamp() * 1000) for data in datas]
     
-    ponto_desejado_wgs = convertPointToCrs(ponto_desejado, 32629, 4326)
-    
+    ponto_desejado_wgs = convertPointToCrs(ponto_desejado, CRS_THEIA, CRS_WGS84)
     ponto_desejado_wgs_x, ponto_desejado_wgs_y = ponto_desejado_wgs
     
     dados = [{'tBreak': break_dates_epoch, 'tEnd': end_dates_epoch, 'tStart': start_dates_epoch, 'changeProb': prob,
-         'Lat': ponto_desejado_wgs_y, 'Lon': ponto_desejado_wgs_x, 'ndvi_magnitude': ndvi_magnitudes,
-         'ndvis': ndvis.tolist(), 'dates': dates.tolist(), 'prediction_dates': [d.tolist() for d in prediction_dates],
-         'predicted_values': [v.tolist() for v in predicted_values], 'coeficientes': coeficientes, 
-         'mask': np.array(results['processing_mask'], dtype='bool').tolist()}]
+              'Lat': ponto_desejado_wgs_y, 'Lon': ponto_desejado_wgs_x, 'ndvi_magnitude': ndvi_magnitudes,
+              'ndvis': ndvis.tolist(), 'dates': dates.tolist(), 'prediction_dates': [d.tolist() for d in prediction_dates],
+              'predicted_values': [v.tolist() for v in predicted_values], 'coeficientes': coeficientes, 
+              'mask': np.array(results['processing_mask'], dtype='bool').tolist()}]
     
     df = pd.DataFrame(dados)
     
     # Reorganizar colunas
     ordem_colunas = ['tBreak', 'tEnd', 'tStart', 'changeProb', 'Lat', 'Lon', 'ndvi_magnitude', 'ndvis', 'dates', 
-                      'prediction_dates', 'predicted_values', 'coeficientes', 'mask']
+                     'prediction_dates', 'predicted_values', 'coeficientes', 'mask']
     
     df = df[ordem_colunas]
     return df

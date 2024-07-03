@@ -23,6 +23,70 @@ warnings.filterwarnings('ignore')
 import numpy as np
 import math
 import os
+
+# Working directory (DADOS):
+# |----FOLDER PUBLIC DOCUMENTS
+#    |---- SUBFOLDER BDR
+#    |---- SUBFOLDER IMAGENS GEE
+#         |---- folder T29TNE
+#              |---- files.tif
+#    |---- SUBFOLDER IMAGENS THEIA
+#         |---- folder T29TNE
+#              |---- files.tif
+#    |---- SUBFOLDER output_BDR300
+#         |---- folder numpy
+#              |---- files.npy
+#         |---- folder plots
+#              |---- plots.png
+#         |---- folder tabular (csv e validação)
+#              |---- files.csv
+
+# Working directory (PyCCD):
+# |----FOLDER CCD_yml_win
+#    |---- SUBFOLDER scripts
+#    |---- SUBFOLDER pyccd_theia
+#         |---- SUBFOLDER ccd
+#              |---- SUBFOLDER models
+#                   |---- __init__.py
+#                   |---- lasso.py
+#                   |---- robust_fit.py
+#                   |---- tmask.py
+#              |---- __init__.py
+#              |---- app.py
+#              |---- change.py
+#              |---- math_utils.py
+#              |---- parameters.py
+#              |---- procedures.py
+#              |---- qa.py
+#              |---- version.py
+#         |---- SUBFOLDER notebooks 
+#              |---- addNewImageToFile.py
+#              |---- avaliacao_exatidao_pyccd.py
+#              |---- main.py (** ficheiro principal **)
+#              |---- plot.py
+#              |---- processing.py
+#              |---- read_files.py
+#              |---- utils.py
+#%%
+# OPÇÕES:
+############ PARAMETROS PRÉ PROCESSAMENTO ########################
+var = 'THEIA' # choose variable: THEIA or GEE
+S2_tile = 'T29TNE' # escolher o tile S2
+
+# N=241941 # numero total de pontos presentes na BDR
+N = 100000 # número de pontos aleatórios
+random_state_value = 42
+
+num_pixels = N  # Número total de pixels
+batch_size = 10000  # Tamanho do lote
+num_batches = math.ceil(num_pixels / batch_size)  # Número de lotes necessários
+
+bandas_desejadas = [1, 2, 3, 7, 10]
+NODATA_VALUE = 65535
+MAX_VALUE_NDVI = 10000
+
+EXECUTAR_PLOT = False # (false para não fazer; true para fazer)
+ROW_INDEX = 1 # plot para uma linha do CSV (escolher a linha no row_index)
 #%%
 ############ INPUTS ######################
 # Caminho onde estão os dados todos
@@ -37,8 +101,12 @@ BDR_DGT = public_documents / 'BDR_300_artigo' / 'BDR_CCDC_TNE_Adjusted.shp'
 FOLDER_THEIA = public_documents / 'imagens_Theia' # Caminho dados THEIA
 FOLDER_GEE = public_documents / 'imagens_GEE' # Caminho dados GEE
 
-S2_tile = 'T29TNE'
-var = 'THEIA' # choose variable: THEIA or GEE
+# OUTPUT BDR_300
+FOLDER_OUTPUTS = public_documents / 'output_BDR300'
+FOLDER_NPY = FOLDER_OUTPUTS / 'numpy'
+FOLDER_PLOTS = FOLDER_OUTPUTS / 'plots'
+FOLDER_CSV = FOLDER_OUTPUTS / 'tabular'
+
 
 if var == 'THEIA':
     tiles = FOLDER_THEIA / S2_tile
@@ -46,18 +114,8 @@ else:
     tiles = FOLDER_GEE / S2_tile
 img_collection = tiles.parts[-2]
 
-############ PARAMETROS PRÉ PROCESSAMENTO ########################
-# N=241941 # numero total de pontos presentes na BDR
-N = 10000 # número de pontos aleatórios
-random_state_value = 42
-
-num_pixels = N  # Número total de pixels
-batch_size = 10000  # Tamanho do lote
-num_batches = math.ceil(num_pixels / batch_size)  # Número de lotes necessários
-
-# bandas_desejadas = [1, 2, 3, 7, 9, 10]
-bandas_desejadas=[1, 2, 3, 7, 10]
-NODATA_VALUE= 65535
+CRS_THEIA = 32629
+CRS_WGS84 = 4326
 
 ############ PARAMETROS CCD ########################
 alpha = ccd.parameters.defaults['ALPHA'] # Looks for alpha in the parameters.py file
@@ -77,16 +135,11 @@ bandFilter = None #não implementado ainda - não mexer
 filename = fromParamsReturnName(img_collection, ccd_params, (S2_tile, tiles), N, random_state_value)
 
 ############ OUTPUTS ######################
-FOLDER_OUTPUTS = public_documents / 'output_BDR300'
-output_file = FOLDER_OUTPUTS / 'numpy' / "{}.npy".format(filename) # ficheiro numpy (matriz) dos dados (nr de imagens x nr de bandas x nr de pontos)
+output_file = FOLDER_NPY / "{}.npy".format(filename) # ficheiro numpy (matriz) dos dados (nr de imagens x nr de bandas x nr total de pontos)
 #%%
 def main(batch_size=None):
-    # Definir o nome do arquivo numpy e outras variáveis necessárias
-    # output_file = f"{var}_sel_values_N{N}_RS{random_state_value}"  # Nome do arquivo numpy
-    
-    # Verificar a existência do arquivo e inicializar ou carregar os dados
+    # Verificar a existência do arquivo .npy e inicializar ou carregar os dados
     tif_dates_ord = check_or_initialize_file(output_file, tiles, var, S2_tile, BDR_DGT, N, random_state_value, bandas_desejadas, FOLDER_OUTPUTS, img_collection, NODATA_VALUE)
-    
     # Carregar os dados numpy para o processamento em lotes
     sel_values = np.load(output_file, mmap_mode='r')
 
@@ -106,8 +159,8 @@ def main(batch_size=None):
             xs_slice = xs[start_index:end_index]
             ys_slice = ys[start_index:end_index]
             
-            # Criar argumentos para cada lote de pontos
-            arg_list = [(i, sel_values_block, tif_dates_ord, xs_slice, ys_slice, NODATA_VALUE, FOLDER_OUTPUTS, img_collection) for i in range(sel_values_block.shape[2])]
+            # Criar argumentos para cada lote de 10 000 pontos
+            arg_list = [(i, sel_values_block, tif_dates_ord, xs_slice, ys_slice, NODATA_VALUE, MAX_VALUE_NDVI, FOLDER_OUTPUTS, CRS_THEIA, CRS_WGS84, img_collection) for i in range(sel_values_block.shape[2])]
             
             # Mapear os resultados usando executor.map
             for result_df in executor.map(runDetectionForPoint, arg_list):
@@ -119,97 +172,11 @@ def main(batch_size=None):
     # Concatenar os resultados de todos os lotes em um único DataFrame
     if dfs:
         result_df = pd.concat(dfs, ignore_index=True)
-        result_df.to_csv(FOLDER_OUTPUTS / 'tabular' / '{}.csv'.format(filename), index=False)
-#%%
-# Função para fazer o plot para uma linha do CSV (escolher a linha no row_index)
-# row_index=1
-# plotFromCSV(FOLDER_OUTPUTS / 'tabular' / '{}.csv'.format(filename), row_index, save_dir=FOLDER_OUTPUTS / 'plots' / '{}_RowIndex{}.png'.format(filename, row_index))
+        result_df.to_csv(FOLDER_CSV / '{}.csv'.format(filename), index=False)
+    
+    if EXECUTAR_PLOT:
+        plotFromCSV(FOLDER_CSV / '{}.csv'.format(filename), ROW_INDEX, save_dir=FOLDER_PLOTS / '{}_RowIndex{}.png'.format(filename, ROW_INDEX))
 #%%
 if __name__ == '__main__':
     main(batch_size)
     runValidation(filename, FOLDER_OUTPUTS, BDR_DGT, dt_ini, dt_end, bandFilter, theta)
-#%%
-# def main(batch_size=None):
-#     #abre geopackage com pontos
-#     # print('A abrir o geopackage com pontos...')
-#     raster_path = tiles / 'Theia_T29TNE_20170813-112433.tif'
-    
-#     print('Processar centros dos pontos de cada geometria para corresponder aos centros dos pixels dos rasters...')
-    
-#     start_time = time.time()
-
-#     gdf_centros_pixeis = processar_centros_pixeis(BDR_DGT, raster_path)
-    
-#     # Fim da execução do código
-#     end_time = time.time()
-
-#     # Calcula o tempo decorrido em segundos
-#     execution_time_seconds = end_time - start_time
-
-#     # Converte o tempo decorrido para minutos
-#     execution_time_minutes = execution_time_seconds / 60
-
-#     print("Processar centros dos pixels:", execution_time_minutes, "minutos")
-    
-#     dados_geoespaciais_metros = readPoints(gdf_centros_pixeis, N, random_state_value)
-
-#     #recolhe nome dos tifs e respetivas datas
-#     print('A recolher nome e data dos tifs...')
-    
-#     if var=='THEIA':
-#         tif_names, tif_dates = read_tif_files_theia(S2_tile,tiles)
-#     else:
-#         tif_names, tif_dates = read_tif_files_gee(S2_tile,tiles)
-        
-#     #add full path to tif names
-#     tif_names = [os.path.join(tiles,i) for i in tif_names]
-#     #convert dates to ordinal
-#     tif_dates_ord = [d.toordinal() for d in tif_dates]
-    
-#     print(f'Processando dados {var}... ({tiles})')
-#     start_time = time.time()
-#     #abre tifs com xarray e armazena informacao
-#     print('A abrir tifs com xarray e carregar série temporal...')
-
-#     dates = getTimeSeriesForPoints(tif_names, tif_dates_ord, bandas_desejadas, dados_geoespaciais_metros, output_file)
-
-#     # Fim da execução do código
-#     end_time = time.time()
-
-#     # Calcula o tempo decorrido em segundos
-#     execution_time_seconds = end_time - start_time
-
-#     # Converte o tempo decorrido para minutos
-#     execution_time_minutes = execution_time_seconds / 60
-
-#     print(f"Ler dados {var} para um total de {N} pixels:", execution_time_minutes, "minutos")
-
-    
-#     dfs = []
-#     with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
-#         tqdm_bar = tqdm(total=num_batches)
-    
-#         for batch_index, start_index in enumerate(range(0, num_pixels, batch_size)):
-#             end_index = min(start_index + batch_size, num_pixels)
-    
-#             # Carregar apenas o bloco atual de 10 000 pontos
-#             sel_values_block = np.load(output_file, mmap_mode='r')[:, :, start_index:end_index]
-#             xs_slice = np.load(output_file + '_xs.npy', mmap_mode='r')[start_index:end_index]
-#             ys_slice = np.load(output_file + '_ys.npy', mmap_mode='r')[start_index:end_index]
-#             # xs_slice = xs[start_index:end_index]  # Fatiar xs
-#             # ys_slice = ys[start_index:end_index]  # Fatiar ys
-    
-#             # Cria argumentos para cada lote de 10 000 pontos
-#             arg_list = [(i, sel_values_block, dates, xs_slice, ys_slice, NODATA_VALUE, FOLDER_OUTPUTS, img_collection) for i in range(sel_values_block.shape[2])]
-    
-#             for result_df in executor.map(runDetectionForPoint, arg_list):
-#                 dfs.append(result_df)
-#                 tqdm_bar.update(1)
-    
-#         tqdm_bar.close()
-        
-#     # Concatenar os resultados de todos os lotes em um único DataFrame
-#     if dfs:
-#         result_df = pd.concat(dfs, ignore_index=True)
-#         filename = fromParamsReturnName(img_collection, ccd_params, (S2_tile,tiles), N, random_state_value)
-#         result_df.to_csv(FOLDER_OUTPUTS / 'tabular' / '{}.csv'.format(filename), index=False)
