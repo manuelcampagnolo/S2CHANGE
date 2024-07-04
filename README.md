@@ -61,7 +61,7 @@ base em análise automática de imagens de satélite
 Entregáveis:
   * E1.1 – [Relatório com a descrição do problema, condicionantes, dados de input e especificações técnicas dos outputs](Entregavel_1_1.pdf) (10 de dezembro de 2023).
   * E1.2 – [Relatório com seleção e justificação das metodologias a operacionalizar](Entregavel_1_2.pdf) (1 de maio de 2024); [versão revista](Entregavel_1_2_v2.pdf) (14 de maio de 2024)
-  * E1.3 – Relatório sobre potenciais adaptações tecnológicas a implementar na cadeia de produção da DGT.
+  * E1.3 – [Relatório sobre potenciais adaptações tecnológicas a implementar na cadeia de produção da DGT (versão provisória)](Entregável_1.3_v2.pdf).
 
 **Tarefa 2** - Construção da uma base de dados de referência (BDR) para calibração e validação espacial e temporal das metodologias a operacionalizar com base em dados resultantes de interpretação de imagens aéreas e de satélite, do Instituto de Conservação da Natureza e Florestas (ICNF) e outras fontes consideradas relevantes.
 
