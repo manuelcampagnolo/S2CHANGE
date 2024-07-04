@@ -44,6 +44,17 @@ base em análise automática de imagens de satélite
 
 </details>
 
+</details>
+
+<details markdown="block">
+<summary> Reunião DGT/INCD/LIP 4 julho de 2024</summary>
+
+* [Apresentação](reuniao_DGT_4_julho_2024.pdf)
+
+</details>
+
+
+
 <details markdown="block">
 <summary> Call Advanced Computing Projects (4th ed) - A0 Experimental Access (maio 2024)</summary>
 
