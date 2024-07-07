@@ -44,8 +44,6 @@ base em análise automática de imagens de satélite
 
 </details>
 
-</details>
-
 <details markdown="block">
 <summary> Reuniões DGT/INCD/LIP 19 de junho e 4 julho de 2024</summary>
 
