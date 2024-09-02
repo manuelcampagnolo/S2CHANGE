@@ -7,9 +7,9 @@ Para começar o processamento do algoritmo PyCCD, é necessário instalar um amb
 * **LINUX:** https://github.com/manuelcampagnolo/S2CHANGE/blob/main/ccdISA_linux.yml
 
 1. Download do ficheiro .yml apropriado e criação do ambiente virtual através da linha de comandos:
-**conda env create -f environment.yml**
+**conda env create -f ccdISA_win.yml**
 2. Ativar o ambiente virtual:
-**conda activate meu_ambiente**
+**conda activate ccdISA_v2**
 3. Verificar se o ambiente foi criado:
 **conda env list**
 4. Iniciar o ambiente virtual e executar o PyCCD
