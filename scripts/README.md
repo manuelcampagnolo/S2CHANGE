@@ -42,22 +42,7 @@ Os inputs tem a seguinte configuração:
 * Shapefiles com as datas de quebra e resultados do PyCCD
 
 Os outputs tem a seguinte configuração:
- Working directory (DADOS):
- |----FOLDER PUBLIC DOCUMENTS
-    |---- SUBFOLDER output_BDR300
-         |---- folder numpy
-              |---- files.npy
-         |---- folder plots
-              |---- plots.png
-         |---- folder tabular (csv e validação)
-              |---- files.csv
-    |---- SUBFOLDER output_NAV
-         |---- folder numpy
-              |---- files.npy
-         |---- folder plots
-              |---- plots.png
-         |---- folder tabular (csv)
-              |---- files.csv
+Working directory (DADOS) |---- FOLDER PUBLIC DOCUMENTS |---- SUBFOLDER output_BDR300 | |---- folder numpy | | |---- files.npy | | | |---- folder plots | | |---- plots.png | | | |---- folder tabular (csv e validação) | |---- files.csv | |---- SUBFOLDER output_NAV |---- folder numpy | |---- files.npy | |---- folder plots | |---- plots.png | |---- folder tabular (csv) |---- files.csv
 
 ### Algoritmo PyCCD
 O algoritmo é processado para o tile definido para cada um dos pontos dentro das geometrias dadas pela BDR.
