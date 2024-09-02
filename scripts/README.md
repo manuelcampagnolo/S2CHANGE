@@ -48,7 +48,8 @@ Os outputs têm a seguinte configuração:
 |||-- folder numpy ||||- files.npy |||-- folder plots ||||- plots.png |||-- folder tabular (csv) ||||- files.csv
 
 ## Processamento do algoritmo PyCCD
-O algoritmo é processado para o tile definido para cada um dos pontos dentro das geometrias dadas pela BDR. O script onde se deve fazer a corrida / alteração dos inputs é o main.py, que se encontra no seguinte diretório: *C:\Users\nome-do-utilizador\Desktop\CCD_yml_win\S2CHANGE\scripts\pyccd_theia\notebooks\main.py*
+O algoritmo é processado para o tile definido para cada um dos pontos dentro das geometrias dadas pela BDR. 
+O script onde se deve fazer a corrida/alteração dos inputs é o main.py, que se encontra no seguinte diretório: *C:\Users\nome-do-utilizador\Desktop\CCD_yml_win\S2CHANGE\scripts\pyccd_theia\notebooks\main.py*
 
 O algoritmo é dividido por duas pastas: notebooks (que são scripts de apoio ao processamento) e ccd (onde contém o algoritmo todo do PyCCD, incluindo os modelos).
 
