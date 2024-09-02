@@ -51,7 +51,7 @@ Os outputs têm a seguinte configuração:
 O algoritmo é processado para o tile definido para cada um dos pontos dentro das geometrias dadas pela BDR.
 O algoritmo é dividido por duas pastas: notebooks (que são scripts de apoio ao processamento) e ccd (onde contém o algoritmo todo do PyCCD, incluindo os modelos).
 
-O conteúdo das pastas do algoritmo PyCCD é organizado da seguinte maneira:
+O conteúdo das pastas do algoritmo PyCCD é organizado da seguinte forma:
 **Working directory (PyCCD):**
  |----FOLDER CCD_yml_win
     ||--- SUBFOLDER scripts
