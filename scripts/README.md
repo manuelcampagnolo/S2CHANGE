@@ -47,7 +47,7 @@ Os outputs têm a seguinte configuração:
 |---- FOLDER PUBLIC DOCUMENTS ||--- SUBFOLDER output_BDR300 |||-- folder numpy ||||- files.npy |||-- folder plots ||||- plots.png |||-- folder tabular (csv e validação) ||||- files.csv ||--- SUBFOLDER output_NAV 
 |||-- folder numpy ||||- files.npy |||-- folder plots ||||- plots.png |||-- folder tabular (csv) ||||- files.csv
 
-### Algoritmo PyCCD
+## Algoritmo PyCCD
 O algoritmo é processado para o tile definido para cada um dos pontos dentro das geometrias dadas pela BDR.
 O algoritmo é dividido por duas pastas: notebooks (que são scripts de apoio ao processamento) e ccd (onde contém o algoritmo todo do PyCCD, incluindo os modelos).
 
