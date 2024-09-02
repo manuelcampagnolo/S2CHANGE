@@ -22,7 +22,7 @@ Os inputs e outputs do algoritmo estão numa pasta partilhada da máquina do ISA
 * Base de dados de referência (BDR-DGT ou BDR-Navigator)
 * Nome do tile (T29TNE, T29SNB, ...)
 
-Os inputs tem a seguinte configuração:
+Os inputs têm a seguinte configuração:
 **Working directory (DADOS):**
  |----FOLDER PUBLIC DOCUMENTS
     ||--- SUBFOLDER BDR_300 (DGT)
@@ -42,16 +42,16 @@ Os inputs tem a seguinte configuração:
 * CSV com os resultados do PyCCD / validação dos resultados (if BDR == DGT)
 * Shapefiles com as datas de quebra e resultados do PyCCD
 
-Os outputs tem a seguinte configuração:
+Os outputs têm a seguinte configuração:
 **Working directory (DADOS):**
 |---- FOLDER PUBLIC DOCUMENTS ||--- SUBFOLDER output_BDR300 |||-- folder numpy ||||- files.npy |||-- folder plots ||||- plots.png |||-- folder tabular (csv e validação) ||||- files.csv ||--- SUBFOLDER output_NAV 
 |||-- folder numpy ||||- files.npy |||-- folder plots ||||- plots.png |||-- folder tabular (csv) ||||- files.csv
 
 ### Algoritmo PyCCD
 O algoritmo é processado para o tile definido para cada um dos pontos dentro das geometrias dadas pela BDR.
-O algoritmo é dividido por duas pastas: notebooks (que são scripts de apoio ao processamento) e ccd (onde contém o algoritmo todo do PyCCD).
+O algoritmo é dividido por duas pastas: notebooks (que são scripts de apoio ao processamento) e ccd (onde contém o algoritmo todo do PyCCD, incluindo os modelos).
 
-Cada uma das pastas contém a seguinte configuração:
+O conteúdo das pastas do algoritmo PyCCD é organizado da seguinte maneira:
 **Working directory (PyCCD):**
  |----FOLDER CCD_yml_win
     ||--- SUBFOLDER scripts
