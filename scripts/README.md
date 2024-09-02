@@ -22,6 +22,7 @@ Os inputs e outputs do algoritmo estão numa pasta partilhada do máquina do ISA
 * Nome do tile (T29TNE, T29SNB, ...)
 
 Os inputs tem a seguinte configuração:
+'''
  Working directory (DADOS):
  |----FOLDER PUBLIC DOCUMENTS
     |---- SUBFOLDER BDR_300 (DGT)
@@ -34,6 +35,7 @@ Os inputs tem a seguinte configuração:
     |---- SUBFOLDER IMAGENS THEIA
          |---- folder TILES
               |---- files.tif
+'''
 
 ### Outputs (outputs_BDR300 & outputs_BDR-NAV)
 * Ficheiro numpy dos dados
@@ -42,7 +44,8 @@ Os inputs tem a seguinte configuração:
 * Shapefiles com as datas de quebra e resultados do PyCCD
 
 Os outputs tem a seguinte configuração:
-Working directory (DADOS) |---- FOLDER PUBLIC DOCUMENTS |---- SUBFOLDER output_BDR300 | |---- folder numpy | | |---- files.npy | | | |---- folder plots | | |---- plots.png | | | |---- folder tabular (csv e validação) | |---- files.csv | |---- SUBFOLDER output_NAV |---- folder numpy | |---- files.npy | |---- folder plots | |---- plots.png | |---- folder tabular (csv) |---- files.csv
+**Working directory (DADOS):**
+|---- FOLDER PUBLIC DOCUMENTS | |--- SUBFOLDER output_BDR300 | | |-- folder numpy | | | |- files.npy | | | |---- folder plots | | |---- plots.png | | | |---- folder tabular (csv e validação) | |---- files.csv | |---- SUBFOLDER output_NAV |---- folder numpy | |---- files.npy | |---- folder plots | |---- plots.png | |---- folder tabular (csv) |---- files.csv
 
 ### Algoritmo PyCCD
 O algoritmo é processado para o tile definido para cada um dos pontos dentro das geometrias dadas pela BDR.
@@ -54,11 +57,11 @@ Cada uma das pastas contém a seguinte configuração:
     |---- SUBFOLDER pyccd_theia
          |---- SUBFOLDER ccd
               |---- SUBFOLDER models
-                   |---- __init__.py
+                   |---- init.py
                    |---- lasso.py
                    |---- robust_fit.py
                    |---- tmask.py
-              |---- __init__.py
+              |---- init.py
               |---- app.py
               |---- change.py
               |---- math_utils.py
