@@ -13,7 +13,8 @@ if module_path not in sys.path:
     sys.path.append(str(module_path))
 import ccd
 from notebooks.avaliacao_exatidao_pyccd import runValidation
-from notebooks.processing import check_or_initialize_file, runDetectionForPoint
+from datetime import datetime
+from notebooks.processing import check_or_initialize_file, runDetectionForPoint, processar_centros_pixeis, create_geodataframe_from_csv
 from notebooks.utils import fromParamsReturnName
 from notebooks.plot import plotFromCSV
 from tqdm import tqdm
@@ -26,12 +27,15 @@ import os
 
 # Working directory (DADOS):
 # |----FOLDER PUBLIC DOCUMENTS
-#    |---- SUBFOLDER BDR
+#    |---- SUBFOLDER BDR_300 (DGT)
+#         |---- file.shp
+#    |---- SUBFOLDER BDR_Navigator
+#         |---- file.gpkg
 #    |---- SUBFOLDER IMAGENS GEE
-#         |---- folder T29TNE
+#         |---- folder TILES
 #              |---- files.tif
 #    |---- SUBFOLDER IMAGENS THEIA
-#         |---- folder T29TNE
+#         |---- folder TILES
 #              |---- files.tif
 #    |---- SUBFOLDER output_BDR300
 #         |---- folder numpy
@@ -39,6 +43,13 @@ import os
 #         |---- folder plots
 #              |---- plots.png
 #         |---- folder tabular (csv e validação)
+#              |---- files.csv
+#    |---- SUBFOLDER output_NAV
+#         |---- folder numpy
+#              |---- files.npy
+#         |---- folder plots
+#              |---- plots.png
+#         |---- folder tabular (csv)
 #              |---- files.csv
 
 # Working directory (PyCCD):
@@ -70,23 +81,17 @@ import os
 #%%
 # OPÇÕES:
 ############ PARAMETROS PRÉ PROCESSAMENTO ########################
-var = 'THEIA' # choose variable: THEIA or GEE
-S2_tile = 'T29TNE' # escolher o tile S2
-
-# N=241941 # numero total de pontos presentes na BDR
-N = 100000 # número de pontos aleatórios
-random_state_value = 42
-
-num_pixels = N  # Número total de pixels
-batch_size = 10000  # Tamanho do lote
-num_batches = math.ceil(num_pixels / batch_size)  # Número de lotes necessários
+var = 'GEE' # choose variable: THEIA or GEE
+BDR = 'NAV' # choose variable: DGT or NAV
+S2_tile = 'T29TNF' # escolher o tile S2
+max_date = datetime(2023, 12, 31) # data até onde se corre o ccd
 
 bandas_desejadas = [1, 2, 3, 7, 10]
 NODATA_VALUE = 65535
 MAX_VALUE_NDVI = 10000
 
 EXECUTAR_PLOT = False # (false para não fazer; true para fazer)
-ROW_INDEX = 1 # plot para uma linha do CSV (escolher a linha no row_index)
+ROW_INDEX = 8 # plot para uma linha do CSV (escolher a linha no row_index)
 #%%
 ############ INPUTS ######################
 # Caminho onde estão os dados todos
@@ -95,23 +100,53 @@ public_documents = Path('C:/Users/Public/Documents/')
 # -> BDR DGT:
 BDR_DGT = public_documents / 'BDR_300_artigo' / 'BDR_CCDC_TNE_Adjusted.shp'
 # -> BDR NAVIGATOR:
-# BDR_NAVIGATOR = .... caminho ainda não definido
+BDR_NAVIGATOR =  public_documents / 'BDR_Navigator' / 'nvg_2018_ccd.gpkg'
 
 # -> IMAGENS SENTINEL:
 FOLDER_THEIA = public_documents / 'imagens_Theia' # Caminho dados THEIA
 FOLDER_GEE = public_documents / 'imagens_GEE' # Caminho dados GEE
 
-# OUTPUT BDR_300
-FOLDER_OUTPUTS = public_documents / 'output_BDR300'
-FOLDER_NPY = FOLDER_OUTPUTS / 'numpy'
-FOLDER_PLOTS = FOLDER_OUTPUTS / 'plots'
-FOLDER_CSV = FOLDER_OUTPUTS / 'tabular'
+if BDR == 'DGT':
+    BDR_FILE = BDR_DGT
+    FOLDER_OUTPUTS = public_documents / 'output_BDR300'
+else:
+    BDR_FILE = BDR_NAVIGATOR
+    FOLDER_OUTPUTS = public_documents / 'output_BDR-NAV'
+    
+FOLDER_NPY = FOLDER_OUTPUTS / 'numpy' / S2_tile
+FOLDER_PLOTS = FOLDER_OUTPUTS / 'plots' / S2_tile
+FOLDER_CSV = FOLDER_OUTPUTS / 'tabular' / S2_tile
+FOLDER_SHP = FOLDER_OUTPUTS / 'shapefiles' / S2_tile
 
+# Função para criar diretórios se não existirem
+def create_directory_if_not_exists(path):
+    if not path.exists():
+        path.mkdir(parents=True, exist_ok=True)
+        print(f"Diretório criado: {path}")
+    else:
+        print(f"Diretório já existe: {path}")
+
+# Criar os diretórios
+create_directory_if_not_exists(FOLDER_NPY)
+create_directory_if_not_exists(FOLDER_PLOTS)
+create_directory_if_not_exists(FOLDER_CSV)
+create_directory_if_not_exists(FOLDER_SHP)
 
 if var == 'THEIA':
     tiles = FOLDER_THEIA / S2_tile
 else:
     tiles = FOLDER_GEE / S2_tile
+
+raster_path = next(tiles.glob('*.*'), None)
+
+gdf_centros_pixeis = processar_centros_pixeis(BDR_FILE, raster_path)
+N = len(gdf_centros_pixeis)
+random_state_value = 42
+
+num_pixels = N  # Número total de pixels
+batch_size = 10000  # Tamanho do lote
+num_batches = math.ceil(num_pixels / batch_size)  # Número de lotes necessários
+
 img_collection = tiles.parts[-2]
 
 CRS_THEIA = 32629
@@ -132,14 +167,16 @@ theta = 60 # +/- theta dias de diferenca
 bandFilter = None #não implementado ainda - não mexer
 
 ######### NOME BASE DOS FICHEIROS A SEREM GERADOS #########
-filename = fromParamsReturnName(img_collection, ccd_params, (S2_tile, tiles), N, random_state_value)
+filename = fromParamsReturnName(img_collection, ccd_params, (S2_tile, tiles), N, random_state_value, max_date)
 
 ############ OUTPUTS ######################
 output_file = FOLDER_NPY / "{}.npy".format(filename) # ficheiro numpy (matriz) dos dados (nr de imagens x nr de bandas x nr total de pontos)
 #%%
 def main(batch_size=None):
     # Verificar a existência do arquivo .npy e inicializar ou carregar os dados
-    tif_dates_ord = check_or_initialize_file(output_file, tiles, var, S2_tile, BDR_DGT, N, random_state_value, bandas_desejadas, FOLDER_OUTPUTS, img_collection, NODATA_VALUE)
+    # tif_dates_ord = check_or_initialize_file(output_file, tiles, var, S2_tile, max_date, BDR_FILE, N, random_state_value, bandas_desejadas, FOLDER_OUTPUTS, img_collection, NODATA_VALUE, raster_path)
+    tif_dates_ord = check_or_initialize_file(output_file, tiles, var, S2_tile, max_date, gdf_centros_pixeis, N, random_state_value, bandas_desejadas, FOLDER_OUTPUTS, img_collection, NODATA_VALUE, raster_path)
+    
     # Carregar os dados numpy para o processamento em lotes
     sel_values = np.load(output_file, mmap_mode='r')
 
@@ -179,4 +216,6 @@ def main(batch_size=None):
 #%%
 if __name__ == '__main__':
     main(batch_size)
-    runValidation(filename, FOLDER_OUTPUTS, BDR_DGT, dt_ini, dt_end, bandFilter, theta)
+    if BDR == 'DGT':
+        runValidation(filename, FOLDER_OUTPUTS, BDR_FILE, dt_ini, dt_end, bandFilter, theta)
+    create_geodataframe_from_csv(filename, CRS_WGS84, CRS_THEIA, S2_tile, FOLDER_CSV, FOLDER_SHP)

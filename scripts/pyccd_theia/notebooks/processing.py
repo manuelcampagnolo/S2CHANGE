@@ -1,5 +1,6 @@
 import xarray as xr
 import rioxarray
+from pathlib import Path
 import numpy as np
 from datetime import datetime, timezone
 import pandas as pd
@@ -11,37 +12,82 @@ import geopandas as gpd
 import os
 import time
 from notebooks.read_files import read_tif_files_theia, read_tif_files_gee, readPoints, convertPointToCrs
+from pyproj import CRS
+import ast
+#%%
+def create_geodataframe_from_csv(filename, epsg_input, epsg_output, S2_tile, csv_dir, shapefile_dir):
+    """
+    Cria um GeoDataFrame a partir de um arquivo CSV contendo coordenadas geográficas, reprojeta-o 
+    e adiciona uma coluna de quebra temporal (tBreak). Em seguida, salva o GeoDataFrame como um Shapefile
+    numa pasta criada dinamicamente com base no S2_tile.
+
+    Args:
+        filename (str): Nome do arquivo CSV sem extensão.
+        folder_outputs (Path): Caminho para a pasta onde o arquivo CSV está localizado.
+        epsg_input (int): Código EPSG do sistema de referência espacial de entrada.
+        epsg_output (int): Código EPSG do sistema de referência espacial de saída.
+        S2_tile (str): Identificador do tile S2 usado para criar a subpasta.
+
+    Returns:
+        GeoDataFrame: Um GeoDataFrame com a geometria reprojetada e a coluna tBreak adicionada.
+    """
+    # Construir o caminho completo para o arquivo CSV
+    csv_path = Path(csv_dir) / f"{filename}.csv"
+    
+    # Carregar o arquivo CSV para um DataFrame do pandas
+    df = pd.read_csv(csv_path)
+    
+    # Criar uma coluna 'geometry' com objetos Point baseados em Lat e Lon
+    geometry = [Point(lon, lat) for lon, lat in zip(df['Lon'], df['Lat'])]
+    
+    # Criar um GeoDataFrame a partir do DataFrame original e da geometria
+    gdf = gpd.GeoDataFrame(df, geometry=geometry, crs=CRS.from_epsg(epsg_input))
+    
+    # Reprojetar para o sistema de coordenadas EPSG especificado
+    gdf = gdf.to_crs(epsg=epsg_output)
+    
+    # Adicionar a coluna tBreak ao GeoDataFrame
+    gdf['tBreak'] = df['tBreak']
+    
+    shapefile_path = Path(shapefile_dir) / f"{filename}.shp"
+    
+    # Salvar o GeoDataFrame como um Shapefile
+    gdf.to_file(shapefile_path, driver='ESRI Shapefile')
+    
+    return gdf
 #%%
 def processar_centros_pixeis(shapefile_path, raster_path):
     """
-    A função processar_centros_pixeis é responsável por calcular os centros dos pixels dentro das geometrias
-    de um shapefile específico, com base num raster fornecido. Para cada polígono no shapefile, a função 
-    calcula as coordenadas dos centros dos pixels dentro dessa área, retornando um GeoDataFrame que contem esses pontos.
-    
-    Args:
-    - shapefile_path (str): O caminho do arquivo shapefile que contém as geometrias dos polígonos.
-    - raster_path (str): O caminho do arquivo raster que será usado para calcular os centros dos pixels.
-    
-    Returns:
-    - gdf_centros_pixeis (GeoDataFrame): Um GeoDataFrame que contem as coordenadas dos centros dos pixels 
-      dentro das geometrias do shapefile.
+    Função para calcular os centros dos pixels dentro das geometrias de um shapefile com base em um raster.
     """
+    start_time = time.time()
+    print('Processar centros dos pontos de cada geometria para corresponder aos centros dos pixels dos rasters...')
     # Carregar o shapefile
     poligonos = gpd.read_file(shapefile_path)
-    caminho_raster = raster_path
-
-    # Lista para armazenar os centros dos pixels para cada geometria
-    todos_centros_pixeis = []
     poligonos = poligonos[poligonos.is_valid]
 
-    for index, row in poligonos.iterrows():
-        
-        # Obter a geometria do polígono
-        geometry = row['geometry']
+    # Lista para armazenar os centros dos pixels
+    todos_centros_pixeis = []
 
-        # Carregar o raster
-        with rasterio.open(caminho_raster) as src:
-            window = geometry_window(src, [geometry])
+    # Carregar o raster
+    with rasterio.open(raster_path) as src:
+        # Obter CRS do raster
+        raster_crs = src.crs
+
+        # Garantir que o shapefile esteja no mesmo CRS do raster
+        if poligonos.crs != raster_crs:
+            poligonos = poligonos.to_crs(raster_crs)
+
+        for index, row in poligonos.iterrows():
+            # Obter a geometria do polígono
+            geometry = row['geometry']
+
+            # Calcular a janela da geometria no raster
+            try:
+                window = geometry_window(src, [geometry])
+            except Exception as e:
+                print(f"Erro ao calcular a janela para a geometria {index}: {e}")
+                continue
 
             transform = src.window_transform(window)
 
@@ -66,14 +112,18 @@ def processar_centros_pixeis(shapefile_path, raster_path):
                     if Point(pixel_center_x, pixel_center_y).within(geometry):
                         # Armazenar as coordenadas do centro do pixel na lista
                         pixel_centers.append((pixel_center_x, pixel_center_y))
-        
-        # Adicionar os centros dos pixels desta geometria à lista geral
-        todos_centros_pixeis.append(pixel_centers)
-        
-    pontos_shapely = [Point(centro) for sublist in todos_centros_pixeis for centro in sublist]
 
+            # Adicionar os centros dos pixels desta geometria à lista geral
+            todos_centros_pixeis.extend(pixel_centers)
+        
     # Criar um GeoDataFrame a partir da lista de pontos
-    gdf_centros_pixeis = gpd.GeoDataFrame(geometry=pontos_shapely)
+    pontos_shapely = [Point(centro) for centro in todos_centros_pixeis]
+    gdf_centros_pixeis = gpd.GeoDataFrame(geometry=pontos_shapely, crs=raster_crs)
+    
+    end_time = time.time()
+    execution_time_seconds = end_time - start_time
+    execution_time_minutes = execution_time_seconds / 60
+    print("Processar centros dos pixels:", execution_time_minutes, "minutos")
     
     return gdf_centros_pixeis
 #%%
@@ -100,7 +150,7 @@ def getTimeSeriesForPoints(tif_names, tif_dates_ord, bandas_desejadas, dados_geo
 
     return dates
 #%%
-def check_or_initialize_file(output_file, tiles, var, S2_tile, BDR_DGT, N, random_state_value, bandas_desejadas, FOLDER_OUTPUTS, img_collection, NODATA_VALUE):
+def check_or_initialize_file(output_file, tiles, var, S2_tile, max_date, gdf_centros_pixeis, N, random_state_value, bandas_desejadas, FOLDER_OUTPUTS, img_collection, NODATA_VALUE, raster_path):
     """
     Verifica a existência de um arquivo numpy específico e, dependendo dessa verificação,
     realiza diferentes operações para processar dados geoespaciais.
@@ -110,13 +160,15 @@ def check_or_initialize_file(output_file, tiles, var, S2_tile, BDR_DGT, N, rando
         - tiles (str): diretório onde os arquivos TIFF (raster) estão localizados.
         - var (str): variável que indica a origem dos dados, podendo ser 'THEIA' ou 'GEE'.
         - S2_tile (str): Identificador da tile de Sentinel-2 a ser processado.
-        - BDR_DGT (GeoDataFrame): GeoDataFrame contendo as geometrias que serão processados.
+        - max_date (datetime.date): Data máxima limite para o processamento dos arquivos TIFF. Apenas arquivos com datas até e incluindo `max_date` serão considerados.
+        - gdf_centros_pixeis (GeoDataFrame): GeoDataFrame contendo as geometrias que serão processados.
         - N (int): número de pontos a serem processados.
         - random_state_value (int): valor usado para inicializar o gerador de números aleatórios.
         - bandas_desejadas (list): lista de bandas desejadas para o processamento.
         - FOLDER_OUTPUTS (str): diretório onde os resultados serão salvos.
         - img_collection (str): coleção de imagens a ser utilizada.
         - NODATA_VALUE (int): valor a ser usado para representar dados ausentes.
+        - raster_path (Path): caminho do arquivo raster que será utilizado para processamento.
 
     Returns:
         - tif_dates_ord (list): lista de datas no formato ordinal.
@@ -130,37 +182,27 @@ def check_or_initialize_file(output_file, tiles, var, S2_tile, BDR_DGT, N, rando
         if var == 'THEIA':
             tif_names, tif_dates = read_tif_files_theia(S2_tile, tiles)
         else:
-            tif_names, tif_dates = read_tif_files_gee(S2_tile, tiles)
+            tif_names, tif_dates = read_tif_files_gee(S2_tile, tiles, max_date)
         tif_names = [os.path.join(tiles, i) for i in tif_names]
         tif_dates_ord = [d.toordinal() for d in tif_dates]
 
     else:
         # Se o arquivo numpy não existe, executar todo o processamento inicial de criar o ficheiro numpy
         print(f"O arquivo '{output_file}' não existe. Iniciando processamento...")
-        
-        # Processar centros dos pontos de cada geometria para corresponder aos centros dos pixels dos rasters
-        raster_path = tiles / 'Theia_T29TNE_20170813-112433.tif'
-        print('Processar centros dos pontos de cada geometria para corresponder aos centros dos pixels dos rasters...')
-        start_time = time.time()
-        gdf_centros_pixeis = processar_centros_pixeis(BDR_DGT, raster_path)
-        end_time = time.time()
-        execution_time_seconds = end_time - start_time
-        execution_time_minutes = execution_time_seconds / 60
-        print("Processar centros dos pixels:", execution_time_minutes, "minutos")
-        dados_geoespaciais_metros = readPoints(gdf_centros_pixeis, N, random_state_value)
+            
         # Recolher nome e data dos tifs
         print('A recolher nome e data dos tifs...')
         if var == 'THEIA':
             tif_names, tif_dates = read_tif_files_theia(S2_tile, tiles)
         else:
-            tif_names, tif_dates = read_tif_files_gee(S2_tile, tiles)
+            tif_names, tif_dates = read_tif_files_gee(S2_tile, tiles, max_date)
         tif_names = [os.path.join(tiles, i) for i in tif_names]
         tif_dates_ord = [d.toordinal() for d in tif_dates]
         print(f'Processando dados {var}... ({tiles})')
         start_time = time.time()
         # Abrir tifs com xarray e carregar série temporal
         print('A abrir tifs com xarray e carregar série temporal...')
-        getTimeSeriesForPoints(tif_names, tif_dates_ord, bandas_desejadas, dados_geoespaciais_metros, output_file)
+        getTimeSeriesForPoints(tif_names, tif_dates_ord, bandas_desejadas, gdf_centros_pixeis, output_file)
         
         end_time = time.time()
         execution_time_seconds = end_time - start_time
@@ -168,6 +210,75 @@ def check_or_initialize_file(output_file, tiles, var, S2_tile, BDR_DGT, N, rando
         print(f"Ler dados {var} para um total de {N} pixels:", execution_time_minutes, "minutos")
 
     return tif_dates_ord
+#%%
+# def check_or_initialize_file(output_file, tiles, var, S2_tile, max_date, BDR_DGT, N, random_state_value, bandas_desejadas, FOLDER_OUTPUTS, img_collection, NODATA_VALUE, raster_path):
+#     """
+#     Verifica a existência de um arquivo numpy específico e, dependendo dessa verificação,
+#     realiza diferentes operações para processar dados geoespaciais.
+
+#     Args:
+#         - output_file (str): caminho do arquivo numpy que será verificado e, se necessário, criado.
+#         - tiles (str): diretório onde os arquivos TIFF (raster) estão localizados.
+#         - var (str): variável que indica a origem dos dados, podendo ser 'THEIA' ou 'GEE'.
+#         - S2_tile (str): Identificador da tile de Sentinel-2 a ser processado.
+#         - max_date (datetime.date): Data máxima limite para o processamento dos arquivos TIFF. Apenas arquivos com datas até e incluindo `max_date` serão considerados.
+#         - BDR_DGT (GeoDataFrame): GeoDataFrame contendo as geometrias que serão processados.
+#         - N (int): número de pontos a serem processados.
+#         - random_state_value (int): valor usado para inicializar o gerador de números aleatórios.
+#         - bandas_desejadas (list): lista de bandas desejadas para o processamento.
+#         - FOLDER_OUTPUTS (str): diretório onde os resultados serão salvos.
+#         - img_collection (str): coleção de imagens a ser utilizada.
+#         - NODATA_VALUE (int): valor a ser usado para representar dados ausentes.
+#         - raster_path (Path): caminho do arquivo raster que será utilizado para processamento.
+
+#     Returns:
+#         - tif_dates_ord (list): lista de datas no formato ordinal.
+#     """
+    
+#     if os.path.exists(output_file):
+#         # Se o arquivo numpy existe, apenas carregar e processar os dados
+#         print(f"O arquivo '{output_file}' já existe. Carregando e processando os dados existentes...")
+#         # Recolher nome e data dos tifs
+#         print('A recolher nome e data dos tifs...')
+#         if var == 'THEIA':
+#             tif_names, tif_dates = read_tif_files_theia(S2_tile, tiles)
+#         else:
+#             tif_names, tif_dates = read_tif_files_gee(S2_tile, tiles, max_date)
+#         tif_names = [os.path.join(tiles, i) for i in tif_names]
+#         tif_dates_ord = [d.toordinal() for d in tif_dates]
+
+#     else:
+#         # Se o arquivo numpy não existe, executar todo o processamento inicial de criar o ficheiro numpy
+#         print(f"O arquivo '{output_file}' não existe. Iniciando processamento...")
+            
+#         print('Processar centros dos pontos de cada geometria para corresponder aos centros dos pixels dos rasters...')
+#         start_time = time.time()
+#         gdf_centros_pixeis = processar_centros_pixeis(BDR_DGT, raster_path)
+#         end_time = time.time()
+#         execution_time_seconds = end_time - start_time
+#         execution_time_minutes = execution_time_seconds / 60
+#         print("Processar centros dos pixels:", execution_time_minutes, "minutos")
+#         dados_geoespaciais_metros = readPoints(gdf_centros_pixeis, N, random_state_value)
+#         # Recolher nome e data dos tifs
+#         print('A recolher nome e data dos tifs...')
+#         if var == 'THEIA':
+#             tif_names, tif_dates = read_tif_files_theia(S2_tile, tiles)
+#         else:
+#             tif_names, tif_dates = read_tif_files_gee(S2_tile, tiles, max_date)
+#         tif_names = [os.path.join(tiles, i) for i in tif_names]
+#         tif_dates_ord = [d.toordinal() for d in tif_dates]
+#         print(f'Processando dados {var}... ({tiles})')
+#         start_time = time.time()
+#         # Abrir tifs com xarray e carregar série temporal
+#         print('A abrir tifs com xarray e carregar série temporal...')
+#         getTimeSeriesForPoints(tif_names, tif_dates_ord, bandas_desejadas, dados_geoespaciais_metros, output_file)
+        
+#         end_time = time.time()
+#         execution_time_seconds = end_time - start_time
+#         execution_time_minutes = execution_time_seconds / 60
+#         print(f"Ler dados {var} para um total de {N} pixels:", execution_time_minutes, "minutos")
+
+#     return tif_dates_ord
 #%%
 def processPointData(args):
     """
@@ -308,19 +419,27 @@ def process_detection_results(results, dates, ndvis, ponto_desejado, NODATA_VALU
     datas = [datetime.fromordinal(data) for data in end_dates]
     end_dates_epoch = [int(data.replace(tzinfo=timezone.utc).timestamp() * 1000) for data in datas]
     
+    def ms_to_date_str(ms):
+        return datetime.utcfromtimestamp(ms / 1000).strftime('%d%m%Y')
+
+    # Converter timestamps em formato ddmmyyyy
+    break_dates_ddmmyyyy = [ms_to_date_str(ts) for ts in break_dates_epoch]
+    end_dates_ddmmyyyy = [ms_to_date_str(ts) for ts in end_dates_epoch]
+        
     ponto_desejado_wgs = convertPointToCrs(ponto_desejado, CRS_THEIA, CRS_WGS84)
     ponto_desejado_wgs_x, ponto_desejado_wgs_y = ponto_desejado_wgs
     
-    dados = [{'tBreak': break_dates_epoch, 'tEnd': end_dates_epoch, 'tStart': start_dates_epoch, 'changeProb': prob,
+    dados = [{'tBreak': break_dates_epoch[:-1], 'tBreak_ddmmyyyy':break_dates_ddmmyyyy[:-1],'tEnd': end_dates_epoch,'tEnd_ddmmyyyy':end_dates_ddmmyyyy,
+              'tStart': start_dates_epoch, 'changeProb': prob,
               'Lat': ponto_desejado_wgs_y, 'Lon': ponto_desejado_wgs_x, 'ndvi_magnitude': ndvi_magnitudes,
-              'ndvis': ndvis.tolist(), 'dates': dates.tolist(), 'prediction_dates': [d.tolist() for d in prediction_dates],
-              'predicted_values': [v.tolist() for v in predicted_values], 'coeficientes': coeficientes, 
-              'mask': np.array(results['processing_mask'], dtype='bool').tolist()}]
+               'ndvis': ndvis.tolist(), 'dates': dates.tolist(), 'prediction_dates': [d.tolist() for d in prediction_dates],
+               'predicted_values': [v.tolist() for v in predicted_values], 'coeficientes': coeficientes, 
+               'mask': np.array(results['processing_mask'], dtype='bool').tolist()}]
     
     df = pd.DataFrame(dados)
     
     # Reorganizar colunas
-    ordem_colunas = ['tBreak', 'tEnd', 'tStart', 'changeProb', 'Lat', 'Lon', 'ndvi_magnitude', 'ndvis', 'dates', 
+    ordem_colunas = ['tBreak', 'tBreak_ddmmyyyy','tEnd','tEnd_ddmmyyyy', 'tStart', 'changeProb', 'Lat', 'Lon', 'ndvi_magnitude', 'ndvis', 'dates', 
                      'prediction_dates', 'predicted_values', 'coeficientes', 'mask']
     
     df = df[ordem_colunas]
