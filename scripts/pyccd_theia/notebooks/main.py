@@ -81,9 +81,10 @@ import os
 #%%
 # OPÇÕES:
 ############ PARAMETROS PRÉ PROCESSAMENTO ########################
-var = 'GEE' # choose variable: THEIA or GEE
-BDR = 'NAV' # choose variable: DGT or NAV
-S2_tile = 'T29TNF' # escolher o tile S2
+var = 'THEIA' # choose variable: THEIA or GEE
+BDR = 'DGT' # choose variable: DGT or NAV
+S2_tile = 'T29TNE' # escolher o tile S2
+min_year =  2017 # ano inicial da corrida do CCD
 max_date = datetime(2023, 12, 31) # data até onde se corre o ccd
 
 bandas_desejadas = [1, 2, 3, 7, 10]
@@ -140,12 +141,11 @@ else:
 raster_path = next(tiles.glob('*.*'), None)
 
 gdf_centros_pixeis = processar_centros_pixeis(BDR_FILE, raster_path)
-N = len(gdf_centros_pixeis)
-random_state_value = 42
 
-num_pixels = N  # Número total de pixels
+N = len(gdf_centros_pixeis) # Número total de pixels
+random_state_value = 42
 batch_size = 10000  # Tamanho do lote
-num_batches = math.ceil(num_pixels / batch_size)  # Número de lotes necessários
+num_batches = math.ceil(N / batch_size)  # Número de lotes necessários
 
 img_collection = tiles.parts[-2]
 
@@ -167,7 +167,7 @@ theta = 60 # +/- theta dias de diferenca
 bandFilter = None #não implementado ainda - não mexer
 
 ######### NOME BASE DOS FICHEIROS A SEREM GERADOS #########
-filename = fromParamsReturnName(img_collection, ccd_params, (S2_tile, tiles), N, random_state_value, max_date)
+filename = fromParamsReturnName(img_collection, ccd_params, (S2_tile, tiles), N, random_state_value, min_year, max_date)
 
 ############ OUTPUTS ######################
 output_file = FOLDER_NPY / "{}.npy".format(filename) # ficheiro numpy (matriz) dos dados (nr de imagens x nr de bandas x nr total de pontos)
@@ -175,7 +175,7 @@ output_file = FOLDER_NPY / "{}.npy".format(filename) # ficheiro numpy (matriz) d
 def main(batch_size=None):
     # Verificar a existência do arquivo .npy e inicializar ou carregar os dados
     # tif_dates_ord = check_or_initialize_file(output_file, tiles, var, S2_tile, max_date, BDR_FILE, N, random_state_value, bandas_desejadas, FOLDER_OUTPUTS, img_collection, NODATA_VALUE, raster_path)
-    tif_dates_ord = check_or_initialize_file(output_file, tiles, var, S2_tile, max_date, gdf_centros_pixeis, N, random_state_value, bandas_desejadas, FOLDER_OUTPUTS, img_collection, NODATA_VALUE, raster_path)
+    tif_dates_ord = check_or_initialize_file(output_file, tiles, var, S2_tile, min_year, max_date, gdf_centros_pixeis, N, random_state_value, bandas_desejadas, FOLDER_OUTPUTS, img_collection, NODATA_VALUE, raster_path)
     
     # Carregar os dados numpy para o processamento em lotes
     sel_values = np.load(output_file, mmap_mode='r')
@@ -188,8 +188,8 @@ def main(batch_size=None):
     with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
         tqdm_bar = tqdm(total=num_batches)
         
-        for batch_index, start_index in enumerate(range(0, num_pixels, batch_size)):
-            end_index = min(start_index + batch_size, num_pixels)
+        for batch_index, start_index in enumerate(range(0, N, batch_size)):
+            end_index = min(start_index + batch_size, N)
             
             # Carregar apenas o bloco atual de pontos
             sel_values_block = sel_values[:, :, start_index:end_index]
@@ -217,5 +217,5 @@ def main(batch_size=None):
 if __name__ == '__main__':
     main(batch_size)
     if BDR == 'DGT':
-        runValidation(filename, FOLDER_OUTPUTS, BDR_FILE, dt_ini, dt_end, bandFilter, theta)
+        runValidation(filename, FOLDER_CSV, BDR_FILE, dt_ini, dt_end, bandFilter, theta)
     create_geodataframe_from_csv(filename, CRS_WGS84, CRS_THEIA, S2_tile, FOLDER_CSV, FOLDER_SHP)

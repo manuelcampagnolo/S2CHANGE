@@ -293,7 +293,6 @@ def valPol(df, theta):
 
   # transforma a coluna de delta min para valor absoluto e cria uma nova coluna com o mínimo delta min por ponto
   df.reset_index(inplace = True)
-  print('chegou aqui')
   original_delta_min = df['delta_min'].copy()
   df['delta_min'] = abs(df['delta_min'].fillna(99999)) # substitui os nullos para evitar que sejam os minimos
   df['Min_delta_min'] = df.groupby(['coord_ccdc', 'nome'])['delta_min'].transform('min') # calcula o valor minimo por ponto
@@ -419,7 +418,7 @@ def testeRemove(groupedby):
   return groupedby
 
 
-def runValidation(filename, FOLDER_OUTPUTS, BDR_DGT, dt_ini, dt_end, bandFilter, theta):
+def runValidation(filename, FOLDER_CSV, BDR_DGT, dt_ini, dt_end, bandFilter, theta):
     """
     Corre a validação dos resultados da deteção realizando spatial join
     com a base de dados de referência.
@@ -429,7 +428,7 @@ def runValidation(filename, FOLDER_OUTPUTS, BDR_DGT, dt_ini, dt_end, bandFilter,
         filename: nome do ficheiro csv guardado anteriormente com resultados
                   da deteção. Nome do ficheiro é definido em função dos parâmetros
                   de execução utilizados;
-        FOLDER_OUTPUTS: pasta para buscar o ficheiro csv e guardar o resultado da
+        FOLDER_CSV: pasta para buscar o ficheiro csv e guardar o resultado da
                         validação;
         BDR_DGT: caminho para o ficheiro da base de dados de validação;
         dt_ini: data inicial do período de referência dos analistas (str YYYY-mm-dd);
@@ -449,7 +448,7 @@ def runValidation(filename, FOLDER_OUTPUTS, BDR_DGT, dt_ini, dt_end, bandFilter,
     end_of_series = f"{year}-{month}-{day}"
 
 
-    csv_s2 = pd.read_csv(FOLDER_OUTPUTS / 'tabular' / '{}.csv'.format(filename))
+    csv_s2 = pd.read_csv(FOLDER_CSV / '{}.csv'.format(filename))
     #correr pre-processamento
     csv_s2 = preprocessCsvS2(csv_s2, end_of_series)
     csv_preprocessed_path = '{}_pre_proc.csv'.format(filename)
@@ -488,6 +487,6 @@ def runValidation(filename, FOLDER_OUTPUTS, BDR_DGT, dt_ini, dt_end, bandFilter,
     print('Omission error = {}%'.format(round(100*om,2)))
     print('Commission error = {}%'.format(round(100*cm,2)))
 
-    DF_FINAL_T.to_csv(FOLDER_OUTPUTS / 'tabular' / f'VAL_{filename}.csv', index=False)
+    DF_FINAL_T.to_csv(FOLDER_CSV / f'VAL_{filename}.csv', index=False)
 
 

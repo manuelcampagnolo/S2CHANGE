@@ -48,9 +48,12 @@ def convertPointToCrs(point, source_crs, target_crs):
 
     return new_x, new_y
 #%%
-def read_tif_files_theia(S2_tile,tiles):
+def read_tif_files_theia(S2_tile, tiles, min_year, max_date):
     list_files=[]
-    for i in range(2017, 2022):
+    
+    end_year = max_date.year
+    
+    for i in range(min_year, end_year+1):
         base_folder=tiles
         #print('base_folder',base_folder)
         tiff_pattern=re.compile('^Theia_T29TNE_' + re.escape(str(i)) + '.*tif$')
@@ -106,44 +109,6 @@ def read_tif_files_gee(S2_tile, tiles, max_date):
             date_objects.append(date_obj)
     
     return list_files, date_objects
-#%%
-# def read_tif_files_gee(S2_tile, tiles):
-#     list_files = []
-    
-#     base_folder = tiles
-#     tiff_pattern = re.compile('^S2SR_image_.*tif$')
-    
-#     tiff_files1 = []
-#     for root, dirs, files in os.walk(base_folder):
-#         for file in files:
-#             if tiff_pattern.match(file):
-#                 tiff_files1.append(file)
-    
-#     # Filtrar os arquivos pela data
-#     tiff_files = []
-#     L = len('S2SR_image_')
-#     for file in sorted(tiff_files1):
-#         date_str = file[L:(L+13)]
-#         timestamp_ms = int(date_str)
-#         timestamp_sec = timestamp_ms / 1000
-#         date_obj = datetime.utcfromtimestamp(timestamp_sec).date()
-#         if date_obj <= datetime(2023, 12, 31).date():
-#             tiff_files.append(file)
-    
-#     list_files.extend(tiff_files)
-
-#     dates = [x[L:(L+13)] for x in list_files]
-
-#     date_objects = []
-#     for date_str in dates:
-#         timestamp_ms = int(date_str)
-#         timestamp_sec = timestamp_ms / 1000
-#         date_obj = datetime.utcfromtimestamp(timestamp_sec).date()
-#         # Filtrar apenas as datas até 31 de dezembro de 2021
-#         if date_obj <= datetime(2023, 12, 31).date():
-#             date_objects.append(date_obj)
-    
-#     return list_files, date_objects
 #%%
 def readPoints(caminho_arquivo, n_samples=None, random_state_value=42):
     dados_geoespaciais_metros = caminho_arquivo # seria melhor ler csv; apenas coordenadas interessam

@@ -150,7 +150,7 @@ def getTimeSeriesForPoints(tif_names, tif_dates_ord, bandas_desejadas, dados_geo
 
     return dates
 #%%
-def check_or_initialize_file(output_file, tiles, var, S2_tile, max_date, gdf_centros_pixeis, N, random_state_value, bandas_desejadas, FOLDER_OUTPUTS, img_collection, NODATA_VALUE, raster_path):
+def check_or_initialize_file(output_file, tiles, var, S2_tile, min_year, max_date, gdf_centros_pixeis, N, random_state_value, bandas_desejadas, FOLDER_OUTPUTS, img_collection, NODATA_VALUE, raster_path):
     """
     Verifica a existência de um arquivo numpy específico e, dependendo dessa verificação,
     realiza diferentes operações para processar dados geoespaciais.
@@ -180,7 +180,7 @@ def check_or_initialize_file(output_file, tiles, var, S2_tile, max_date, gdf_cen
         # Recolher nome e data dos tifs
         print('A recolher nome e data dos tifs...')
         if var == 'THEIA':
-            tif_names, tif_dates = read_tif_files_theia(S2_tile, tiles)
+            tif_names, tif_dates = read_tif_files_theia(S2_tile, tiles, min_year, max_date)
         else:
             tif_names, tif_dates = read_tif_files_gee(S2_tile, tiles, max_date)
         tif_names = [os.path.join(tiles, i) for i in tif_names]
@@ -193,7 +193,7 @@ def check_or_initialize_file(output_file, tiles, var, S2_tile, max_date, gdf_cen
         # Recolher nome e data dos tifs
         print('A recolher nome e data dos tifs...')
         if var == 'THEIA':
-            tif_names, tif_dates = read_tif_files_theia(S2_tile, tiles)
+            tif_names, tif_dates = read_tif_files_theia(S2_tile, tiles, min_year, max_date)
         else:
             tif_names, tif_dates = read_tif_files_gee(S2_tile, tiles, max_date)
         tif_names = [os.path.join(tiles, i) for i in tif_names]
@@ -210,75 +210,6 @@ def check_or_initialize_file(output_file, tiles, var, S2_tile, max_date, gdf_cen
         print(f"Ler dados {var} para um total de {N} pixels:", execution_time_minutes, "minutos")
 
     return tif_dates_ord
-#%%
-# def check_or_initialize_file(output_file, tiles, var, S2_tile, max_date, BDR_DGT, N, random_state_value, bandas_desejadas, FOLDER_OUTPUTS, img_collection, NODATA_VALUE, raster_path):
-#     """
-#     Verifica a existência de um arquivo numpy específico e, dependendo dessa verificação,
-#     realiza diferentes operações para processar dados geoespaciais.
-
-#     Args:
-#         - output_file (str): caminho do arquivo numpy que será verificado e, se necessário, criado.
-#         - tiles (str): diretório onde os arquivos TIFF (raster) estão localizados.
-#         - var (str): variável que indica a origem dos dados, podendo ser 'THEIA' ou 'GEE'.
-#         - S2_tile (str): Identificador da tile de Sentinel-2 a ser processado.
-#         - max_date (datetime.date): Data máxima limite para o processamento dos arquivos TIFF. Apenas arquivos com datas até e incluindo `max_date` serão considerados.
-#         - BDR_DGT (GeoDataFrame): GeoDataFrame contendo as geometrias que serão processados.
-#         - N (int): número de pontos a serem processados.
-#         - random_state_value (int): valor usado para inicializar o gerador de números aleatórios.
-#         - bandas_desejadas (list): lista de bandas desejadas para o processamento.
-#         - FOLDER_OUTPUTS (str): diretório onde os resultados serão salvos.
-#         - img_collection (str): coleção de imagens a ser utilizada.
-#         - NODATA_VALUE (int): valor a ser usado para representar dados ausentes.
-#         - raster_path (Path): caminho do arquivo raster que será utilizado para processamento.
-
-#     Returns:
-#         - tif_dates_ord (list): lista de datas no formato ordinal.
-#     """
-    
-#     if os.path.exists(output_file):
-#         # Se o arquivo numpy existe, apenas carregar e processar os dados
-#         print(f"O arquivo '{output_file}' já existe. Carregando e processando os dados existentes...")
-#         # Recolher nome e data dos tifs
-#         print('A recolher nome e data dos tifs...')
-#         if var == 'THEIA':
-#             tif_names, tif_dates = read_tif_files_theia(S2_tile, tiles)
-#         else:
-#             tif_names, tif_dates = read_tif_files_gee(S2_tile, tiles, max_date)
-#         tif_names = [os.path.join(tiles, i) for i in tif_names]
-#         tif_dates_ord = [d.toordinal() for d in tif_dates]
-
-#     else:
-#         # Se o arquivo numpy não existe, executar todo o processamento inicial de criar o ficheiro numpy
-#         print(f"O arquivo '{output_file}' não existe. Iniciando processamento...")
-            
-#         print('Processar centros dos pontos de cada geometria para corresponder aos centros dos pixels dos rasters...')
-#         start_time = time.time()
-#         gdf_centros_pixeis = processar_centros_pixeis(BDR_DGT, raster_path)
-#         end_time = time.time()
-#         execution_time_seconds = end_time - start_time
-#         execution_time_minutes = execution_time_seconds / 60
-#         print("Processar centros dos pixels:", execution_time_minutes, "minutos")
-#         dados_geoespaciais_metros = readPoints(gdf_centros_pixeis, N, random_state_value)
-#         # Recolher nome e data dos tifs
-#         print('A recolher nome e data dos tifs...')
-#         if var == 'THEIA':
-#             tif_names, tif_dates = read_tif_files_theia(S2_tile, tiles)
-#         else:
-#             tif_names, tif_dates = read_tif_files_gee(S2_tile, tiles, max_date)
-#         tif_names = [os.path.join(tiles, i) for i in tif_names]
-#         tif_dates_ord = [d.toordinal() for d in tif_dates]
-#         print(f'Processando dados {var}... ({tiles})')
-#         start_time = time.time()
-#         # Abrir tifs com xarray e carregar série temporal
-#         print('A abrir tifs com xarray e carregar série temporal...')
-#         getTimeSeriesForPoints(tif_names, tif_dates_ord, bandas_desejadas, dados_geoespaciais_metros, output_file)
-        
-#         end_time = time.time()
-#         execution_time_seconds = end_time - start_time
-#         execution_time_minutes = execution_time_seconds / 60
-#         print(f"Ler dados {var} para um total de {N} pixels:", execution_time_minutes, "minutos")
-
-#     return tif_dates_ord
 #%%
 def processPointData(args):
     """
@@ -429,6 +360,7 @@ def process_detection_results(results, dates, ndvis, ponto_desejado, NODATA_VALU
     ponto_desejado_wgs = convertPointToCrs(ponto_desejado, CRS_THEIA, CRS_WGS84)
     ponto_desejado_wgs_x, ponto_desejado_wgs_y = ponto_desejado_wgs
     
+    # se remover o ultimo elemento do tbreak ao correr a validação dá erro porque as colunas não tem o mesmo tamanho
     dados = [{'tBreak': break_dates_epoch[:-1], 'tBreak_ddmmyyyy':break_dates_ddmmyyyy[:-1],'tEnd': end_dates_epoch,'tEnd_ddmmyyyy':end_dates_ddmmyyyy,
               'tStart': start_dates_epoch, 'changeProb': prob,
               'Lat': ponto_desejado_wgs_y, 'Lon': ponto_desejado_wgs_x, 'ndvi_magnitude': ndvi_magnitudes,
