@@ -1,6 +1,6 @@
 from notebooks.read_files import read_tif_files_theia, read_tif_files_gee
 
-def fromParamsReturnName(col_name, ccd_params, tifs_info, n_sample, random_state_value, max_date):
+def fromParamsReturnName(col_name, ccd_params, tifs_info, n_sample, random_state_value, min_year, max_date):
     """
     Returns file name based on execution parameters:
     col_name: image collection name (Theia, GEE).
@@ -37,7 +37,7 @@ def fromParamsReturnName(col_name, ccd_params, tifs_info, n_sample, random_state
     
     # Load dataset and retrieve dates
     if suffix == 'Theia':
-        _ , dates = read_tif_files_theia(S2_tile,tiles)
+        _ , dates = read_tif_files_theia(S2_tile,tiles, min_year, max_date)
     else:
         _ , dates = read_tif_files_gee(S2_tile,tiles, max_date)
     
