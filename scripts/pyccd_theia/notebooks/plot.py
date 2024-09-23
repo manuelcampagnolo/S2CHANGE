@@ -16,8 +16,14 @@ def plotFromCSV(csv_file, row_index=0, save_dir=None):
     Returns:
     - Gráfico para um pixel com as informações do CCD.
     """
-    # Ler o CSV
-    df = pd.read_csv(csv_file)
+    # Ler o cabeçalho
+    header = pd.read_csv(csv_file, nrows=0).columns
+
+    # Ler apenas a linha especificada no CSV
+    df = pd.read_csv(csv_file, skiprows=lambda x: x != row_index + 1, nrows=1, header=None)
+
+    # Aplicar o cabeçalho ao DataFrame
+    df.columns = header
     
     # Garantir que as colunas sejam convertidas corretamente
     df['ndvis'] = df['ndvis'].apply(eval)
@@ -26,9 +32,9 @@ def plotFromCSV(csv_file, row_index=0, save_dir=None):
     df['predicted_values'] = df['predicted_values'].apply(eval)
     df['coeficientes'] = df['coeficientes'].apply(eval)
     df['mask'] = df['mask'].apply(eval)
-    
+        
     # Extrair a linha especificada pelo índice do CSV
-    row = df.iloc[row_index]
+    row = df.iloc[0]
     
     ndvis = np.array(row['ndvis'])
     dates = np.array(row['dates'])
@@ -36,20 +42,19 @@ def plotFromCSV(csv_file, row_index=0, save_dir=None):
     predicted_values = [np.array(v) for v in row['predicted_values']]
     coeficientes = row['coeficientes']
     mask = np.array(row['mask'])
-    
 
     ponto_desejado_wgs_x = row['Lon']
     ponto_desejado_wgs_y = row['Lat']
     break_dates = [datetime.fromtimestamp(b / 1000).toordinal() for b in eval(row['tBreak'])]
     start_dates = [datetime.fromtimestamp(s / 1000).toordinal() for s in eval(row['tStart'])]
     end_dates = [datetime.fromtimestamp(e / 1000).toordinal() for e in eval(row['tEnd'])]
-    
+
     # Plotagem
     plt.style.use('ggplot')
     fg = plt.figure(figsize=(14, 4), dpi=90)
     
     limite_inicial = datetime.strptime('2018-01-01', '%Y-%m-%d')
-    limite_final = datetime.strptime('2021-12-31', '%Y-%m-%d')
+    limite_final = datetime.strptime('2023-12-31', '%Y-%m-%d')
     
     a1 = fg.add_subplot(1, 1, 1, xlim=(limite_inicial, limite_final))
     plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d-%m-%Y'))
@@ -72,7 +77,7 @@ def plotFromCSV(csv_file, row_index=0, save_dir=None):
     a1.plot(np.array(date_objects1)[mask], np.array(ndvis)[mask], 'g+', label='Observed values')
     a1.plot(np.array(date_objects1)[~mask], np.array(ndvis)[~mask], 'g+')
     
-    ticks = [min(date_objects1) + timedelta(days=i*365) for i in range(10) if min(date_objects1) + timedelta(days=i*365) <= datetime(2021, 12, 31)]
+    ticks = [min(date_objects1) + timedelta(days=i*365) for i in range(10) if min(date_objects1) + timedelta(days=i*365) <= datetime(2023, 12, 31)]
     plt.xticks(ticks)
     plt.title('Lat:' + str(round(ponto_desejado_wgs_x, 5)) + ' Lon:' + str(round(ponto_desejado_wgs_y, 5)))
     
@@ -95,13 +100,15 @@ def plotFromCSV(csv_file, row_index=0, save_dir=None):
         a1.axvline(e_date, color='brown', linestyle='--')
         a1.text(mdates.date2num(e_date) + 1, a1.get_ylim()[0], e_date.strftime('%d-%m-%Y'), rotation=90, ha='right', weight='bold', va='bottom', color='brown', size=8, alpha=0.6)
 
-    reference_start_date = datetime.strptime('2018-09-12', '%Y-%m-%d')
-    reference_end_date = datetime.strptime('2021-09-30', '%Y-%m-%d')
-    a1.axvspan(reference_start_date, reference_end_date, facecolor='pink', alpha=0.3, label='Período de Referência')
+    # reference_start_date = datetime.strptime('2018-09-12', '%Y-%m-%d')
+    # reference_end_date = datetime.strptime('2021-09-30', '%Y-%m-%d')
+    # a1.axvspan(reference_start_date, reference_end_date, facecolor='pink', alpha=0.3, label='Período de Referência')
 
     plt.ylabel('NDVI')
     
     plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.1), fancybox=True, shadow=True, ncol=3)
     plt.tight_layout()
-    plt.savefig(f"{save_dir}")
+    
+    if save_dir:
+        plt.savefig(f"{save_dir}")
     plt.show()
