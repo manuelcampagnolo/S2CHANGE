@@ -79,8 +79,9 @@ import os
 #              |---- read_files.py
 #              |---- utils.py
 #%%
-# OPÇÕES:
-############ PARAMETROS PRÉ PROCESSAMENTO ########################
+# ---------------------------------
+#   PARAMETROS PRÉ PROCESSAMENTO
+# ---------------------------------
 var = 'THEIA' # choose variable: THEIA or GEE
 BDR = 'DGT' # choose variable: DGT or NAV
 S2_tile = 'T29TNE' # escolher o tile S2
@@ -88,13 +89,16 @@ min_year =  2017 # ano inicial da corrida do CCD
 max_date = datetime(2023, 12, 31) # data até onde se corre o ccd
 
 bandas_desejadas = [1, 2, 3, 7, 10]
+
 NODATA_VALUE = 65535
 MAX_VALUE_NDVI = 10000
 
 EXECUTAR_PLOT = False # (false para não fazer; true para fazer)
 ROW_INDEX = 8 # plot para uma linha do CSV (escolher a linha no row_index)
-#%%
-############ INPUTS ######################
+
+# ---------------------------------
+#             INPUTS
+# ---------------------------------
 # Caminho onde estão os dados todos
 public_documents = Path('C:/Users/Public/Documents/')
 # Caminhos para a base de dados de validação
@@ -107,6 +111,13 @@ BDR_NAVIGATOR =  public_documents / 'BDR_Navigator' / 'nvg_2018_ccd.gpkg'
 FOLDER_THEIA = public_documents / 'imagens_Theia' # Caminho dados THEIA
 FOLDER_GEE = public_documents / 'imagens_GEE' # Caminho dados GEE
 
+if var == 'THEIA':
+    tiles = FOLDER_THEIA / S2_tile
+else:
+    tiles = FOLDER_GEE / S2_tile
+# ---------------------------------
+#            OUTPUTS
+# ---------------------------------
 if BDR == 'DGT':
     BDR_FILE = BDR_DGT
     FOLDER_OUTPUTS = public_documents / 'output_BDR300'
@@ -133,11 +144,9 @@ create_directory_if_not_exists(FOLDER_PLOTS)
 create_directory_if_not_exists(FOLDER_CSV)
 create_directory_if_not_exists(FOLDER_SHP)
 
-if var == 'THEIA':
-    tiles = FOLDER_THEIA / S2_tile
-else:
-    tiles = FOLDER_GEE / S2_tile
-
+# ---------------------------------
+#      PARAMETROS PROCESSAMENTO
+# ---------------------------------
 raster_path = next(tiles.glob('*.*'), None)
 
 gdf_centros_pixeis = processar_centros_pixeis(BDR_FILE, raster_path)
@@ -152,11 +161,19 @@ img_collection = tiles.parts[-2]
 CRS_THEIA = 32629
 CRS_WGS84 = 4326
 
-############ PARAMETROS CCD ########################
+# ---------------------------------
+#          PARAMETROS CCD
+# ---------------------------------
 alpha = ccd.parameters.defaults['ALPHA'] # Looks for alpha in the parameters.py file
 ccd_params = ccd.parameters.defaults
+######### NOME BASE DOS FICHEIROS A SEREM GERADOS #########
+filename = fromParamsReturnName(img_collection, ccd_params, (S2_tile, tiles), N, random_state_value, min_year, max_date)
+############ OUTPUTS ######################
+output_file = FOLDER_NPY / "{}.npy".format(filename) # ficheiro numpy (matriz) dos dados (nr de imagens x nr de bandas x nr total de pontos)
 
-############ PARAMETROS DA VALIDAÇÃO ########################
+# ---------------------------------
+#      PARAMETROS DA VALIDAÇÃO
+# ---------------------------------
 # datas do filtro das datas da análise (DGT 300)
 ########### Não alterar ################
 dt_ini = '2018-09-12' # data inicial
@@ -165,12 +182,6 @@ dt_end = '2021-09-30' # data final
 theta = 60 # +/- theta dias de diferenca
 # bandar a filtrar com base na magnitude
 bandFilter = None #não implementado ainda - não mexer
-
-######### NOME BASE DOS FICHEIROS A SEREM GERADOS #########
-filename = fromParamsReturnName(img_collection, ccd_params, (S2_tile, tiles), N, random_state_value, min_year, max_date)
-
-############ OUTPUTS ######################
-output_file = FOLDER_NPY / "{}.npy".format(filename) # ficheiro numpy (matriz) dos dados (nr de imagens x nr de bandas x nr total de pontos)
 #%%
 def main(batch_size=None):
     # Verificar a existência do arquivo .npy e inicializar ou carregar os dados
