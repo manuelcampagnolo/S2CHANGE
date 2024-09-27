@@ -123,7 +123,7 @@ def processar_centros_pixeis(shapefile_path, raster_path):
     end_time = time.time()
     execution_time_seconds = end_time - start_time
     execution_time_minutes = execution_time_seconds / 60
-    print("Processar centros dos pixels:", execution_time_minutes, "minutos")
+    print("Processar centros dos pixels:", execution_time_minutes, "minutos. Número de pixels:", len(gdf_centros_pixeis))
     
     return gdf_centros_pixeis
 #%%
@@ -361,7 +361,7 @@ def process_detection_results(results, dates, ndvis, ponto_desejado, NODATA_VALU
     ponto_desejado_wgs_x, ponto_desejado_wgs_y = ponto_desejado_wgs
     
     # se remover o ultimo elemento do tbreak ao correr a validação dá erro porque as colunas não tem o mesmo tamanho
-    dados = [{'tBreak': break_dates_epoch[:-1], 'tBreak_ddmmyyyy':break_dates_ddmmyyyy[:-1],'tEnd': end_dates_epoch,'tEnd_ddmmyyyy':end_dates_ddmmyyyy,
+    dados = [{'tBreak': break_dates_epoch[-1], 'tBreak_ddmmyyyy':break_dates_ddmmyyyy[-1],'tEnd': end_dates_epoch,'tEnd_ddmmyyyy':end_dates_ddmmyyyy,
               'tStart': start_dates_epoch, 'changeProb': prob,
               'Lat': ponto_desejado_wgs_y, 'Lon': ponto_desejado_wgs_x, 'ndvi_magnitude': ndvi_magnitudes,
                'ndvis': ndvis.tolist(), 'dates': dates.tolist(), 'prediction_dates': [d.tolist() for d in prediction_dates],
