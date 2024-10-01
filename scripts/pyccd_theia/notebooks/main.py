@@ -80,25 +80,12 @@ import os
 #              |---- utils.py
 #%%
 # ---------------------------------
-#   PARAMETROS PRÉ PROCESSAMENTO
-# ---------------------------------
-var = 'THEIA' # choose variable: THEIA or GEE
-BDR = 'DGT' # choose variable: DGT or NAV
-S2_tile = 'T29TNE' # escolher o tile S2
-min_year =  2017 # ano inicial da corrida do CCD
-max_date = datetime(2023, 12, 31) # data até onde se corre o ccd
-
-bandas_desejadas = [1, 2, 3, 7, 10]
-
-NODATA_VALUE = 65535
-MAX_VALUE_NDVI = 10000
-
-EXECUTAR_PLOT = False # (false para não fazer; true para fazer)
-ROW_INDEX = 8 # plot para uma linha do CSV (escolher a linha no row_index)
-
-# ---------------------------------
 #             INPUTS
 # ---------------------------------
+var = 'GEE' # choose variable: THEIA or GEE
+BDR = 'NAV' # choose variable: DGT or NAV
+S2_tile = 'T29TNF' # escolher o tile S2
+
 # Caminho onde estão os dados todos
 public_documents = Path('C:/Users/Public/Documents/')
 # Caminhos para a base de dados de validação
@@ -115,6 +102,22 @@ if var == 'THEIA':
     tiles = FOLDER_THEIA / S2_tile
 else:
     tiles = FOLDER_GEE / S2_tile
+
+
+# ---------------------------------
+#   PARAMETROS PRÉ PROCESSAMENTO
+# ---------------------------------
+min_year =  2017 # ano inicial da corrida do CCD
+max_date = datetime(2023, 12, 31) # data até onde se corre o ccd
+bandas_desejadas = [1, 2, 3, 7, 10] # bandas usadas na deteção
+
+NODATA_VALUE = 65535
+MAX_VALUE_NDVI = 10000
+
+EXECUTAR_PLOT = False # (false para não fazer; true para fazer)
+ROW_INDEX = 8 # plot para uma linha do CSV (escolher a linha no row_index)
+
+
 # ---------------------------------
 #            OUTPUTS
 # ---------------------------------

@@ -79,7 +79,7 @@ def plotFromCSV(csv_file, row_index=0, save_dir=None):
     
     ticks = [min(date_objects1) + timedelta(days=i*365) for i in range(10) if min(date_objects1) + timedelta(days=i*365) <= datetime(2023, 12, 31)]
     plt.xticks(ticks)
-    plt.title('Lat:' + str(round(ponto_desejado_wgs_x, 5)) + ' Lon:' + str(round(ponto_desejado_wgs_y, 5)))
+    plt.title('Lat:' + str(round(ponto_desejado_wgs_y, 5)) + ' Lon:' + str(round(ponto_desejado_wgs_x, 5)))
     
     a1.plot([], [], color='r', linestyle='--', label='Start dates')
     a1.plot([], [], color='brown', linestyle='--', label='End Dates')
