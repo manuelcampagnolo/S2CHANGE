@@ -1,7 +1,15 @@
 import os
-user_profile = os.environ['USERPROFILE']
-directory_path = os.path.join(user_profile, 'Desktop', 'CCD_yml_win')
+import platform
+
+# Verifica o sistema operacional
+if platform.system() == "Windows":
+    user_profile = os.environ['USERPROFILE']
+    directory_path = os.path.join(user_profile, 'Desktop', 'CCD_yml_win')
+else:  # Assume que é Linux
+    user_home = os.path.expanduser("~")
+    directory_path = os.path.join(user_home, 'CCD_yml_win')
 os.chdir(directory_path)
+
 import pandas as pd
 import os
 import sys
@@ -109,7 +117,7 @@ else:
 # ---------------------------------
 min_year =  2017 # ano inicial da corrida do CCD
 max_date = datetime(2023, 12, 31) # data até onde se corre o ccd
-bandas_desejadas = [1, 2, 3, 7, 10] # bandas usadas na deteção
+bandas_desejadas = [1, 2, 3, 7, 10] # bandas usadas para o pré-processamento
 
 NODATA_VALUE = 65535
 MAX_VALUE_NDVI = 10000
