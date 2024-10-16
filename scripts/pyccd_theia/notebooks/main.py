@@ -1,3 +1,4 @@
+# PyCCD v01 - 16/10/2024 / Contrato N.º 3044 DGT/ISA/CEXC/2152/2023
 import os
 import platform
 
@@ -14,11 +15,11 @@ import pandas as pd
 import os
 import sys
 from pathlib import Path
-# chamar python a partir da pasta 'CCD'
-module_path= Path(__name__ ).parent.absolute() / 'S2CHANGE' / 'scripts' / 'pyccd_theia' #  / 'CCD' / 'S2CHANGE' / 'scripts' / 
-base_path= Path(__name__ ).parent.absolute()  # dir do script; # dir referência (acima): 'DGT-S2CHANGE_2023'
-if module_path not in sys.path:
-    sys.path.append(str(module_path))
+# Assumir onde está a pasta dos scripts do PyCCD
+PASTA_DE_SCRIPTS = Path(__name__ ).parent.absolute() / 'S2CHANGE' / 'scripts' / 'pyccd_theia' 
+
+if PASTA_DE_SCRIPTS not in sys.path:
+    sys.path.append(str(PASTA_DE_SCRIPTS))
 import ccd
 from notebooks.avaliacao_exatidao_pyccd import runValidation
 from datetime import datetime
@@ -32,7 +33,6 @@ warnings.filterwarnings('ignore')
 import numpy as np
 import math
 import os
-
 # Working directory (DADOS):
 # |----FOLDER PUBLIC DOCUMENTS
 #    |---- SUBFOLDER BDR_300 (DGT)
@@ -62,9 +62,10 @@ import os
 
 # Working directory (PyCCD):
 # |----FOLDER CCD_yml_win
-#    |---- SUBFOLDER scripts
-#    |---- SUBFOLDER pyccd_theia
-#         |---- SUBFOLDER ccd
+#    |---- SUBFOLDER S2CHANGE
+#       |---- SUBFOLDER scripts
+#         |---- SUBFOLDER pyccd_theia
+#           |---- SUBFOLDER ccd
 #              |---- SUBFOLDER models
 #                   |---- __init__.py
 #                   |---- lasso.py
@@ -78,7 +79,7 @@ import os
 #              |---- procedures.py
 #              |---- qa.py
 #              |---- version.py
-#         |---- SUBFOLDER notebooks 
+#           |---- SUBFOLDER notebooks 
 #              |---- addNewImageToFile.py
 #              |---- avaliacao_exatidao_pyccd.py
 #              |---- main.py (** ficheiro principal **)
@@ -90,27 +91,18 @@ import os
 # ---------------------------------
 #             INPUTS
 # ---------------------------------
-var = 'GEE' # choose variable: THEIA or GEE
-BDR = 'NAV' # choose variable: DGT or NAV
-S2_tile = 'T29TNF' # escolher o tile S2
+var = 'Theia' # choose variable: Theia or GEE
+S2_tile = 'T29TNE' # escolher o tile S2
 
-# Caminho onde estão os dados todos
-public_documents = Path('C:/Users/Public/Documents/')
-# Caminhos para a base de dados de validação
-# -> BDR DGT:
-BDR_DGT = public_documents / 'BDR_300_artigo' / 'BDR_CCDC_TNE_Adjusted.shp'
-# -> BDR NAVIGATOR:
-BDR_NAVIGATOR =  public_documents / 'BDR_Navigator' / 'nvg_2018_ccd.gpkg'
+# Caminho onde estão os inputs todos
+PASTA_DE_INPUTS = Path('C:/Users/Public/Documents/')
+# -> Shapefile ou Geopackage que contem a regiao de interesse
+REGIAO_INTERESSE =  PASTA_DE_INPUTS / 'BDR_300_artigo' / 'BDR_CCDC_TNE_Adjusted.shp'
 
 # -> IMAGENS SENTINEL:
-FOLDER_THEIA = public_documents / 'imagens_Theia' # Caminho dados THEIA
-FOLDER_GEE = public_documents / 'imagens_GEE' # Caminho dados GEE
+IMAGENS_S2 = PASTA_DE_INPUTS / f'imagens_{str(var)}'
 
-if var == 'THEIA':
-    tiles = FOLDER_THEIA / S2_tile
-else:
-    tiles = FOLDER_GEE / S2_tile
-
+tiles = IMAGENS_S2 / S2_tile
 
 # ---------------------------------
 #   PARAMETROS PRÉ PROCESSAMENTO
@@ -125,21 +117,15 @@ MAX_VALUE_NDVI = 10000
 EXECUTAR_PLOT = False # (false para não fazer; true para fazer)
 ROW_INDEX = 8 # plot para uma linha do CSV (escolher a linha no row_index)
 
-
 # ---------------------------------
 #            OUTPUTS
 # ---------------------------------
-if BDR == 'DGT':
-    BDR_FILE = BDR_DGT
-    FOLDER_OUTPUTS = public_documents / 'output_BDR300'
-else:
-    BDR_FILE = BDR_NAVIGATOR
-    FOLDER_OUTPUTS = public_documents / 'output_BDR-NAV'
-    
-FOLDER_NPY = FOLDER_OUTPUTS / 'numpy' / S2_tile
-FOLDER_PLOTS = FOLDER_OUTPUTS / 'plots' / S2_tile
-FOLDER_CSV = FOLDER_OUTPUTS / 'tabular' / S2_tile
-FOLDER_SHP = FOLDER_OUTPUTS / 'shapefiles' / S2_tile
+PASTA_DE_OUTPUTS = Path('C:/Users/Public/Documents/outputs_RI')
+
+FOLDER_NPY = PASTA_DE_OUTPUTS / 'numpy' / S2_tile
+FOLDER_PLOTS = PASTA_DE_OUTPUTS / 'plots' / S2_tile
+FOLDER_CSV = PASTA_DE_OUTPUTS / 'tabular' / S2_tile
+FOLDER_SHP = PASTA_DE_OUTPUTS / 'shapefiles' / S2_tile
 
 # Função para criar diretórios se não existirem
 def create_directory_if_not_exists(path):
@@ -160,7 +146,7 @@ create_directory_if_not_exists(FOLDER_SHP)
 # ---------------------------------
 raster_path = next(tiles.glob('*.*'), None)
 
-gdf_centros_pixeis = processar_centros_pixeis(BDR_FILE, raster_path)
+gdf_centros_pixeis = processar_centros_pixeis(REGIAO_INTERESSE, raster_path)
 
 N = len(gdf_centros_pixeis) # Número total de pixels
 random_state_value = 42
@@ -197,7 +183,7 @@ bandFilter = None #não implementado ainda - não mexer
 def main(batch_size=None):
     # Verificar a existência do arquivo .npy e inicializar ou carregar os dados
     # tif_dates_ord = check_or_initialize_file(output_file, tiles, var, S2_tile, max_date, BDR_FILE, N, random_state_value, bandas_desejadas, FOLDER_OUTPUTS, img_collection, NODATA_VALUE, raster_path)
-    tif_dates_ord = check_or_initialize_file(output_file, tiles, var, S2_tile, min_year, max_date, gdf_centros_pixeis, N, random_state_value, bandas_desejadas, FOLDER_OUTPUTS, img_collection, NODATA_VALUE, raster_path)
+    tif_dates_ord = check_or_initialize_file(output_file, tiles, var, S2_tile, min_year, max_date, gdf_centros_pixeis, N, random_state_value, bandas_desejadas, PASTA_DE_OUTPUTS, img_collection, NODATA_VALUE, raster_path)
     
     # Carregar os dados numpy para o processamento em lotes
     sel_values = np.load(output_file, mmap_mode='r')
@@ -219,7 +205,7 @@ def main(batch_size=None):
             ys_slice = ys[start_index:end_index]
             
             # Criar argumentos para cada lote de 10 000 pontos
-            arg_list = [(i, sel_values_block, tif_dates_ord, xs_slice, ys_slice, NODATA_VALUE, MAX_VALUE_NDVI, FOLDER_OUTPUTS, CRS_THEIA, CRS_WGS84, img_collection) for i in range(sel_values_block.shape[2])]
+            arg_list = [(i, sel_values_block, tif_dates_ord, xs_slice, ys_slice, NODATA_VALUE, MAX_VALUE_NDVI, PASTA_DE_OUTPUTS, CRS_THEIA, CRS_WGS84, img_collection) for i in range(sel_values_block.shape[2])]
             
             # Mapear os resultados usando executor.map
             for result_df in executor.map(runDetectionForPoint, arg_list):
@@ -238,6 +224,6 @@ def main(batch_size=None):
 #%%
 if __name__ == '__main__':
     main(batch_size)
-    if BDR == 'DGT':
-        runValidation(filename, FOLDER_CSV, BDR_FILE, dt_ini, dt_end, bandFilter, theta)
+    # if BDR == 'DGT':
+    #     runValidation(filename, FOLDER_CSV, REGIAO_INTERESSE, dt_ini, dt_end, bandFilter, theta)
     create_geodataframe_from_csv(filename, CRS_WGS84, CRS_THEIA, S2_tile, FOLDER_CSV, FOLDER_SHP)
