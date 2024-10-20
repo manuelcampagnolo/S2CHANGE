@@ -86,7 +86,7 @@ Entregáveis:
 *Duração: Meses 9-20*
 
 Entregáveis:
-  * E3.1 – Manual de utilização operacional da metodologia implementada na cadeia de produção da DGT.
+  * E3.1 – [Manual de utilização operacional da metodologia implementada na cadeia de produção da DGT](Entregavel_3_1_manuel_utilizacao_pyccd_v1.pdf).
   * E3.2 – Demonstrador prático: mapas nacionais vetoriais a delimitar manchas de perda recente de floresta e mato superiores a 0.5 ha com uma frequência bimestral relativos a um período contínuo de dois anos entre 2023 e 2025.
   * E3.3 – Relatório de validação dos mapas nacionais.
   * E3.4 – Aplicação informática que possa ser integrada na cadeia de produção da DGT.
