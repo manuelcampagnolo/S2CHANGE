@@ -13,7 +13,6 @@ import os
 import time
 from notebooks.read_files import read_tif_files_theia, read_tif_files_gee, readPoints, convertPointToCrs
 from pyproj import CRS
-import ast
 #%%
 def create_geodataframe_from_csv(filename, epsg_input, epsg_output, S2_tile, csv_dir, shapefile_dir):
     """
@@ -58,7 +57,7 @@ def create_geodataframe_from_csv(filename, epsg_input, epsg_output, S2_tile, csv
 #%%
 def processar_centros_pixeis(shapefile_path, raster_path):
     """
-    Função para calcular os centros dos pixels dentro das geometrias de um shapefile com base em um raster.
+    Função para calcular os centros dos pixels dentro das geometrias de um shapefile com base num raster.
     """
     start_time = time.time()
     print('Processar centros dos pontos de cada geometria para corresponder aos centros dos pixels dos rasters...')
@@ -179,7 +178,7 @@ def check_or_initialize_file(output_file, tiles, var, S2_tile, min_year, max_dat
         print(f"O arquivo '{output_file}' já existe. Carregando e processando os dados existentes...")
         # Recolher nome e data dos tifs
         print('A recolher nome e data dos tifs...')
-        if var == 'THEIA':
+        if var == 'Theia':
             tif_names, tif_dates = read_tif_files_theia(S2_tile, tiles, min_year, max_date)
         else:
             tif_names, tif_dates = read_tif_files_gee(S2_tile, tiles, max_date)
@@ -192,7 +191,7 @@ def check_or_initialize_file(output_file, tiles, var, S2_tile, min_year, max_dat
             
         # Recolher nome e data dos tifs
         print('A recolher nome e data dos tifs...')
-        if var == 'THEIA':
+        if var == 'Theia':
             tif_names, tif_dates = read_tif_files_theia(S2_tile, tiles, min_year, max_date)
         else:
             tif_names, tif_dates = read_tif_files_gee(S2_tile, tiles, max_date)
@@ -200,6 +199,13 @@ def check_or_initialize_file(output_file, tiles, var, S2_tile, min_year, max_dat
         tif_dates_ord = [d.toordinal() for d in tif_dates]
         print(f'Processando dados {var}... ({tiles})')
         start_time = time.time()
+        
+        # Selecionar uma amostra aleat�ria de N pontos de gdf_centros_pixeis
+        print(f'Selecionando uma amostra aleatoria de {N} pontos...')
+        if len(gdf_centros_pixeis) > N:
+            # Garantir que a amostragem � feita somente se existirem mais pontos que N
+            gdf_centros_pixeis = gdf_centros_pixeis.sample(n=N, random_state=random_state_value)
+
         # Abrir tifs com xarray e carregar série temporal
         print('A abrir tifs com xarray e carregar série temporal...')
         getTimeSeriesForPoints(tif_names, tif_dates_ord, bandas_desejadas, gdf_centros_pixeis, output_file)
@@ -361,18 +367,18 @@ def process_detection_results(results, dates, ndvis, ponto_desejado, NODATA_VALU
     ponto_desejado_wgs_x, ponto_desejado_wgs_y = ponto_desejado_wgs
     
     # se remover o ultimo elemento do tbreak ao correr a validação dá erro porque as colunas não tem o mesmo tamanho
-    dados = [{'tBreak': break_dates_epoch[-1], 'tBreak_ddmmyyyy':break_dates_ddmmyyyy[-1],'tEnd': end_dates_epoch,'tEnd_ddmmyyyy':end_dates_ddmmyyyy,
+    dados = [{'tBreak': break_dates_epoch[:-1], 'tBreak_ddmmyyyy':break_dates_ddmmyyyy[:-1],'tEnd': end_dates_epoch,'tEnd_ddmmyyyy':end_dates_ddmmyyyy,
               'tStart': start_dates_epoch, 'changeProb': prob,
               'Lat': ponto_desejado_wgs_y, 'Lon': ponto_desejado_wgs_x, 'ndvi_magnitude': ndvi_magnitudes,
-               'ndvis': ndvis.tolist(), 'dates': dates.tolist(), 'prediction_dates': [d.tolist() for d in prediction_dates],
-               'predicted_values': [v.tolist() for v in predicted_values], 'coeficientes': coeficientes, 
-               'mask': np.array(results['processing_mask'], dtype='bool').tolist()}]
+                'ndvis': ndvis.tolist(), 'dates': dates.tolist(), 'prediction_dates': [d.tolist() for d in prediction_dates],
+                'predicted_values': [v.tolist() for v in predicted_values], 'coeficientes': coeficientes, 
+                'mask': np.array(results['processing_mask'], dtype='bool').tolist()}]
     
     df = pd.DataFrame(dados)
     
     # Reorganizar colunas
     ordem_colunas = ['tBreak', 'tBreak_ddmmyyyy','tEnd','tEnd_ddmmyyyy', 'tStart', 'changeProb', 'Lat', 'Lon', 'ndvi_magnitude', 'ndvis', 'dates', 
-                     'prediction_dates', 'predicted_values', 'coeficientes', 'mask']
+                      'prediction_dates', 'predicted_values', 'coeficientes', 'mask']
     
     df = df[ordem_colunas]
     return df
