@@ -200,11 +200,11 @@ def check_or_initialize_file(output_file, tiles, var, S2_tile, min_year, max_dat
         print(f'Processando dados {var}... ({tiles})')
         start_time = time.time()
         
-        # Selecionar uma amostra aleat�ria de N pontos de gdf_centros_pixeis
-        print(f'Selecionando uma amostra aleatoria de {N} pontos...')
-        if len(gdf_centros_pixeis) > N:
-            # Garantir que a amostragem � feita somente se existirem mais pontos que N
-            gdf_centros_pixeis = gdf_centros_pixeis.sample(n=N, random_state=random_state_value)
+        # # Selecionar uma amostra aleat�ria de N pontos de gdf_centros_pixeis
+        # print(f'Selecionando uma amostra aleatoria de {N} pontos...')
+        # if len(gdf_centros_pixeis) > N:
+        #     # Garantir que a amostragem � feita somente se existirem mais pontos que N
+        #     gdf_centros_pixeis = gdf_centros_pixeis.sample(n=N, random_state=random_state_value)
 
         # Abrir tifs com xarray e carregar série temporal
         print('A abrir tifs com xarray e carregar série temporal...')
