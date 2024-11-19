@@ -54,9 +54,10 @@ base em análise automática de imagens de satélite
 
 
 <details markdown="block">
-<summary> Call Advanced Computing Projects (4th ed) - A0 Experimental Access (maio 2024)</summary>
+<summary> Call Advanced Computing Projects (4th ed) - Grant 2024.07034.CPCA.A0</summary>
 
 * [Candidatura](Application_2024.07034.CPCA.pdf)
+* [Allocated resources](A0_project_resources.png)
 
 </details>
 
