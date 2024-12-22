@@ -1,0 +1,69 @@
+* ----------------------------------------------------------------
+* Running PROLOG for ppe_mpi4py_test on Sun Dec 22 19:51:49 WET 2024
+*    JOB_NAME                : ppe_mpi4py_test
+*    JOB_ID                  : 40733
+*    JOB_PARTITION           : fct
+*    JOB_USER                : domwelsh
+*    JOB_ACCOUNT             : cpca070342024
+*    JOB_QOS                 : cpca070342024
+*    NODE_LIST               : hpc[030-034]
+*    SLURM_NNODES            : 5
+*    SLURM_NPROCS            : 5
+*    SLURM_NTASKS            : 5
+*    SLURM_CPUS_ON_NODE      : 10
+*    SLURM_TASKS_PER_NODE    : 1(x5)
+*    SLURM_JOB_CPUS_PER_NODE : 10(x5)
+*    SLURM_MEM_PER_CPU       : 5333
+*    SUBMIT_HOST             : ui101.d.incd.pt
+*    WORK_DIR                : /users1/cpca070342024/domwelsh
+*    JOB_SCRIPT              : /users1/cpca070342024/domwelsh/ppe_mpi4py_test_slurm.sh
+* ----------------------------------------------------------------
+=== Running ===
+^M  0%|          | 0/2 [00:00<?, ?it/s]^M 50%|█████     | 1/2 [00:13<00:13, 13.46s/it]^M100%|██████████| 2/2 [00:24<00:00, 11.89s/it]^M100%|██████████| 2/2 [00:24<00:00, 12.12s/it]
+
+=== Parallel Processing Monitoring Report ===
+Total Nodes: 5
+Total Points Processed: 1000
+Points per Node: 200
+Batch Size: 100
+Start Time: 2024-12-22 19:51:50
+End Time: 2024-12-22 19:52:15
+
+Node Processing Details:
+
+Node 0:
+  CPU Cores Used: 10
+  Batches Processed: 2
+  Average Batch Processing Time: 12.12 seconds
+
+Node 1:
+  CPU Cores Used: 10
+  Batches Processed: 2
+  Average Batch Processing Time: 12.16 seconds
+
+Node 2:
+  CPU Cores Used: 10
+  Batches Processed: 2
+  Average Batch Processing Time: 12.15 seconds
+
+Node 3:
+  CPU Cores Used: 10
+  Batches Processed: 2
+  Average Batch Processing Time: 12.01 seconds
+
+Node 4:
+  CPU Cores Used: 10
+  Batches Processed: 2
+  Average Batch Processing Time: 12.08 seconds
+
+DataFrame Summary:
+Total Records: 96000
+
+Points Processed per Node:
+node_id
+0    19200
+1    19200
+2    19200
+3    19200
+4    19200
+Name: point_index, dtype: int64
