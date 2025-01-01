@@ -1,4 +1,4 @@
-# Algoritmo PyCCD
+# PyCCD
 
 ## Instalação do ambiente virtual
 Para começar o processamento do algoritmo PyCCD, é necessário instalar um ambiente virtual utilizando os ficheiros .yml correspondentes ao sistema operativo:
@@ -47,7 +47,7 @@ Os outputs têm a seguinte configuração:
 |---- FOLDER PUBLIC DOCUMENTS ||--- SUBFOLDER output_BDR300 |||-- folder numpy ||||- files.npy |||-- folder plots ||||- plots.png |||-- folder tabular (csv e validação) ||||- files.csv ||--- SUBFOLDER output_NAV 
 |||-- folder numpy ||||- files.npy |||-- folder plots ||||- plots.png |||-- folder tabular (csv) ||||- files.csv
 
-## Processamento do algoritmo PyCCD
+## Processamento do PyCCD
 O algoritmo é processado para o tile definido para cada um dos pontos dentro das geometrias dadas pela BDR. 
 O script onde se deve fazer a corrida/alteração dos inputs é o main.py, que se encontra no seguinte diretório: *C:\Users\nome-do-utilizador\Desktop\CCD_yml_win\S2CHANGE\scripts\pyccd_theia\notebooks\main.py*
 
