@@ -62,10 +62,10 @@ base em análise automática de imagens de satélite
 </details>
 
 <details markdown="block">
-<summary> Call Advanced Computing Projects (5th ed) - Grant 2024.07034.CPCA.A0</summary>
+<summary> Call Advanced Computing Projects (5th ed) - Grant 2024_10004_CPCA_A1</summary>
 
-* [Candidatura](Application_2024.07034.CPCA.pdf)
-* [Allocated resources](A0_project_resources.png)
+* [Candidatura](application_2024_10004_CPCA_A1.pdf)
+* [Contract](TA FCT.CPCA.2024.01 - 2024.10004.CPCA.A1.pdf)
 
 </details>
 
