@@ -7,7 +7,7 @@ import pickle
 if platform.system() == "Windows":
     user_profile = os.environ['USERPROFILE']
     directory_path = os.path.join(user_profile, 'Desktop', 'CCD_yml_win')
-else:  # Assume que √© Linux
+else:  # Assume que √É¬© Linux
     user_home = os.path.expanduser("~")
     directory_path = os.path.join(user_home, 'CCD_yml_win')
 os.chdir(directory_path)
@@ -17,7 +17,7 @@ import sys
 from pathlib import Path
 # chamar python a partir da pasta 'CCD'
 module_path= Path(__name__ ).parent.absolute() / 'S2CHANGE' / 'scripts' / 'pyccd_theia' #  / 'CCD' / 'S2CHANGE' / 'scripts' / 
-base_path= Path(__name__ ).parent.absolute()  # dir do script; # dir refer√™ncia (acima): 'DGT-S2CHANGE_2023'
+base_path= Path(__name__ ).parent.absolute()  # dir do script; # dir refer√É¬™ncia (acima): 'DGT-S2CHANGE_2023'
 if module_path not in sys.path:
     sys.path.append(str(module_path))
 import ccd
@@ -57,7 +57,7 @@ from threading import Thread
 #              |---- files.npy
 #         |---- folder plots
 #              |---- plots.png
-#         |---- folder tabular (csv e valida√ß√£o)
+#         |---- folder tabular (csv e valida√É¬ß√É¬£o)
 #              |---- files.csv
 #    |---- SUBFOLDER output_NAV
 #         |---- folder numpy
@@ -103,28 +103,28 @@ from pathlib import Path
 from datetime import datetime
 #%% 
 # ---------------------------------
-#   PARAMETROS PR√â PROCESSAMENTO
+#   PARAMETROS PR√É‚Ä∞ PROCESSAMENTO
 # ---------------------------------
 var = 'THEIA' # choose variable: THEIA or GEE
 BDR = 'DGT' # choose variable: DGT or NAV
 S2_tile = 'T29TNE' # escolher o tile S2
 min_year =  2017 # ano inicial da corrida do CCD
-max_date = datetime(2023, 12, 31) # data atÈ onde se corre o ccd
+max_date = datetime(2023, 12, 31) # data at√© onde se corre o ccd
 
 bandas_desejadas = [1, 2, 3, 7, 10]
 
 NODATA_VALUE = 65535
 MAX_VALUE_NDVI = 10000
 
-EXECUTAR_PLOT = False # (false para n„o fazer; true para fazer)
+EXECUTAR_PLOT = False # (false para n√£o fazer; true para fazer)
 ROW_INDEX = 8 # plot para uma linha do CSV (escolher a linha no row_index)
 
 # ---------------------------------
 #             INPUTS
 # ---------------------------------
-# Caminho onde est„o os dados todos
+# Caminho onde est√£o os dados todos
 public_documents = Path('C:/Users/Public/Documents/')
-# Caminhos para a base de dados de validaÁ„o
+# Caminhos para a base de dados de valida√ß√£o
 # -> BDR DGT:
 BDR_DGT = public_documents / 'BDR_300_artigo' / 'BDR_CCDC_TNE_Adjusted.shp'
 # -> BDR NAVIGATOR:
@@ -154,12 +154,12 @@ FOLDER_PLOTS = FOLDER_OUTPUTS / 'plots' / S2_tile
 FOLDER_CSV = FOLDER_OUTPUTS / 'tabular' / S2_tile
 FOLDER_SHP = FOLDER_OUTPUTS / 'shapefiles' / S2_tile
 
-# FunÁ„o para criar diretÛrios se n„o existirem
+# Fun√ß√£o para criar diret√≥rios se n√£o existirem
 def create_directory_if_not_exists(path):
     if not path.exists():
         path.mkdir(parents=True, exist_ok=True)
 
-# Criar os diretÛrios
+# Criar os diret√≥rios
 create_directory_if_not_exists(FOLDER_NPY)
 create_directory_if_not_exists(FOLDER_PLOTS)
 create_directory_if_not_exists(FOLDER_CSV)
@@ -193,17 +193,17 @@ filename = fromParamsReturnName(img_collection, ccd_params, (S2_tile, tiles), N,
 output_file = FOLDER_NPY / "{}.npy".format(filename) # ficheiro numpy (matriz) dos dados (nr de imagens x nr de bandas x nr total de pontos)
 
 # ---------------------------------
-#      PARAMETROS DA VALIDA«√O
+#      PARAMETROS DA VALIDA√á√ÉO
 # ---------------------------------
-# datas do filtro das datas da an·lise (DGT 300)
-########### N„o alterar ################
+# datas do filtro das datas da an√°lise (DGT 300)
+########### N√£o alterar ################
 dt_ini = '2018-09-12' # data inicial
 dt_end = '2021-09-30' # data final
-# Margem de toler‚ncia entre a quebra do Modelo e do Analista
-theta = 60 # +/- theta dias de diferenÁa
+# Margem de toler√¢ncia entre a quebra do Modelo e do Analista
+theta = 60 # +/- theta dias de diferen√ßa
 # bandar a filtrar com base na magnitude
-bandFilter = None #n„o implementado ainda - n„o mexer
-#%% ConfiguraÁıes MPI
+bandFilter = None #n√£o implementado ainda - n√£o mexer
+#%% Configura√ß√µes MPI
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
@@ -216,7 +216,7 @@ def process_batch(args):
     ]
     return [runDetectionForPoint(arg) for arg in arg_list]
 
-# FunÁ„o para processar um lote
+# Fun√ß√£o para processar um lote
 def process_single_batch(batch, sel_values, xs, ys, tif_dates_ord, progress):
     start, end = batch
     sel_values_block = sel_values[:, :, start:end]
@@ -241,7 +241,7 @@ def main(batch_size=None):
         xs = np.load(str(output_file.with_suffix('')) + '_xs.npy', mmap_mode='r').astype(np.int32)
         ys = np.load(str(output_file.with_suffix('')) + '_ys.npy', mmap_mode='r').astype(np.int32)
 
-        # Dividir os Ìndices de dados
+        # Dividir os √≠ndices de dados
         indices = list(range(0, N, batch_size))
         batches = [
             (start, min(start + batch_size, N)) for start in indices
@@ -257,7 +257,7 @@ def main(batch_size=None):
         ys = None
         batches_per_rank = None
 
-    # Compartilhar vari·veis tif_dates_ord e batches_per_rank entre processos
+    # Compartilhar dados entre processos
     tif_dates_ord = comm.bcast(tif_dates_ord, root=0)
     my_batches = comm.scatter(batches_per_rank, root=0)
 
@@ -272,14 +272,14 @@ def main(batch_size=None):
     # Criar uma barra de progresso compartilhada
     with Manager() as manager:
         progress = manager.Value('i', 0)  # Contador compartilhado
-        total_batches = len(my_batches)  # N˙mero total de lotes
+        total_batches = len(my_batches)  # N√∫mero total de lotes
 
         with tqdm(total=total_batches, desc=f"Processo {rank}") as pbar:
             def update_progress(_):
                 pbar.n = progress.value  # Atualiza a barra de progresso com o valor compartilhado
                 pbar.refresh()
 
-            # Processar os lotes atribuÌdos usando ProcessPoolExecutor
+            # Processar os lotes atribu√≠dos usando ProcessPoolExecutor
             with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
                 futures = [
                     executor.submit(process_single_batch, batch, sel_values, xs, ys, tif_dates_ord, progress)
@@ -295,6 +295,7 @@ def main(batch_size=None):
     if dfs:
         rank_csv_filename = FOLDER_CSV / f'{filename}_rank_{rank}.csv'
         result_df = pd.concat(dfs, ignore_index=True)
+
 
         result_df.to_csv(rank_csv_filename, index=False)
 
