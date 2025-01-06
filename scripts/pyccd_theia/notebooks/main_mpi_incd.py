@@ -208,14 +208,6 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
 #%%
-def process_batch(args):
-    sel_values_block, xs_slice, ys_slice, tif_dates_ord = args
-    arg_list = [
-        (i, sel_values_block, tif_dates_ord, xs_slice, ys_slice, NODATA_VALUE, MAX_VALUE_NDVI, FOLDER_OUTPUTS, CRS_THEIA, CRS_WGS84, img_collection)
-        for i in range(sel_values_block.shape[2])
-    ]
-    return [runDetectionForPoint(arg) for arg in arg_list]
-
 # Função para processar um lote
 def process_batch(args):
     sel_values_block, xs_slice, ys_slice, tif_dates_ord = args
