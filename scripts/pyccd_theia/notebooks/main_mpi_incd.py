@@ -217,15 +217,28 @@ def process_batch(args):
     return [runDetectionForPoint(arg) for arg in arg_list]
 
 # Função para processar um lote
-def process_single_batch(batch, sel_values, xs, ys, tif_dates_ord, progress):
+def process_batch(args):
+    sel_values_block, xs_slice, ys_slice, tif_dates_ord = args
+    arg_list = [
+        (i, sel_values_block, tif_dates_ord, xs_slice, ys_slice, NODATA_VALUE, MAX_VALUE_NDVI, FOLDER_OUTPUTS, CRS_THEIA, CRS_WGS84, img_collection)
+        for i in range(sel_values_block.shape[2])
+    ]
+    return [runDetectionForPoint(arg) for arg in arg_list]
+
+# Função para processar um lote
+def process_single_batch(batch, sel_values_path, xs_path, ys_path, tif_dates_ord, progress):
     start, end = batch
-    sel_values_block = sel_values[:, :, start:end]
-    xs_slice = xs[start:end]
-    ys_slice = ys[start:end]
+
+    # Carregar apenas o bloco específico para o lote
+    sel_values_block = np.load(sel_values_path, mmap_mode='r')[:, :, start:end]
+    xs_slice = np.load(xs_path, mmap_mode='r')[start:end]
+    ys_slice = np.load(ys_path, mmap_mode='r')[start:end]
+
+    # Processar o bloco específico
     result = process_batch((sel_values_block, xs_slice, ys_slice, tif_dates_ord))
 
-    # Atualiza a barra de progresso compartilhada
-    progress.value += 1  # Apenas incrementa o valor compartilhado
+    # Atualizar a barra de progresso compartilhada
+    progress.value += 1
     return result
 
 def main(batch_size=None):
@@ -235,11 +248,6 @@ def main(batch_size=None):
             output_file, tiles, var, S2_tile, min_year, max_date, gdf_centros_pixeis, N, random_state_value,
             bandas_desejadas, FOLDER_OUTPUTS, img_collection, NODATA_VALUE, raster_path
         )
-
-        # Carregar os dados numpy para o processamento em lotes
-        sel_values = np.load(output_file, mmap_mode='r').astype(np.float32)
-        xs = np.load(str(output_file.with_suffix('')) + '_xs.npy', mmap_mode='r').astype(np.int32)
-        ys = np.load(str(output_file.with_suffix('')) + '_ys.npy', mmap_mode='r').astype(np.int32)
 
         # Dividir os índices de dados
         indices = list(range(0, N, batch_size))
@@ -252,22 +260,11 @@ def main(batch_size=None):
         batches_per_rank = [batches[i::size] for i in range(size)]
     else:
         tif_dates_ord = None
-        sel_values = None
-        xs = None
-        ys = None
         batches_per_rank = None
 
     # Compartilhar dados entre processos
     tif_dates_ord = comm.bcast(tif_dates_ord, root=0)
     my_batches = comm.scatter(batches_per_rank, root=0)
-
-    # Cada processo carrega os dados localmente
-    if sel_values is None:
-        sel_values = np.load(output_file, mmap_mode='r').astype(np.float32)
-    if xs is None:
-        xs = np.load(str(output_file.with_suffix('')) + '_xs.npy', mmap_mode='r').astype(np.int32)
-    if ys is None:
-        ys = np.load(str(output_file.with_suffix('')) + '_ys.npy', mmap_mode='r').astype(np.int32)
 
     # Criar uma barra de progresso compartilhada
     with Manager() as manager:
@@ -282,7 +279,15 @@ def main(batch_size=None):
             # Processar os lotes atribuídos usando ProcessPoolExecutor
             with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
                 futures = [
-                    executor.submit(process_single_batch, batch, sel_values, xs, ys, tif_dates_ord, progress)
+                    executor.submit(
+                        process_single_batch,
+                        batch,
+                        output_file,  # Caminho do sel_values
+                        str(output_file.with_suffix('')) + '_xs.npy',  # Caminho do xs
+                        str(output_file.with_suffix('')) + '_ys.npy',  # Caminho do ys
+                        tif_dates_ord,
+                        progress
+                    )
                     for batch in my_batches
                 ]
                 for future in futures:
@@ -290,16 +295,15 @@ def main(batch_size=None):
 
         local_results = [future.result() for future in futures]
 
-    # Salvar os resultados localmente por rank
+    # Salvar os resultados localmente por processo
     dfs = [df for results in local_results for df in results]
     if dfs:
         rank_csv_filename = FOLDER_CSV / f'{filename}_rank_{rank}.csv'
         result_df = pd.concat(dfs, ignore_index=True)
 
-
         result_df.to_csv(rank_csv_filename, index=False)
 
-    comm.Barrier()  # Sincronizar todos os ranks antes de continuar
+    comm.Barrier()  # Sincronizar todos os processos antes de continuar
 
     if rank == 0:
         all_csv_files = list(FOLDER_CSV.glob(f'{filename}_rank_*.csv'))
@@ -309,16 +313,18 @@ def main(batch_size=None):
         
         for csv_file in all_csv_files:
             try:
-                # Criar shapefile para o CSV individual
-                shapefile_path = FOLDER_SHP / csv_file.stem.replace('.csv', '.shp')
+                shapefile_name = f"{csv_file.stem}.shp"
+                shapefile_path = FOLDER_SHP / shapefile_name
+    
                 print(f"Criando shapefile para {csv_file} em {shapefile_path}")
-                
+    
+                # Chamar a função de criação do shapefile
                 create_geodataframe_from_csv(
                     csv_file, CRS_WGS84, CRS_THEIA, S2_tile, FOLDER_CSV, FOLDER_SHP
                 )
             except Exception as e:
                 print(f"Erro ao processar o arquivo {csv_file}: {e}")
-    
+        
         print(f"Todos os shapefiles individuais foram criados em {FOLDER_SHP}.")
 
 if __name__ == '__main__':
