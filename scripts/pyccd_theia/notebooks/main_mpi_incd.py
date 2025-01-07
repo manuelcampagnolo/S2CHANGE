@@ -290,12 +290,13 @@ def main(batch_size=None):
     # Salvar os resultados localmente por processo
     dfs = [df for results in local_results for df in results]
     if dfs:
+        # Cria um CSV para cada processo
         rank_csv_filename = FOLDER_CSV / f'{filename}_rank_{rank}.csv'
         result_df = pd.concat(dfs, ignore_index=True)
 
         result_df.to_csv(rank_csv_filename, index=False)
 
-    comm.Barrier()  # Sincronizar todos os processos antes de continuar
+    comm.Barrier()  # Sincronizar todos os ranks antes de continuar
 
     if rank == 0:
         all_csv_files = list(FOLDER_CSV.glob(f'{filename}_rank_*.csv'))
@@ -303,17 +304,14 @@ def main(batch_size=None):
         if not all_csv_files:
             raise FileNotFoundError(f"Nenhum arquivo encontrado correspondente ao padrao {filename}_rank_*.csv em {FOLDER_CSV}")
         
-        for csv_file in all_csv_files:
+        for csv_filename in all_csv_files:
             try:
-                shapefile_name = f"{csv_file.stem}.shp"
-                shapefile_path = FOLDER_SHP / shapefile_name
-    
-                print(f"Criando shapefile para {csv_file} em {shapefile_path}")
-    
-                # Chamar a função de criação do shapefile
+                csv_file = csv_filename.stem
+                # Função para criar o shapefile para cada CSV de cada processo
                 create_geodataframe_from_csv(
                     csv_file, CRS_WGS84, CRS_THEIA, S2_tile, FOLDER_CSV, FOLDER_SHP
                 )
+                
             except Exception as e:
                 print(f"Erro ao processar o arquivo {csv_file}: {e}")
         
