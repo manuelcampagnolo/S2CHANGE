@@ -162,7 +162,6 @@ def exportImageForSingleImage(image, i, tile, base_folder):
                 top_left = ee.Geometry.Rectangle(xmin + i * step_x, ymin + j * step_y, xmin + (i + 1) * step_x, ymin + (j + 1) * step_y)
                 regions.append((top_left, f'part_{i * 6 + j + 1}'))
 
-        # Agora, para cada imagem, será processada por um único núcleo da CPU
         for region, label in regions:
             image_part = image.clip(region)
 
@@ -175,7 +174,6 @@ def exportImageForSingleImage(image, i, tile, base_folder):
         print(f'Error exporting image {i} for tile {tile}: {str(e)}')
 
 def combine_tiffs_to_mosaic(input_folder, output_folder, geopackage_path, date_millis):
-    # Encontre os arquivos TIFF para a data específica
     tiff_files = glob.glob(os.path.join(input_folder, f"*{date_millis}*.tif"))
     
     if not tiff_files:
@@ -184,11 +182,11 @@ def combine_tiffs_to_mosaic(input_folder, output_folder, geopackage_path, date_m
     
     print(f"Found {len(tiff_files)} TIFF files for the date {date_millis}. Combining them into a mosaic...", flush=True)
     
-    # Abrir os arquivos TIFF e combiná-los em um mosaico
+    # Abrir os arquivos TIFF e combiná-los num mosaico
     src_files_to_mosaic = [rasterio.open(file) for file in tiff_files]
     mosaic, out_transform = merge(src_files_to_mosaic)
     
-    # Copiar os metadados do primeiro arquivo TIFF
+    # Copiar os metadados do primeiro ficheiro TIFF
     out_meta = src_files_to_mosaic[0].meta.copy()
     out_meta.update({
         "driver": "GTiff",
@@ -199,7 +197,6 @@ def combine_tiffs_to_mosaic(input_folder, output_folder, geopackage_path, date_m
         "compress" : "LZW"
     })
     
-    # Fechar os arquivos TIFF
     for src in src_files_to_mosaic:
         src.close()
     
@@ -207,13 +204,13 @@ def combine_tiffs_to_mosaic(input_folder, output_folder, geopackage_path, date_m
     gdf = gpd.read_file(geopackage_path)
     geometries = gdf.geometry.values
     
-    # Salvar o mosaico completo no arquivo de saída
+    # Salvar o mosaico completo
     output_file = os.path.join(output_folder, f"S2SR_image_{date_millis}.tif")
     
     with rasterio.open(output_file, "w", **out_meta) as dest:
         dest.write(mosaic)
     
-    # Agora aplicar a máscara usando a geometria do GeoPackage
+    # Aplicar a máscara usando a geometria do GeoPackage
     with rasterio.open(output_file, "r") as src:
         out_image, out_transform = mask(src, geometries, crop=True)
         out_meta.update({
@@ -234,30 +231,29 @@ def process_images_in_parallel(imageList, tile_to_test, base_folder):
     with ProcessPoolExecutor(max_workers=24) as executor:
         futures = []
 
-        # Acumular todas as imagens a serem processadas
+
         for i in range(imageList.size().getInfo()):
-            image = ee.Image(imageList.get(i))  # Acesso correto à imagem
+            image = ee.Image(imageList.get(i))
             futures.append(executor.submit(exportImageForSingleImage, image, i, tile_to_test, base_folder))
 
         for future in futures:
-            future.result()  # Esperar até que todas as imagens sejam processadas
+            future.result() 
 
 def process_and_mosaic_images(imageList, tile_to_test, base_folder):
-    # Usar o .getInfo() de forma correta para obter o número de imagens
-    num_images = imageList.size().getInfo()  # Obtemos o número de imagens na coleção
+    num_images = imageList.size().getInfo()  # número de imagens na coleção
 
-    # Chamada única para processar as imagens em paralelo
+    # Processar as imagens em paralelo
     print("Processing all images in parallel...")
     process_images_in_parallel(imageList, tile_to_test, base_folder)
 
-    # Após o processamento paralelo, criamos os mosaicos
+    # Após o processamento paralelo, criar os mosaicos
     for i in range(num_images):
-        image = ee.Image(imageList.get(i))  # Acessa a imagem pela posição
+        image = ee.Image(imageList.get(i)) 
         date_millis = image.date().getInfo()['value']  # Obter a data em milissegundos
 
         print(f"Generating mosaic for image {i + 1} of {num_images} for tile {tile_to_test}.", flush=True)
         
-        # Criar caminhos para armazenar e combinar o mosaico
+        # Criar caminhos para guardar e combinar o mosaico
         tile_folder = os.path.join(base_folder, tile_to_test)
         mosaic_folder = os.path.join(tile_folder, str(date_millis))
         geopackage_path = r"/users1/cpca070342024/scaetano/portugal_continental.gpkg"

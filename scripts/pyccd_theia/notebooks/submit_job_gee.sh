@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=PyCCD              # Nome do Job
+#SBATCH --job-name=GEE              # Nome do Job
 #SBATCH --time=48:00:00               # Tempo de execução (HH:MM:SS)
 #SBATCH --nodes=1                     # Número de nós
 #SBATCH --ntasks-per-node=24          # Número de tarefas por nó 
