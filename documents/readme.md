@@ -50,7 +50,7 @@ On INCD the estimated computation time with 5 nodes and 96 cores; for 10^6 pixel
 * 1305 sec per 10^6 pixels
   
 **ToDo** 
-* Test running PyCCD over tile T29TNE, for 10^6 pixels. To do that we need a gpkg with a 10 by 10 km square within T29TN. Goal: do a comparison like in report 2.3_v2
+* Test running PyCCD over tile T29TNE, for 10^6 pixel with the current code. Goal: do a comparison like in report 2.3_v2
 * Re-define function `getTimeSeriesForPoints` so we don't need to use the point gpkg as input
 
 
