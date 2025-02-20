@@ -1,3 +1,7 @@
+# Inês Silveira
+# 2024
+
+
 #imports
 import geemap
 import ee
