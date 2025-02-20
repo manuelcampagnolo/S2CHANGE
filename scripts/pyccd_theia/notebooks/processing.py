@@ -58,6 +58,8 @@ def create_geodataframe_from_csv(filename, epsg_input, epsg_output, S2_tile, csv
 def processar_centros_pixeis(shapefile_path, raster_path):
     """
     Função para calcular os centros dos pixels dentro das geometrias de um shapefile com base num raster.
+    input: polygon geopackage; raster
+    output: point geopackage, where each point is the center of the pixel, for pixels within the input polygon
     """
     start_time = time.time()
     print('Processar centros dos pontos de cada geometria para corresponder aos centros dos pixels dos rasters...')
