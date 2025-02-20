@@ -110,9 +110,9 @@ BDR = 'DGT' # choose variable: DGT or NAV
 S2_tile = 'T29TNE' # escolher o tile S2
 min_year =  2017 # ano inicial da corrida do CCD
 max_date = datetime(2023, 12, 31) # data até onde se corre o ccd
-input_bands=['B2','B3','B4','B8']
-bands_to_use=['B2','B3','B4','B8']
-bandas_desejadas = [1, 2, 3, 7, 10]
+input_bands=['B3', 'B4', 'B8', 'B12']
+bands_dict={1: 'NDVI', 2: 'B3', 3:'B4', 4: 'B8', 5:'B12'}
+bandas_desejadas = bands_dict.keys() # to check
 
 NODATA_VALUE = 65535
 MAX_VALUE_NDVI = 10000
