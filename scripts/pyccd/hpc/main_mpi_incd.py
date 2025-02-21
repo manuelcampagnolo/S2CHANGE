@@ -169,7 +169,28 @@ create_directory_if_not_exists(FOLDER_SHP)
 # ---------------------------------
 #      PARAMETROS PROCESSAMENTO
 # ---------------------------------
-raster_path = next(tiles.glob('*.*'), None)
+# Escolher um raster com tamanho suficiente grande de forma apanhar todos os pixels:
+# Converter 800MB para bytes (1MB = 1_048_576 bytes)
+min_size = 800 * 1_048_576  
+
+# Listar todos os ficheiros na pasta
+raster_files = sorted(tiles.glob('*.*'))
+
+# Filtrar ficheiros maiores que 800MB
+raster_files = [f for f in raster_files if f.stat().st_size > min_size]
+
+# Escolher a primeira imagem válida
+raster_path = None
+for f in raster_files:
+    try:
+        with rasterio.open(f) as src:
+            if src.read(1).size > 0:
+                raster_path = f
+                break  
+    except:
+        continue  
+
+print("Imagem selecionada:", raster_path)
 
 # Processar os pontos, garantindo que sejam 1.000.000
 gdf_centros_pixeis = processar_centros_pixeis(BDR_FILE, raster_path, total_pontos=1_000_000)
