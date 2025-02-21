@@ -249,7 +249,7 @@ def processPointData(args):
 
     # Coordenadas do ponto desejado
     ponto_desejado = xs[i], ys[i]
-    
+
     # Combinar datas e valores do ponto numa matriz
     ponto_with_dates = np.column_stack((dates, ponto[:, 0], ponto[:, 1:]))
 
@@ -258,20 +258,24 @@ def processPointData(args):
     ponto_with_dates_filtered = ponto_with_dates[mask].transpose()
 
     # Separar as bandas e as datas
-    dates, blues, greens, reds, nirs, swir2s = ponto_with_dates_filtered
+    dates, greens, reds, nirs, swir2s = ponto_with_dates_filtered
 
     # Calcular o NDVI
     ndvis = np.where((nirs + reds) > 0, MAX_VALUE_NDVI * (nirs - reds) / (nirs + reds), NODATA_VALUE)
-
-    # Substituir a banda azul pelo NDVI
-    ponto_with_dates_filtered[1] = ndvis
-
-    ponto_with_dates_filtered1 = ponto_with_dates_filtered.transpose()
-    ponto_with_dates_filtered2 = ponto_with_dates_filtered1[~np.any(ponto_with_dates_filtered1 == NODATA_VALUE, axis=1)]
-    ponto_with_dates_filtered3 = ponto_with_dates_filtered2.transpose()
+    
+    # Criar um novo array com NDVI na posição 1
+    ponto_with_dates_updated = np.vstack((dates, ndvis, greens, reds, nirs, swir2s))
+    
+    
+    # Filtrar novamente para remover NODATA_VALUE
+    ponto_with_dates_updated1 = ponto_with_dates_updated.transpose()
+    ponto_with_dates_updated2 = ponto_with_dates_updated1[~np.any(ponto_with_dates_updated1 == NODATA_VALUE, axis=1)]
+    ponto_with_dates_final = ponto_with_dates_updated2.transpose()
+    
 
     # Separar as bandas e as datas novamente após a filtragem
-    dates, ndvis, greens, reds, nirs, swir2s = ponto_with_dates_filtered3
+    dates, ndvis, greens, reds, nirs, swir2s = ponto_with_dates_final
+
 
     return dates, ndvis, greens, reds, nirs, swir2s, ponto_desejado, NODATA_VALUE, CRS_THEIA, CRS_WGS84
 #%%
