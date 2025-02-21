@@ -53,10 +53,10 @@ def plotFromCSV(csv_file, row_index=0, save_dir=None):
     plt.style.use('ggplot')
     fg = plt.figure(figsize=(14, 4), dpi=90)
     
-    limite_inicial = datetime.strptime('2018-01-01', '%Y-%m-%d')
-    limite_final = datetime.strptime('2023-12-31', '%Y-%m-%d')
+    #limite_inicial = datetime.strptime('2018-01-01', '%Y-%m-%d')
+    #limite_final = datetime.strptime('2023-12-31', '%Y-%m-%d')
     
-    a1 = fg.add_subplot(1, 1, 1, xlim=(limite_inicial, limite_final))
+    a1 = fg.add_subplot(1, 1, 1)#, xlim=(limite_inicial, limite_final))
     plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d-%m-%Y'))
     plt.gca().xaxis.set_major_locator(mdates.DayLocator())
     
