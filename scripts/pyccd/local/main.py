@@ -109,7 +109,10 @@ tiles = IMAGENS_S2 / S2_tile
 # ---------------------------------
 min_year =  2017 # ano inicial da corrida do CCD
 max_date = datetime(2023, 12, 31) # data atรฉ onde se corre o ccd
-bandas_desejadas = [1, 2, 3, 7, 10] # bandas usadas para o prรฉ-processamento
+#bandas_desejadas = [1, 2, 3, 7, 10] # bandas usadas para o pré-processamento
+input_bands = ['B3', 'B4', 'B8', 'B12']
+bands_dict = {1:'B3', 2:'B4', 3:'B8', 4:'B12'} # a banda NDVI só é adicionada mais à frente na funcao processPointData
+bandas_desejadas = list(bands_dict.keys())
 
 NODATA_VALUE = 65535
 MAX_VALUE_NDVI = 10000
