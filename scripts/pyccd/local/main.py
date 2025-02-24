@@ -12,6 +12,7 @@ else:  # Assume que รฉ Linux
 os.chdir(directory_path)
 
 import pandas as pd
+import rasterio
 import os
 import sys
 from pathlib import Path
@@ -23,8 +24,8 @@ if PASTA_DE_SCRIPTS not in sys.path:
 import ccd
 from notebooks.avaliacao_exatidao_pyccd import runValidation
 from datetime import datetime
-from notebooks.processing import check_or_initialize_file, runDetectionForPoint, processar_centros_pixeis, create_geodataframe_from_csv
-from notebooks.utils import fromParamsReturnName
+from notebooks.processing import check_or_initialize_file, runDetectionForPoint, create_geodataframe_from_csv
+from notebooks.utils import fromParamsReturnName, getNumberOfPixelsFromNpy
 from notebooks.plot import plotFromCSV
 from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor
@@ -99,6 +100,8 @@ PASTA_DE_INPUTS = Path('C:/Users/Public/Documents/')
 # -> Shapefile ou Geopackage que contem a regiao de interesse
 # REGIAO_INTERESSE =  PASTA_DE_INPUTS / 'BDR_Navigator' / 'nvg_2018_ccd.gpkg'
 REGIAO_INTERESSE = Path('C:/Users/scaetano/Downloads/nvg_2018_ccd_with_tiles.gpkg')
+# Nome para identificar a BDR
+BDR = "NAV"
 # -> IMAGENS SENTINEL:
 IMAGENS_S2 = PASTA_DE_INPUTS / f'imagens_{str(var)}'
 
@@ -169,10 +172,7 @@ for f in raster_files:
 
 print("Imagem selecionada:", raster_path)
 
-gdf_centros_pixeis = processar_centros_pixeis(REGIAO_INTERESSE, raster_path)
 
-N = len(gdf_centros_pixeis) # Numero total de pixels
-random_state_value = 42
 batch_size = 10000 # Número de pixels para cada lote
 
 img_collection = tiles.parts[-2]
@@ -186,7 +186,7 @@ CRS_WGS84 = 4326
 alpha = ccd.parameters.defaults['ALPHA'] # Looks for alpha in the parameters.py file
 ccd_params = ccd.parameters.defaults
 ######### NOME BASE DOS FICHEIROS A SEREM GERADOS #########
-filename = fromParamsReturnName(img_collection, ccd_params, (S2_tile, tiles), N, random_state_value, min_year, max_date)
+filename = fromParamsReturnName(img_collection, ccd_params, (S2_tile, tiles), BDR, min_year, max_date)
 ############ OUTPUTS ######################
 output_file = FOLDER_NPY / "{}.npy".format(filename) # ficheiro numpy (matriz) dos dados (nr de imagens x nr de bandas x nr total de pontos)
 
@@ -213,7 +213,8 @@ def process_batch(args):
 #%%
 def main(batch_size):
     # Verificar a existência do arquivo .npy e inicializar ou carregar os dados
-    tif_dates_ord = check_or_initialize_file(output_file, tiles, var, S2_tile, min_year, max_date, gdf_centros_pixeis, N, random_state_value, bandas_desejadas, PASTA_DE_OUTPUTS, img_collection, NODATA_VALUE, raster_path)
+    tif_dates_ord, N = check_or_initialize_file(output_file, tiles, var, S2_tile, min_year, max_date, REGIAO_INTERESSE, 
+                                                bandas_desejadas, PASTA_DE_OUTPUTS, img_collection, NODATA_VALUE, raster_path)
     
     # Carregar os dados numpy para o processamento em lotes
     sel_values = np.load(output_file, mmap_mode='r')
