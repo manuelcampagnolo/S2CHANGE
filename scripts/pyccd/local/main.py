@@ -172,7 +172,7 @@ for f in raster_files:
 print("Imagem selecionada:", raster_path)
 
 
-batch_size = 10000 # Número de pixels para cada lote
+BATCH_SIZE = 10000 # Número de pixels para cada lote
 
 img_collection = tiles.parts[-2]
 
@@ -248,7 +248,7 @@ def main(batch_size):
 #%%
 # Executar o código
 if __name__ == '__main__':
-    main(batch_size)
+    main(BATCH_SIZE)
     create_geodataframe_from_csv(filename, CRS_WGS84, CRS_THEIA, S2_tile, FOLDER_CSV, FOLDER_SHP)
     # if BDR == 'DGT':
     #     runValidation(filename, FOLDER_CSV, REGIAO_INTERESSE, dt_ini, dt_end, bandFilter, theta)

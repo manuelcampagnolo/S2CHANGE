@@ -118,6 +118,8 @@ MAX_VALUE_NDVI = 10000
 EXECUTAR_PLOT = False # (false para não fazer; true para fazer)
 ROW_INDEX = 8 # plot para uma linha do CSV (escolher a linha no row_index)
 
+BATCH_SIZE = 1000  # Ajustar o tamanho do lote para processamento em paralelo
+
 # ---------------------------------
 #             INPUTS
 # ---------------------------------
@@ -333,10 +335,9 @@ def main(batch_size=None):
         print(f"Todos os shapefiles individuais foram criados em {FOLDER_SHP}.")
 
 if __name__ == '__main__':
-    batch_size = 1000  # Ajustar o tamanho do lote
     n = getNumberOfPixelsFromNpy(output_file)
     if rank == 0:
         print(f"Numero total de pixels processados: {n}")
-        print(f"Executando com batch_size = {batch_size} e n = {n}")
+        print(f"Executando com batch_size = {BATCH_SIZE} e n = {n}")
         print(f'Numero de CPUs para o ProcessPoolExecutor: {os.cpu_count()}')
-    main(batch_size)
+    main(BATCH_SIZE)
