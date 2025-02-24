@@ -1,32 +1,32 @@
-# PyCCD v01 - 16/10/2024 / Contrato N.ยบ 3044 DGT/ISA/CEXC/2152/2023
+# PyCCD v01 - 24/02/2025 / Contrato N.ยบ 3044 DGT/ISA/CEXC/2152/2023
 import os
 import platform
 
 # Verifica o sistema operacional
+# Windows
 if platform.system() == "Windows":
     user_profile = os.environ['USERPROFILE']
-    directory_path = os.path.join(user_profile, 'Desktop', 'CCD_yml_win')
-else:  # Assume que รฉ Linux
+    directory_path = os.path.join(user_profile, 'Desktop', 'S2CHANGE')
+else:  # Linux
     user_home = os.path.expanduser("~")
     directory_path = os.path.join(user_home, 'CCD_yml_win')
 os.chdir(directory_path)
-
 import pandas as pd
 import rasterio
 import os
 import sys
 from pathlib import Path
-# Assumir onde estรก a pasta dos scripts do PyCCD
-PASTA_DE_SCRIPTS = Path(__name__ ).parent.absolute() / 'S2CHANGE' / 'scripts' / 'pyccd_theia' 
+# Assumir onde esta a pasta dos scripts do PyCCD
+PASTA_DE_SCRIPTS = Path(__name__ ).parent.absolute() / 'scripts' / 'pyccd' 
 
 if PASTA_DE_SCRIPTS not in sys.path:
     sys.path.append(str(PASTA_DE_SCRIPTS))
 import ccd
-from notebooks.avaliacao_exatidao_pyccd import runValidation
+from shared.avaliacao_exatidao_pyccd import runValidation
 from datetime import datetime
-from notebooks.processing import check_or_initialize_file, runDetectionForPoint, create_geodataframe_from_csv
-from notebooks.utils import fromParamsReturnName, getNumberOfPixelsFromNpy
-from notebooks.plot import plotFromCSV
+from shared.processing import check_or_initialize_file, runDetectionForPoint, create_geodataframe_from_csv
+from shared.utils import fromParamsReturnName, getNumberOfPixelsFromNpy
+from shared.plot import plotFromCSV
 from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor
 import warnings
@@ -92,21 +92,20 @@ import os
 # ---------------------------------
 #             INPUTS
 # ---------------------------------
-var = 'GEE' # choose variable: Theia or GEE
-S2_tile = 'T29TNF' # escolher o tile S2
+var = 'GEE' # choose variable: THEIA or GEE
+S2_tile = 'T29TNE' # escolher o tile S2
 
 # Caminho onde estรฃo os inputs todos
-PASTA_DE_INPUTS = Path('C:/Users/Public/Documents/')
+PASTA_DE_INPUTS = Path('D:/')
 # -> Shapefile ou Geopackage que contem a regiao de interesse
 # REGIAO_INTERESSE =  PASTA_DE_INPUTS / 'BDR_Navigator' / 'nvg_2018_ccd.gpkg'
-REGIAO_INTERESSE = Path('C:/Users/scaetano/Downloads/nvg_2018_ccd_with_tiles.gpkg')
+REGIAO_INTERESSE = Path('C:/Users/scaetano/Downloads/nvg_geometries.gpkg')
 # Nome para identificar a BDR
 BDR = "NAV"
 # -> IMAGENS SENTINEL:
-IMAGENS_S2 = PASTA_DE_INPUTS / f'imagens_{str(var)}'
+IMAGENS_S2 = PASTA_DE_INPUTS / 's2_images'
 
 tiles = IMAGENS_S2 / S2_tile
-
 # ---------------------------------
 #   PARAMETROS PRร PROCESSAMENTO
 # ---------------------------------
