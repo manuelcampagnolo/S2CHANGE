@@ -1,4 +1,4 @@
-from notebooks.read_files import read_tif_files_theia, read_tif_files_gee
+from shared.read_files import read_tif_files_theia, read_tif_files_gee
 import numpy as np
 from pathlib import Path
 
