@@ -42,7 +42,7 @@ def fromParamsReturnName(col_name, ccd_params, tifs_info, roi_name, min_year, ma
     suffix = col_name.split('_')[-1]
     
     # Load dataset and retrieve dates
-    if suffix == 'Theia':
+    if suffix == 'THEIA':
         _ , dates = read_tif_files_theia(S2_tile,tiles, min_year, max_date)
     else:
         _ , dates = read_tif_files_gee(S2_tile,tiles, max_date)
