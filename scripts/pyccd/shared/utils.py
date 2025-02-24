@@ -4,11 +4,16 @@ from pathlib import Path
 
 def fromParamsReturnName(col_name, ccd_params, tifs_info, roi_name, min_year, max_date):
     """
-    Returns file name based on execution parameters:
-    col_name: image collection name (Theia, GEE).
-    ccd_params: parameters found on ccd parameters.py file.
-    tifs_info: path and tile name of tifs in image collection (in the for of (S2_tiles, tiles)).
-    roi_name: name to identify the ROI (polygons) used in the run.
+    Returns file name based on execution parameters.
+
+    Args:
+        col_name:  image collection name (Theia, GEE).
+        ccd_params : parameters found on ccd parameters.py file.
+        tifs_info : path and tile name of tifs in image collection (in the for of (S2_tiles, tiles)).
+        roi_name : name to identify the ROI (polygons) used in the run.
+
+    Returns:
+        name : file name.
 
     NOTE: currently not implemented to return names of bands used for change detection and tmask.
     """
@@ -55,6 +60,9 @@ def getNumberOfPixelsFromNpy(npy_path):
 
     Args:
         npy_path : path to npy file.
+    
+    Returns:
+        number of pixels.
     """
 
     aux = np.load(str(npy_path.with_suffix('')) + '_xs.npy') #opens xs because it is lighter
