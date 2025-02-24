@@ -12,6 +12,7 @@ else:  # Assume que Ã© Linux
     directory_path = os.path.join(user_home, 'CCD_yml_win')
 os.chdir(directory_path)
 import pandas as pd
+import rasterio
 import os
 import sys
 from pathlib import Path
@@ -23,8 +24,8 @@ if module_path not in sys.path:
 import ccd
 from notebooks.avaliacao_exatidao_pyccd import runValidation
 from datetime import datetime
-from notebooks.processing import check_or_initialize_file, runDetectionForPoint, processar_centros_pixeis, create_geodataframe_from_csv
-from notebooks.utils import fromParamsReturnName
+from notebooks.processing import check_or_initialize_file, runDetectionForPoint, create_geodataframe_from_csv
+from notebooks.utils import fromParamsReturnName, getNumberOfPixelsFromNpy
 from notebooks.plot import plotFromCSV
 from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -192,12 +193,7 @@ for f in raster_files:
 
 print("Imagem selecionada:", raster_path)
 
-# Processar os pontos, garantindo que sejam 1.000.000
-gdf_centros_pixeis = processar_centros_pixeis(BDR_FILE, raster_path, total_pontos=1_000_000)
 
-# Numero total de pixels (garantido 1.000.000)
-N = len(gdf_centros_pixeis)
-random_state_value = 42
 
 img_collection = tiles.parts[-2]
 
@@ -210,7 +206,7 @@ CRS_WGS84 = 4326
 alpha = ccd.parameters.defaults['ALPHA'] # Looks for alpha in the parameters.py file
 ccd_params = ccd.parameters.defaults
 ######### NOME BASE DOS FICHEIROS A SEREM GERADOS #########
-filename = fromParamsReturnName(img_collection, ccd_params, (S2_tile, tiles), N, random_state_value, min_year, max_date)
+filename = fromParamsReturnName(img_collection, ccd_params, (S2_tile, tiles), BDR, min_year, max_date)
 ############ OUTPUTS ######################
 output_file = FOLDER_NPY / "{}.npy".format(filename) # ficheiro numpy (matriz) dos dados (nr de imagens x nr de bandas x nr total de pontos)
 
@@ -258,8 +254,8 @@ def process_single_batch(batch, sel_values_path, xs_path, ys_path, tif_dates_ord
 def main(batch_size=None):
     if rank == 0:
         # Processo mestre
-        tif_dates_ord = check_or_initialize_file(
-            output_file, tiles, var, S2_tile, min_year, max_date, gdf_centros_pixeis, N, random_state_value,
+        tif_dates_ord, N = check_or_initialize_file(
+            output_file, tiles, var, S2_tile, min_year, max_date, BDR_FILE,
             bandas_desejadas, FOLDER_OUTPUTS, img_collection, NODATA_VALUE, raster_path
         )
 
@@ -341,8 +337,9 @@ def main(batch_size=None):
 
 if __name__ == '__main__':
     batch_size = 1000  # Ajustar o tamanho do lote
+    n = getNumberOfPixelsFromNpy(output_file)
     if rank == 0:
-        print(f"Numero total de pixels processados: {N}")
-        print(f"Executando com batch_size = {batch_size} e N = {N}")
+        print(f"Numero total de pixels processados: {n}")
+        print(f"Executando com batch_size = {batch_size} e n = {n}")
         print(f'Numero de CPUs para o ProcessPoolExecutor: {os.cpu_count()}')
     main(batch_size)
