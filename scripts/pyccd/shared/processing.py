@@ -8,6 +8,8 @@ import ccd
 from rasterio.features import geometry_window
 from shapely.geometry import Point
 import rasterio
+from rasterio.features import rasterize
+from shapely.geometry import box
 import geopandas as gpd
 import os
 import time
@@ -55,124 +57,199 @@ def create_geodataframe_from_csv(filename, epsg_input, epsg_output, S2_tile, csv
     
     return gdf
 #%%
-def processar_centros_pixeis(shapefile_path, raster_path):
-    """
-    Função para calcular os centros dos pixels dentro das geometrias de um shapefile com base num raster.
-    input: polygon geopackage; raster
-    output: point geopackage, where each point is the center of the pixel, for pixels within the input polygon
-    """
-    start_time = time.time()
-    print('Processar centros dos pontos de cada geometria para corresponder aos centros dos pixels dos rasters...')
-    # Carregar o shapefile
-    poligonos = gpd.read_file(shapefile_path)
-    poligonos = poligonos[poligonos.is_valid]
+#### LEGACY ####
+# def processar_centros_pixeis(shapefile_path, raster_path):
+#     """
+#     Função para calcular os centros dos pixels dentro das geometrias de um shapefile com base num raster.
+#     input: polygon geopackage; raster
+#     output: point geopackage, where each point is the center of the pixel, for pixels within the input polygon
+#     """
+#     start_time = time.time()
+#     print('Processar centros dos pontos de cada geometria para corresponder aos centros dos pixels dos rasters...')
+#     # Carregar o shapefile
+#     poligonos = gpd.read_file(shapefile_path)
+#     poligonos = poligonos[poligonos.is_valid]
 
-    # Lista para armazenar os centros dos pixels
-    todos_centros_pixeis = []
+#     # Lista para armazenar os centros dos pixels
+#     todos_centros_pixeis = []
 
-    # Carregar o raster
-    with rasterio.open(raster_path) as src:
-        # Obter CRS do raster
-        raster_crs = src.crs
+#     # Carregar o raster
+#     with rasterio.open(raster_path) as src:
+#         # Obter CRS do raster
+#         raster_crs = src.crs
 
-        # Garantir que o shapefile esteja no mesmo CRS do raster
-        if poligonos.crs != raster_crs:
-            poligonos = poligonos.to_crs(raster_crs)
+#         # Garantir que o shapefile esteja no mesmo CRS do raster
+#         if poligonos.crs != raster_crs:
+#             poligonos = poligonos.to_crs(raster_crs)
 
-        for index, row in poligonos.iterrows():
-            # Obter a geometria do polígono
-            geometry = row['geometry']
+#         for index, row in poligonos.iterrows():
+#             # Obter a geometria do polígono
+#             geometry = row['geometry']
 
-            # Calcular a janela da geometria no raster
-            try:
-                window = geometry_window(src, [geometry])
-            except Exception as e:
-                print(f"Erro ao calcular a janela para a geometria {index}: {e}")
-                continue
+#             # Calcular a janela da geometria no raster
+#             try:
+#                 window = geometry_window(src, [geometry])
+#             except Exception as e:
+#                 print(f"Erro ao calcular a janela para a geometria {index}: {e}")
+#                 continue
 
-            transform = src.window_transform(window)
+#             transform = src.window_transform(window)
 
-            # Obter o tamanho do pixel
-            x_res = transform.a
-            y_res = transform.e
+#             # Obter o tamanho do pixel
+#             x_res = transform.a
+#             y_res = transform.e
 
-            # Calcular o deslocamento do centro do pixel
-            x_offset = x_res / 2.0
-            y_offset = y_res / 2.0
+#             # Calcular o deslocamento do centro do pixel
+#             x_offset = x_res / 2.0
+#             y_offset = y_res / 2.0
 
-            pixel_centers = []
+#             pixel_centers = []
 
-            # Calcular o centro do pixel para cada pixel na janela
-            for y in range(window.height):
-                for x in range(window.width):
-                    # Calcular as coordenadas do centro do pixel
-                    pixel_center_x = transform.c + (x * x_res) + x_offset
-                    pixel_center_y = transform.f + (y * y_res) + y_offset
+#             # Calcular o centro do pixel para cada pixel na janela
+#             for y in range(window.height):
+#                 for x in range(window.width):
+#                     # Calcular as coordenadas do centro do pixel
+#                     pixel_center_x = transform.c + (x * x_res) + x_offset
+#                     pixel_center_y = transform.f + (y * y_res) + y_offset
                     
-                    # Verificar se o ponto do centro do pixel está dentro do polígono
-                    if Point(pixel_center_x, pixel_center_y).within(geometry):
-                        # Armazenar as coordenadas do centro do pixel na lista
-                        pixel_centers.append((pixel_center_x, pixel_center_y))
+#                     # Verificar se o ponto do centro do pixel está dentro do polígono
+#                     if Point(pixel_center_x, pixel_center_y).within(geometry):
+#                         # Armazenar as coordenadas do centro do pixel na lista
+#                         pixel_centers.append((pixel_center_x, pixel_center_y))
 
-            # Adicionar os centros dos pixels desta geometria à lista geral
-            todos_centros_pixeis.extend(pixel_centers)
+#             # Adicionar os centros dos pixels desta geometria à lista geral
+#             todos_centros_pixeis.extend(pixel_centers)
         
-    # Criar um GeoDataFrame a partir da lista de pontos
-    pontos_shapely = [Point(centro) for centro in todos_centros_pixeis]
-    gdf_centros_pixeis = gpd.GeoDataFrame(geometry=pontos_shapely, crs=raster_crs)
+#     # Criar um GeoDataFrame a partir da lista de pontos
+#     pontos_shapely = [Point(centro) for centro in todos_centros_pixeis]
+#     gdf_centros_pixeis = gpd.GeoDataFrame(geometry=pontos_shapely, crs=raster_crs)
     
-    end_time = time.time()
-    execution_time_seconds = end_time - start_time
-    execution_time_minutes = execution_time_seconds / 60
-    print("Processar centros dos pixels:", execution_time_minutes, "minutos. Número de pixels:", len(gdf_centros_pixeis))
+#     end_time = time.time()
+#     execution_time_seconds = end_time - start_time
+#     execution_time_minutes = execution_time_seconds / 60
+#     print("Processar centros dos pixels:", execution_time_minutes, "minutos. Número de pixels:", len(gdf_centros_pixeis))
     
-    return gdf_centros_pixeis
+#     return gdf_centros_pixeis
+#####
 #%%
-def getTimeSeriesForPoints(tif_names, tif_dates_ord, bandas_desejadas, dados_geoespaciais_metros, output_file):
+def clip_vector_mask_to_tile(vector_mask_path : str, reference_tif_path: str):
+    """
+    Clips the vector mask to the extent of the tile, provided a reference tif of that tile.
+
+    Args:
+        vector_mask_path (str) : path to the vector geometries to be used as mask for ccd processing.
+        reference_tif_path (str) : path to a reference tif of the intended tile.
+    
+    Returns:
+        geodataframe : vector geometries clipped to the tile extent.
+    """
+
+    #open vector mask
+    vector_mask = gpd.read_file(vector_mask_path)
+
+    #open reference tif belonging to the target tile
+    with rasterio.open(reference_tif_path) as src:
+        bounds = src.bounds
+        crs = src.crs
+    # Create a polygon from the bounding box
+    polygon = box(bounds.left, bounds.bottom, bounds.right, bounds.top)
+    # Create a GeoDataFrame
+    gdf_tile_extent = gpd.GeoDataFrame({"geometry": [polygon]}, crs=crs)
+    
+    
+    return gpd.clip(vector_mask, gdf_tile_extent)
+
+def rasterize_vector_mask(clipped_vector_mask, reference_tif):
+
+    #get metadata from the reference tif (transform, height, width etc)
+    with rasterio.open(reference_tif) as src:
+        meta = src.meta.copy()
+        meta.update({"count":1}) #single band
+
+    #create polygon's attribute to become raster value
+    clipped_vector_mask["raster_value"] = 1 #binary raster (mask=1, unmask=0)
+
+    # Convert polygons to raster features
+    shapes = [(geom, value) for geom, value in zip(clipped_vector_mask.geometry, clipped_vector_mask["raster_value"])]
+
+    # Rasterize
+    raster = rasterize(
+        shapes=shapes,
+        out_shape=(meta['height'], meta['width']),
+        transform=meta['transform'],
+        fill=0,  # Background value
+        dtype="uint8"
+    )
+    
+    return raster.astype(bool).flatten(order='F')
+
+
+def getTimeSeriesForMask(tif_names, tif_dates_ord, bandas_desejadas, vector_mask_path, output_file):
+    """
+    Saves npy files with time series values and location (x, y) of pixels inside a ROI (mask).
+    It should be executed at the tile level.
+
+    Args:
+        tif_names : list of tif names (with path) of the target tile.
+        tif_dates_ord : list of ordinal tif dates.
+        bandas_desejadas: bands for which the time series will be collected.
+        vector_mask_path : path to the vector file containing the region of interest/mask.
+        output_file : base name (with path) of the npy file to which the information will be saved.
+
+    Returns:
+        N : number of pixels/points to be processed 
+    """
+    #clip vector geometries to tile extent
+    clipped_vector_mask = clip_vector_mask_to_tile(vector_mask_path, tif_names[0])
+    #rasterize clipped vector
+    rasterized = rasterize_vector_mask(clipped_vector_mask, tif_names[0])
+
+    #use xarray to handle time series
     time_var = xr.Variable('time',tif_dates_ord)
     # Load in and concatenate all individual GeoTIFFs
     tifs_xr = [rioxarray.open_rasterio(i, chunks={'x':-1, 'y':-1}) for i in tif_names]
-    geotiffs_da = xr.concat(tifs_xr, dim=time_var).sel(band=bandas_desejadas)
+    geotiffs_da = xr.concat(tifs_xr, dim=time_var).sel(band=bandas_desejadas).astype('uint16')
 
-    # COORDENADAS X E Y DOS 10 000 PONTOS ESCOLHIDOS
-    points_x_int = xr.DataArray(np.round(dados_geoespaciais_metros.geometry.x.values).astype('int'), dims=['location'])
-    points_y_int = xr.DataArray(np.round(dados_geoespaciais_metros.geometry.y.values).astype('int'), dims=['location'])
+    #stack x and y to allow selecting by index
+    geotiffs_da_stacked = geotiffs_da.stack(pixel=('x','y'))
+    #select by index
+    selection = geotiffs_da_stacked[:,:,rasterized]
 
-    selection = geotiffs_da.sel(x=points_x_int, y=points_y_int, band=bandas_desejadas)
     dates = selection.time
     xs = selection.x
     ys = selection.y
     sel_values = selection.values
-    
+
     np.save(str(output_file.with_suffix('')) + '_xs.npy', xs)
     np.save(str(output_file.with_suffix('')) + '_ys.npy', ys)
     
     np.save(output_file, sel_values)
 
-    return dates
+    return xs.shape[0]
+
+    
 #%%
-def check_or_initialize_file(output_file, tiles, var, S2_tile, min_year, max_date, gdf_centros_pixeis, N, random_state_value, bandas_desejadas, FOLDER_OUTPUTS, img_collection, NODATA_VALUE, raster_path):
+def check_or_initialize_file(output_file, tiles, var, S2_tile, min_year, max_date, vector_mask_path, bandas_desejadas, FOLDER_OUTPUTS, img_collection, NODATA_VALUE, raster_path):
     """
     Verifica a existência de um arquivo numpy específico e, dependendo dessa verificação,
     realiza diferentes operações para processar dados geoespaciais.
 
     Args:
-        - output_file (str): caminho do arquivo numpy que será verificado e, se necessário, criado.
-        - tiles (str): diretório onde os arquivos TIFF (raster) estão localizados.
-        - var (str): variável que indica a origem dos dados, podendo ser 'THEIA' ou 'GEE'.
-        - S2_tile (str): Identificador da tile de Sentinel-2 a ser processado.
-        - max_date (datetime.date): Data máxima limite para o processamento dos arquivos TIFF. Apenas arquivos com datas até e incluindo `max_date` serão considerados.
-        - gdf_centros_pixeis (GeoDataFrame): GeoDataFrame contendo as geometrias que serão processados.
-        - N (int): número de pontos a serem processados.
-        - random_state_value (int): valor usado para inicializar o gerador de números aleatórios.
-        - bandas_desejadas (list): lista de bandas desejadas para o processamento.
-        - FOLDER_OUTPUTS (str): diretório onde os resultados serão salvos.
-        - img_collection (str): coleção de imagens a ser utilizada.
-        - NODATA_VALUE (int): valor a ser usado para representar dados ausentes.
-        - raster_path (Path): caminho do arquivo raster que será utilizado para processamento.
+        - output_file (str) : caminho do arquivo numpy que será verificado e, se necessário, criado.
+        - tiles (str) : diretório onde os arquivos TIFF (raster) estão localizados.
+        - var (str) : variável que indica a origem dos dados, podendo ser 'THEIA' ou 'GEE'.
+        - S2_tile (str) : Identificador da tile de Sentinel-2 a ser processado.
+        - max_date (datetime.date) : Data máxima limite para o processamento dos arquivos TIFF. Apenas arquivos com datas até e incluindo `max_date` serão considerados.
+        - vector_mask_path (GeoDataFrame) : GeoDataFrame contendo as geometrias que serão processados (poligonos).
+        - bandas_desejadas (list) : lista de bandas desejadas para o processamento.
+        - FOLDER_OUTPUTS (str) : diretório onde os resultados serão salvos.
+        - img_collection (str) : coleção de imagens a ser utilizada.
+        - NODATA_VALUE (int) : valor a ser usado para representar dados ausentes.
+        - raster_path (Path) : caminho do arquivo raster que será utilizado para processamento.
 
     Returns:
-        - tif_dates_ord (list): lista de datas no formato ordinal.
+        - tif_dates_ord (list) : lista de datas no formato ordinal.
+        - N : number of pixels/points to be processed.
     """
     
     if os.path.exists(output_file):
@@ -186,6 +263,8 @@ def check_or_initialize_file(output_file, tiles, var, S2_tile, min_year, max_dat
             tif_names, tif_dates = read_tif_files_gee(S2_tile, tiles, max_date)
         tif_names = [os.path.join(tiles, i) for i in tif_names]
         tif_dates_ord = [d.toordinal() for d in tif_dates]
+        aux = np.load(str(output_file.with_suffix('')) + '_xs.npy')
+        N = aux.shape[0] #gets number of pixels/points
 
     else:
         # Se o arquivo numpy não existe, executar todo o processamento inicial de criar o ficheiro numpy
@@ -210,14 +289,14 @@ def check_or_initialize_file(output_file, tiles, var, S2_tile, min_year, max_dat
 
         # Abrir tifs com xarray e carregar série temporal
         print('A abrir tifs com xarray e carregar série temporal...')
-        getTimeSeriesForPoints(tif_names, tif_dates_ord, bandas_desejadas, gdf_centros_pixeis, output_file)
+        N = getTimeSeriesForMask(tif_names, tif_dates_ord, bandas_desejadas, vector_mask_path, output_file)
         
         end_time = time.time()
         execution_time_seconds = end_time - start_time
         execution_time_minutes = execution_time_seconds / 60
         print(f"Ler dados {var} para um total de {N} pixels:", execution_time_minutes, "minutos")
 
-    return tif_dates_ord
+    return tif_dates_ord, N
 #%%
 def processPointData(args):
     """
