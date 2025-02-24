@@ -1,45 +1,42 @@
 # -*- coding: utf-8 -*-
-from multiprocessing import Manager
 import os
 import platform
-import pickle
+
 # Verifica o sistema operacional
+# Windows
 if platform.system() == "Windows":
     user_profile = os.environ['USERPROFILE']
-    directory_path = os.path.join(user_profile, 'Desktop', 'CCD_yml_win')
-else:  # Assume que Ã© Linux
+    directory_path = os.path.join(user_profile, 'Desktop', 'S2CHANGE')
+else:  # Linux
     user_home = os.path.expanduser("~")
-    directory_path = os.path.join(user_home, 'CCD_yml_win')
+    directory_path = os.path.join(user_home, 'S2CHANGE')
 os.chdir(directory_path)
 import pandas as pd
 import rasterio
 import os
 import sys
 from pathlib import Path
-# chamar python a partir da pasta 'CCD'
-module_path= Path(__name__ ).parent.absolute() / 'S2CHANGE' / 'scripts' / 'pyccd_theia' #  / 'CCD' / 'S2CHANGE' / 'scripts' / 
-base_path= Path(__name__ ).parent.absolute()  # dir do script; # dir referÃªncia (acima): 'DGT-S2CHANGE_2023'
-if module_path not in sys.path:
-    sys.path.append(str(module_path))
+# Assumir onde esta a pasta dos scripts do PyCCD
+PASTA_DE_SCRIPTS = Path(__name__ ).parent.absolute() / 'scripts' / 'pyccd' 
+
+if PASTA_DE_SCRIPTS not in sys.path:
+    sys.path.append(str(PASTA_DE_SCRIPTS))
 import ccd
-from notebooks.avaliacao_exatidao_pyccd import runValidation
 from datetime import datetime
-from notebooks.processing import check_or_initialize_file, runDetectionForPoint, create_geodataframe_from_csv
-from notebooks.utils import fromParamsReturnName, getNumberOfPixelsFromNpy
-from notebooks.plot import plotFromCSV
+from shared.processing import check_or_initialize_file, runDetectionForPoint, create_geodataframe_from_csv
+from shared.utils import fromParamsReturnName, getNumberOfPixelsFromNpy
 from tqdm import tqdm
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor
 import warnings
 warnings.filterwarnings('ignore')
 import numpy as np
-import math
 import os
 from mpi4py import MPI
 import os
 import platform
-import psutil
-import time
-from threading import Thread
+from multiprocessing import Manager
+import os
+from pathlib import Path
 
 # Working directory (DADOS):
 # |----FOLDER PUBLIC DOCUMENTS
