@@ -13,7 +13,7 @@ from shapely.geometry import box
 import geopandas as gpd
 import os
 import time
-from notebooks.read_files import read_tif_files_theia, read_tif_files_gee, readPoints, convertPointToCrs
+from shared.read_files import read_tif_files_theia, read_tif_files_gee, readPoints, convertPointToCrs
 from pyproj import CRS
 #%%
 def create_geodataframe_from_csv(filename, epsg_input, epsg_output, S2_tile, csv_dir, shapefile_dir):
@@ -257,7 +257,7 @@ def check_or_initialize_file(output_file, tiles, var, S2_tile, min_year, max_dat
         print(f"O arquivo '{output_file}' já existe. Carregando e processando os dados existentes...")
         # Recolher nome e data dos tifs
         print('A recolher nome e data dos tifs...')
-        if var == 'Theia':
+        if var == 'THEIA':
             tif_names, tif_dates = read_tif_files_theia(S2_tile, tiles, min_year, max_date)
         else:
             tif_names, tif_dates = read_tif_files_gee(S2_tile, tiles, max_date)
@@ -272,7 +272,7 @@ def check_or_initialize_file(output_file, tiles, var, S2_tile, min_year, max_dat
             
         # Recolher nome e data dos tifs
         print('A recolher nome e data dos tifs...')
-        if var == 'Theia':
+        if var == 'THEIA':
             tif_names, tif_dates = read_tif_files_theia(S2_tile, tiles, min_year, max_date)
         else:
             tif_names, tif_dates = read_tif_files_gee(S2_tile, tiles, max_date)
