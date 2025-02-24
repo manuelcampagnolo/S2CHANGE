@@ -88,7 +88,7 @@ def filterS2cloudless(S2SRCol, S2CloudCol):
 
     def apply_cld_shdw_mask(img):
         not_cld_shdw = img.select('cloudmask').Not()
-        return img.updateMask(not_cld_shdw)
+        return img.updateMask(not_cld_shdw).unmask(65535)
 
     s2_sr = joined.map(add_cld_shdw_mask).map(apply_cld_shdw_mask)
 
