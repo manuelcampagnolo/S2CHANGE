@@ -56,81 +56,7 @@ def create_geodataframe_from_csv(filename, epsg_input, epsg_output, S2_tile, csv
     gdf.to_file(shapefile_path, driver='ESRI Shapefile')
     
     return gdf
-#%%
-#### LEGACY ####
-# def processar_centros_pixeis(shapefile_path, raster_path):
-#     """
-#     Função para calcular os centros dos pixels dentro das geometrias de um shapefile com base num raster.
-#     input: polygon geopackage; raster
-#     output: point geopackage, where each point is the center of the pixel, for pixels within the input polygon
-#     """
-#     start_time = time.time()
-#     print('Processar centros dos pontos de cada geometria para corresponder aos centros dos pixels dos rasters...')
-#     # Carregar o shapefile
-#     poligonos = gpd.read_file(shapefile_path)
-#     poligonos = poligonos[poligonos.is_valid]
 
-#     # Lista para armazenar os centros dos pixels
-#     todos_centros_pixeis = []
-
-#     # Carregar o raster
-#     with rasterio.open(raster_path) as src:
-#         # Obter CRS do raster
-#         raster_crs = src.crs
-
-#         # Garantir que o shapefile esteja no mesmo CRS do raster
-#         if poligonos.crs != raster_crs:
-#             poligonos = poligonos.to_crs(raster_crs)
-
-#         for index, row in poligonos.iterrows():
-#             # Obter a geometria do polígono
-#             geometry = row['geometry']
-
-#             # Calcular a janela da geometria no raster
-#             try:
-#                 window = geometry_window(src, [geometry])
-#             except Exception as e:
-#                 print(f"Erro ao calcular a janela para a geometria {index}: {e}")
-#                 continue
-
-#             transform = src.window_transform(window)
-
-#             # Obter o tamanho do pixel
-#             x_res = transform.a
-#             y_res = transform.e
-
-#             # Calcular o deslocamento do centro do pixel
-#             x_offset = x_res / 2.0
-#             y_offset = y_res / 2.0
-
-#             pixel_centers = []
-
-#             # Calcular o centro do pixel para cada pixel na janela
-#             for y in range(window.height):
-#                 for x in range(window.width):
-#                     # Calcular as coordenadas do centro do pixel
-#                     pixel_center_x = transform.c + (x * x_res) + x_offset
-#                     pixel_center_y = transform.f + (y * y_res) + y_offset
-                    
-#                     # Verificar se o ponto do centro do pixel está dentro do polígono
-#                     if Point(pixel_center_x, pixel_center_y).within(geometry):
-#                         # Armazenar as coordenadas do centro do pixel na lista
-#                         pixel_centers.append((pixel_center_x, pixel_center_y))
-
-#             # Adicionar os centros dos pixels desta geometria à lista geral
-#             todos_centros_pixeis.extend(pixel_centers)
-        
-#     # Criar um GeoDataFrame a partir da lista de pontos
-#     pontos_shapely = [Point(centro) for centro in todos_centros_pixeis]
-#     gdf_centros_pixeis = gpd.GeoDataFrame(geometry=pontos_shapely, crs=raster_crs)
-    
-#     end_time = time.time()
-#     execution_time_seconds = end_time - start_time
-#     execution_time_minutes = execution_time_seconds / 60
-#     print("Processar centros dos pixels:", execution_time_minutes, "minutos. Número de pixels:", len(gdf_centros_pixeis))
-    
-#     return gdf_centros_pixeis
-#####
 #%%
 def clip_vector_mask_to_tile(vector_mask_path : str, reference_tif_path: str):
     """
@@ -155,6 +81,10 @@ def clip_vector_mask_to_tile(vector_mask_path : str, reference_tif_path: str):
     polygon = box(bounds.left, bounds.bottom, bounds.right, bounds.top)
     # Create a GeoDataFrame
     gdf_tile_extent = gpd.GeoDataFrame({"geometry": [polygon]}, crs=crs)
+
+    #convert vector to same crs as the tif, if needed
+    if vector_mask.crs.to_epsg() != crs.to_epsg():
+        vector_mask = vector_mask.to_crs(crs.to_epsg())
     
     
     return gpd.clip(vector_mask, gdf_tile_extent)
@@ -167,7 +97,7 @@ def rasterize_vector_mask(clipped_vector_mask, reference_tif):
         meta.update({"count":1}) #single band
 
     #create polygon's attribute to become raster value
-    clipped_vector_mask["raster_value"] = 1 #binary raster (mask=1, unmask=0)
+    clipped_vector_mask["raster_value"] = 1 #binary raster (masked=1, unmasked=0)
 
     # Convert polygons to raster features
     shapes = [(geom, value) for geom, value in zip(clipped_vector_mask.geometry, clipped_vector_mask["raster_value"])]
