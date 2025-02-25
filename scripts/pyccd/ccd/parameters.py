@@ -28,6 +28,7 @@ defaults = {
     # 'SWIR1_IDX': 4,
     # 'SWIR2_IDX': 5,
     'SWIR2_IDX': 2,
+    # 'NBR_IDX': 3
 
     # Spectral bands that are utilized for detecting change
     #'DETECTION_BANDS': [1, 2, 3, 4, 5], # Breakpointbands; tipicamente qt mais bandas, mais breaks estimados
@@ -87,6 +88,6 @@ defaults = {
     # Values related to model fitting
     ############################
     'FITTER_FN': 'ccd.models.lasso.fitted_model',
-    'LASSO_MAX_ITER': 25000,
-    'ALPHA':  200
+    'LASSO_MAX_ITER': 1000, #25000, (25feb2025)
+    'ALPHA':  2, # 200,  (25feb2025)
 }
