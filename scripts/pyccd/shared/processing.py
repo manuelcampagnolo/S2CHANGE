@@ -272,8 +272,12 @@ def processPointData(args):
     # Calcular o NDVI
     ndvis = np.where((nirs + reds) > 0, MAX_VALUE_NDVI * (nirs - reds) / (nirs + reds), NODATA_VALUE)
     
+    # Calcular o NBR
+    nbrs = np.where((nirs + swir2s) > 0, MAX_VALUE_NDVI * (nirs - swir2s) / (nirs + swir2s), NODATA_VALUE)
+    
     # Criar um novo array com NDVI na posição 1
     ponto_with_dates_updated = np.vstack((dates, ndvis, greens, reds, nirs, swir2s))
+    # ponto_with_dates_updated = np.vstack((dates, ndvis, greens, reds, nirs, swir2s, nbrs))
     
     
     # Filtrar novamente para remover NODATA_VALUE
@@ -284,9 +288,11 @@ def processPointData(args):
 
     # Separar as bandas e as datas novamente após a filtragem
     dates, ndvis, greens, reds, nirs, swir2s = ponto_with_dates_final
+    # dates, ndvis, greens, reds, nirs, swir2s, nbrs = ponto_with_dates_final
 
 
     return dates, ndvis, greens, reds, nirs, swir2s, ponto_desejado, NODATA_VALUE, CRS_THEIA, CRS_WGS84
+    #return dates, ndvis, greens, reds, nirs, swir2s, nbrs, ponto_desejado, NODATA_VALUE, CRS_THEIA, CRS_WGS84
 #%%
 def runDetectionForPoint(args):
     """
@@ -310,6 +316,7 @@ def runDetectionForPoint(args):
 
     # Executar a detecção de mudanças
     results = ccd.detect(dates, ndvis, greens, swir2s)
+    # results = ccd.detect(dates, ndvis, greens, swir2s, nbrs)
 
     # Chamar a função auxiliar para processar os resultados
     df = process_detection_results(results, dates, ndvis, ponto_desejado, NODATA_VALUE, CRS_THEIA, CRS_WGS84)
