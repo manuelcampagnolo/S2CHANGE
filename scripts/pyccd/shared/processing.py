@@ -140,7 +140,7 @@ def getTimeSeriesForMask(tif_names, tif_dates_ord, bandas_desejadas, vector_mask
     #use xarray to handle time series
     time_var = xr.Variable('time',tif_dates_ord)
     # Load in and concatenate all individual GeoTIFFs
-    tifs_xr = [rioxarray.open_rasterio(i, chunks={'x':-1, 'y':-1}) for i in tif_names]
+    tifs_xr = [rioxarray.open_rasterio(i, chunks={'x':-1, 'y':100}) for i in tif_names] #old chunks={'x':-1, 'y':-1}
     geotiffs_da = xr.concat(tifs_xr, dim=time_var).sel(band=bandas_desejadas).astype('uint16')
 
     #stack x and y to allow selecting by index
@@ -148,17 +148,19 @@ def getTimeSeriesForMask(tif_names, tif_dates_ord, bandas_desejadas, vector_mask
     #select by index
     selection = geotiffs_da_stacked[:,:,rasterized]
 
-    dates = selection.time
-    xs = selection.x
-    ys = selection.y
-    sel_values = selection.values
+    #dates = selection.time
+    sel_values = selection.compute()
+    np.save(output_file, sel_values)
+    sel_values = None #free memory
 
+    xs = selection.x
     np.save(str(output_file.with_suffix('')) + '_xs.npy', xs)
+    xs = None #free memory
+    ys = selection.y
     np.save(str(output_file.with_suffix('')) + '_ys.npy', ys)
     
-    np.save(output_file, sel_values)
 
-    return xs.shape[0]
+    return ys.shape[0]
 
     
 #%%
