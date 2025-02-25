@@ -1,6 +1,7 @@
 from shared.read_files import read_tif_files_theia, read_tif_files_gee
 import numpy as np
 from pathlib import Path
+import rasterio
 
 def fromParamsReturnName(col_name, ccd_params, tifs_info, roi_name, min_year, max_date):
     """
@@ -68,3 +69,31 @@ def getNumberOfPixelsFromNpy(npy_path):
     aux = np.load(str(npy_path.with_suffix('')) + '_xs.npy') #opens xs because it is lighter
 
     return aux.shape[0]
+
+
+def get_largest_tif_by_pixels(tif_paths):
+    """
+    Given a list of GeoTIFF file paths, returns the path to the file with the largest number of pixels.
+
+    Args:
+        tif_paths (list of str): List of paths to GeoTIFF files.
+
+    Returns:
+        str: Path to the largest GeoTIFF file in terms of pixel count.
+    """
+    largest_tif = None
+    max_pixels = 0
+
+    for path in tif_paths:
+        try:
+            with rasterio.open(path) as src:
+                pixel_count = src.width * src.height  # Total number of pixels
+
+                if pixel_count > max_pixels:
+                    max_pixels = pixel_count
+                    largest_tif = path
+
+        except Exception as e:
+            print(f"Error processing {path}: {e}")
+
+    return largest_tif

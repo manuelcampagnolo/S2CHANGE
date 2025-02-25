@@ -14,6 +14,7 @@ import geopandas as gpd
 import os
 import time
 from shared.read_files import read_tif_files_theia, read_tif_files_gee, readPoints, convertPointToCrs
+from shared.utils import get_largest_tif_by_pixels
 from pyproj import CRS
 #%%
 def create_geodataframe_from_csv(filename, epsg_input, epsg_output, S2_tile, csv_dir, shapefile_dir):
@@ -129,10 +130,12 @@ def getTimeSeriesForMask(tif_names, tif_dates_ord, bandas_desejadas, vector_mask
     Returns:
         N : number of pixels/points to be processed 
     """
+    #identify a tif to be used as reference for determining tile extent
+    ref_tif = get_largest_tif_by_pixels(tif_names)
     #clip vector geometries to tile extent
-    clipped_vector_mask = clip_vector_mask_to_tile(vector_mask_path, tif_names[0])
+    clipped_vector_mask = clip_vector_mask_to_tile(vector_mask_path, ref_tif)
     #rasterize clipped vector
-    rasterized = rasterize_vector_mask(clipped_vector_mask, tif_names[0])
+    rasterized = rasterize_vector_mask(clipped_vector_mask, ref_tif)
 
     #use xarray to handle time series
     time_var = xr.Variable('time',tif_dates_ord)
