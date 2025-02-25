@@ -318,13 +318,13 @@ def runDetectionForPoint(args):
 #%%
 def process_detection_results(results, dates, ndvis, ponto_desejado, NODATA_VALUE, CRS_THEIA, CRS_WGS84):
     """
-    Processa os resultados da detecção de mudanças para um ponto específico.
+    Processa os resultados da detecção de mudanças para um ponto específico.(1 pixel; all segments)
 
     Args:
         - results (dict): Resultados da detecção de mudanças, esperado como um dicionário com 'change_models' e 'processing_mask'.
         - dates (ndarray): Array de datas.
         - ndvis (ndarray): Array de valores NDVI.
-        - ponto_desejado (tuple): Coordenadas do ponto desejado.
+        - ponto_desejado (tuple): Coordenadas do ponto desejado tuple (x,y) 'crs': 'EPSG:32629',
         - NODATA_VALUE (float): Valor que representa dados ausentes.
         - CRS_THEIA (str): Sistema de coordenadas de referência (THEIA).
         - CRS_WGS84 (str): Sistema de coordenadas de referência (WGS84).
