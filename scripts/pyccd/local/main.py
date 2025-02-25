@@ -99,7 +99,7 @@ S2_tile = 'T29TNE' # escolher o tile S2
 PASTA_DE_INPUTS = Path('D:/')
 # -> Shapefile ou Geopackage que contem a regiao de interesse
 # REGIAO_INTERESSE =  PASTA_DE_INPUTS / 'BDR_Navigator' / 'nvg_2018_ccd.gpkg'
-REGIAO_INTERESSE = Path('C:/Users/scaetano/Downloads/nvg_geometries.gpkg')
+REGIAO_INTERESSE = Path('C:/Users/scaetano/Downloads/CCDC_Mask_dissolve.gpkg')
 # Nome para identificar a BDR
 BDR = "NAV"
 # -> IMAGENS SENTINEL:
@@ -107,10 +107,10 @@ IMAGENS_S2 = PASTA_DE_INPUTS / 's2_images'
 
 tiles = IMAGENS_S2 / S2_tile
 # ---------------------------------
-#   PARAMETROS PRร PROCESSAMENTO
+#   PARAMETROS PRE PROCESSAMENTO
 # ---------------------------------
 min_year =  2017 # ano inicial da corrida do CCD
-max_date = datetime(2023, 12, 31) # data atรฉ onde se corre o ccd
+max_date = datetime(2024, 12, 31) # data atรฉ onde se corre o ccd
 #bandas_desejadas = [1, 2, 3, 7, 10] # bandas usadas para o pré-processamento
 input_bands = ['B3', 'B4', 'B8', 'B12']
 bands_dict = {1:'B3', 2:'B4', 3:'B8', 4:'B12'} # a banda NDVI só é adicionada mais à frente na funcao processPointData
@@ -122,6 +122,12 @@ MAX_VALUE_NDVI = 10000
 EXECUTAR_PLOT = False # (false para nรฃo fazer; true para fazer)
 ROW_INDEX = 8 # plot para uma linha do CSV (escolher a linha no row_index)
 
+batch_size = 10000 # Número de pixels para cada lote
+
+img_collection = tiles.parts[-2]
+
+CRS_THEIA = 32629
+CRS_WGS84 = 4326
 # ---------------------------------
 #            OUTPUTS
 # ---------------------------------
@@ -170,14 +176,6 @@ for f in raster_files:
         continue  
 
 print("Imagem selecionada:", raster_path)
-
-
-BATCH_SIZE = 10000 # Número de pixels para cada lote
-
-img_collection = tiles.parts[-2]
-
-CRS_THEIA = 32629
-CRS_WGS84 = 4326
 
 # ---------------------------------
 #          PARAMETROS CCD
@@ -248,7 +246,7 @@ def main(batch_size):
 #%%
 # Executar o código
 if __name__ == '__main__':
-    main(BATCH_SIZE)
+    main(batch_size)
     create_geodataframe_from_csv(filename, CRS_WGS84, CRS_THEIA, S2_tile, FOLDER_CSV, FOLDER_SHP)
     # if BDR == 'DGT':
     #     runValidation(filename, FOLDER_CSV, REGIAO_INTERESSE, dt_ini, dt_end, bandFilter, theta)
