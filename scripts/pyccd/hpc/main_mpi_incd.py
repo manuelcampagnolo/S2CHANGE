@@ -152,7 +152,7 @@ else:
 
 FOLDER_NPY = FOLDER_OUTPUTS / 'numpy' / S2_tile
 FOLDER_PLOTS = FOLDER_OUTPUTS / 'plots' / S2_tile
-FOLDER_CSV = FOLDER_OUTPUTS / 'tabular' / S2_tile
+FOLDER_PARQUET = FOLDER_OUTPUTS / 'tabular' / S2_tile
 FOLDER_SHP = FOLDER_OUTPUTS / 'shapefiles' / S2_tile
 
 # Função para criar diretórios se não existirem
@@ -163,7 +163,7 @@ def create_directory_if_not_exists(path):
 # Criar os diretórios
 create_directory_if_not_exists(FOLDER_NPY)
 create_directory_if_not_exists(FOLDER_PLOTS)
-create_directory_if_not_exists(FOLDER_CSV)
+create_directory_if_not_exists(FOLDER_PARQUET)
 create_directory_if_not_exists(FOLDER_SHP)
 
 # ---------------------------------
@@ -308,7 +308,7 @@ def main(batch_size=None):
     dfs = [df for results in local_results for df in results]
     if dfs:
         # Cria um Parquet para cada processo
-        rank_parquet_filename = FOLDER_CSV / f'{filename}_rank_{rank}.parquet'
+        rank_parquet_filename = FOLDER_PARQUET / f'{filename}_rank_{rank}.parquet'
         result_df = pd.concat(dfs, ignore_index=True)
 
         result_df.to_parquet(rank_parquet_filename, index=False)
@@ -316,17 +316,17 @@ def main(batch_size=None):
     comm.Barrier()  # Sincronizar todos os ranks antes de continuar
 
     if rank == 0:
-        all_parquet_files = list(FOLDER_CSV.glob(f'{filename}_rank_*.parquet'))
+        all_parquet_files = list(FOLDER_PARQUET.glob(f'{filename}_rank_*.parquet'))
         
         if not all_parquet_files:
-            raise FileNotFoundError(f"Nenhum arquivo encontrado correspondente ao padrao {filename}_rank_*.parquet em {FOLDER_CSV}")
+            raise FileNotFoundError(f"Nenhum arquivo encontrado correspondente ao padrao {filename}_rank_*.parquet em {FOLDER_PARQUET}")
         
         for parquet_filename in all_parquet_files:
             try:
                 parquet_file = parquet_filename.stem
                 # Função para criar o shapefile para cada Parquet de cada processo
                 create_geodataframe_from_parquet(
-                    parquet_file, CRS_WGS84, CRS_THEIA, S2_tile, FOLDER_CSV, FOLDER_SHP
+                    parquet_file, CRS_WGS84, CRS_THEIA, S2_tile, FOLDER_PARQUET, FOLDER_SHP
                 )
                 
             except Exception as e:
