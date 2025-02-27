@@ -6,7 +6,7 @@ import platform
 # Windows
 if platform.system() == "Windows":
     user_profile = os.environ['USERPROFILE']
-    directory_path = os.path.join(user_profile, 'Desktop', 'S2CHANGE')
+    directory_path = os.path.join(user_profile, 'Downloads', 'S2CHANGE')
 else:  # Linux
     user_home = os.path.expanduser("~")
     directory_path = os.path.join(user_home, 'CCD_yml_win')
@@ -33,6 +33,7 @@ import warnings
 warnings.filterwarnings('ignore')
 import numpy as np
 import math
+import os
 import h5py
 # Working directory (DADOS):
 # |----FOLDER PUBLIC DOCUMENTS
@@ -93,7 +94,7 @@ import h5py
 #             INPUTS
 # ---------------------------------
 var = 'GEE' # choose variable: THEIA or GEE
-S2_tile = 'T29TNE' # escolher o tile S2
+S2_tile = 'T29SPB' # escolher o tile S2
 
 # Caminho onde estรฃo os inputs todos
 PASTA_DE_INPUTS = Path('D:/')
@@ -122,7 +123,7 @@ MAX_VALUE_NDVI = 10000
 EXECUTAR_PLOT = False # (false para nรฃo fazer; true para fazer)
 ROW_INDEX = 8 # plot para uma linha do CSV (escolher a linha no row_index)
 
-batch_size = 10000 # Número de pixels para cada lote
+batch_size = 10#000 # Número de pixels para cada lote
 
 img_collection = tiles.parts[-2]
 
@@ -134,7 +135,7 @@ CRS_WGS84 = 4326
 PASTA_DE_OUTPUTS = Path('C:/Users/Public/Documents/outputs_RI')
 FOLDER_NPY = PASTA_DE_OUTPUTS / 'numpy' / S2_tile
 FOLDER_PLOTS = PASTA_DE_OUTPUTS / 'plots' / S2_tile
-FOLDER_CSV = PASTA_DE_OUTPUTS / 'tabular' / S2_tile
+FOLDER_PARQUET = PASTA_DE_OUTPUTS / 'tabular' / S2_tile
 FOLDER_SHP = PASTA_DE_OUTPUTS / 'shapefiles' / S2_tile
 
 # Funรงรฃo para criar diretรณrios se nรฃo existirem
@@ -148,7 +149,7 @@ def create_directory_if_not_exists(path):
 # Criar os diretรณrios
 create_directory_if_not_exists(FOLDER_NPY)
 create_directory_if_not_exists(FOLDER_PLOTS)
-create_directory_if_not_exists(FOLDER_CSV)
+create_directory_if_not_exists(FOLDER_PARQUET)
 create_directory_if_not_exists(FOLDER_SHP)
 
 # ---------------------------------
@@ -156,7 +157,7 @@ create_directory_if_not_exists(FOLDER_SHP)
 # ---------------------------------
 # Escolher um raster com tamanho suficiente grande de forma apanhar todos os pixels:
 # Converter 800MB para bytes (1MB = 1_048_576 bytes)
-min_size = 800 * 1_048_576  
+min_size = 300 * 1_048_576  
 
 # Listar todos os ficheiros na pasta
 raster_files = sorted(tiles.glob('*.*'))
@@ -239,15 +240,18 @@ def main(batch_size):
     # Concatenar os resultados de todos os lotes num único DataFrame
     if dfs:
         result_df = pd.concat(dfs, ignore_index=True)
-        print(f"Salvando o arquivo CSV com {len(result_df)} registos.")
-        result_df.to_csv(FOLDER_CSV / '{}.csv'.format(filename), index=False)
+        for col in result_df.columns:
+            if result_df[col].apply(lambda x: isinstance(x, list)).any():
+                result_df = result_df.explode(col)
+        print(f"Salvando o ficheiro parquet com {len(result_df)} registos.")
+        result_df.to_parquet(FOLDER_PARQUET / '{}.parquet'.format(filename), index=False)
     
     if EXECUTAR_PLOT:
-        plotFromCSV(FOLDER_CSV / '{}.csv'.format(filename), ROW_INDEX, save_dir=FOLDER_PLOTS / '{}_RowIndex{}.png'.format(filename, ROW_INDEX))
+        plotFromCSV(FOLDER_PARQUET / '{}.parquet'.format(filename), ROW_INDEX, save_dir=FOLDER_PLOTS / '{}_RowIndex{}.png'.format(filename, ROW_INDEX))
 #%%
 # Executar o código
 if __name__ == '__main__':
     main(batch_size)
-    create_geodataframe_from_csv(filename, CRS_WGS84, CRS_THEIA, S2_tile, FOLDER_CSV, FOLDER_SHP)
+    # create_geodataframe_from_csv(filename, CRS_WGS84, CRS_THEIA, S2_tile, FOLDER_CSV, FOLDER_SHP)
     # if BDR == 'DGT':
     #     runValidation(filename, FOLDER_CSV, REGIAO_INTERESSE, dt_ini, dt_end, bandFilter, theta)
