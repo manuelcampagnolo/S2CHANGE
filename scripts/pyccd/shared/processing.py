@@ -267,7 +267,9 @@ def check_or_initialize_file(output_file, tiles, var, S2_tile, min_year, max_dat
             tif_names, tif_dates = read_tif_files_gee(S2_tile, tiles, max_date)
         tif_names = [os.path.join(tiles, i) for i in tif_names]
         tif_dates_ord = [d.toordinal() for d in tif_dates]
-        aux = np.load(str(output_file.with_suffix('')) + '_xs.npy')
+        #aux = np.load(str(output_file.with_suffix('')) + '_xs.npy')
+        with h5py.File(output_file, 'r') as hf:
+            aux = hf["xs"][:] 
         N = aux.shape[0] #gets number of pixels/points
 
     else:
