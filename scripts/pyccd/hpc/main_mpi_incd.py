@@ -37,6 +37,7 @@ import platform
 from multiprocessing import Manager
 import os
 from pathlib import Path
+cpus_slurm = int(os.getenv('SLURM_NTASKS', os.cpu_count()))
 
 # Working directory (DADOS):
 # |----FOLDER PUBLIC DOCUMENTS
@@ -286,7 +287,7 @@ def main(batch_size=None):
                 pbar.refresh()
 
             # Processar os lotes atribuídos usando ProcessPoolExecutor
-            with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
+            with ProcessPoolExecutor(max_workers=cpus_slurm) as executor:
                 futures = [
                     executor.submit(
                         process_single_batch,
