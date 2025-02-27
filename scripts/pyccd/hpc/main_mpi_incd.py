@@ -13,7 +13,6 @@ else:  # Linux
 os.chdir(directory_path)
 import pandas as pd
 import rasterio
-import os
 import sys
 from pathlib import Path
 # Assumir onde esta a pasta dos scripts do PyCCD
@@ -30,13 +29,11 @@ from concurrent.futures import ProcessPoolExecutor
 import warnings
 warnings.filterwarnings('ignore')
 import numpy as np
-import os
 from mpi4py import MPI
-import os
 import platform
 from multiprocessing import Manager
-import os
 from pathlib import Path
+import h5py
 cpus_slurm = int(os.getenv('SLURM_NTASKS', os.cpu_count()))
 
 # Working directory (DADOS):
@@ -92,14 +89,9 @@ cpus_slurm = int(os.getenv('SLURM_NTASKS', os.cpu_count()))
 #              |---- processing.py
 #              |---- read_files.py
 #              |---- utils.py
-import os
+
 import math
-import numpy as np
-import pandas as pd
-from concurrent.futures import ProcessPoolExecutor
-from tqdm import tqdm
-from pathlib import Path
-from datetime import datetime
+
 #%% 
 # ---------------------------------
 #   PARAMETROS PRÃ‰ PROCESSAMENTO
@@ -208,7 +200,7 @@ ccd_params = ccd.parameters.defaults
 ######### NOME BASE DOS FICHEIROS A SEREM GERADOS #########
 filename = fromParamsReturnName(img_collection, ccd_params, (S2_tile, tiles), BDR, min_year, max_date)
 ############ OUTPUTS ######################
-output_file = FOLDER_NPY / "{}.npy".format(filename) # ficheiro numpy (matriz) dos dados (nr de imagens x nr de bandas x nr total de pontos)
+output_file = FOLDER_NPY / "{}.h5".format(filename) # ficheiro numpy (matriz) dos dados (nr de imagens x nr de bandas x nr total de pontos)
 
 # ---------------------------------
 #      PARAMETROS DA VALIDAÇÃO
@@ -240,9 +232,10 @@ def process_single_batch(batch, sel_values_path, xs_path, ys_path, tif_dates_ord
     start, end = batch
 
     # Carregar apenas o bloco específico para o lote
-    sel_values_block = np.load(sel_values_path, mmap_mode='r')[:, :, start:end]
-    xs_slice = np.load(xs_path, mmap_mode='r')[start:end]
-    ys_slice = np.load(ys_path, mmap_mode='r')[start:end]
+    h5_file = h5py.File(sel_values_path, 'r')
+    sel_values_block = h5_file['values'][:, :, start:end]
+    xs_slice = h5_file['xs'][start:end]
+    ys_slice = h5_file['ys'][start:end]
 
     # Processar o bloco específico
     result = process_batch((sel_values_block, xs_slice, ys_slice, tif_dates_ord))
