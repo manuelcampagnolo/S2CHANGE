@@ -59,6 +59,49 @@ def create_geodataframe_from_csv(filename, epsg_input, epsg_output, S2_tile, csv
     return gdf
 
 #%%
+def create_geodataframe_from_parquet(filename, epsg_input, epsg_output, S2_tile, parquet_dir, shapefile_dir):
+    """
+    Cria um GeoDataFrame a partir de um arquivo Parquet contendo coordenadas geográficas, reprojeta-o 
+    e adiciona uma coluna de quebra temporal (tBreak). Em seguida, salva o GeoDataFrame como um Shapefile
+    numa pasta criada dinamicamente com base no S2_tile.
+
+    Args:
+        filename (str): Nome do arquivo Parquet sem extensão.
+        epsg_input (int): Código EPSG do sistema de referência espacial de entrada.
+        epsg_output (int): Código EPSG do sistema de referência espacial de saída.
+        S2_tile (str): Identificador do tile S2 usado para criar a subpasta.
+        parquet_dir (Path): Caminho para a pasta onde o arquivo Parquet está localizado.
+        shapefile_dir (Path): Caminho para a pasta onde o shapefile será salvo.
+
+    Returns:
+        GeoDataFrame: Um GeoDataFrame com a geometria reprojetada e a coluna tBreak adicionada.
+    """
+    # Construir o caminho completo para o arquivo Parquet
+    parquet_path = Path(parquet_dir) / f"{filename}.parquet"
+    
+    # Carregar o arquivo Parquet para um DataFrame do pandas
+    df = pd.read_parquet(parquet_path)
+    
+    # Criar uma coluna 'geometry' com objetos Point baseados em Lat e Lon
+    geometry = [Point(lon, lat) for lon, lat in zip(df['Lon'], df['Lat'])]
+    
+    # Criar um GeoDataFrame a partir do DataFrame original e da geometria
+    gdf = gpd.GeoDataFrame(df, geometry=geometry, crs=CRS.from_epsg(epsg_input))
+    
+    # Reprojetar para o sistema de coordenadas EPSG especificado
+    gdf = gdf.to_crs(epsg=epsg_output)
+    
+    # Adicionar a coluna tBreak ao GeoDataFrame
+    gdf['tBreak'] = df['tBreak']
+    
+    shapefile_path = Path(shapefile_dir) / f"{filename}.shp"
+    
+    # Salvar o GeoDataFrame como um Shapefile
+    gdf.to_file(shapefile_path, driver='ESRI Shapefile')
+    
+    return gdf
+
+#%%
 def clip_vector_mask_to_tile(vector_mask_path : str, reference_tif_path: str):
     """
     Clips the vector mask to the extent of the tile, provided a reference tif of that tile.
