@@ -16,6 +16,7 @@ import time
 from shared.read_files import read_tif_files_theia, read_tif_files_gee, readPoints, convertPointToCrs
 from shared.utils import get_largest_tif_by_pixels
 from pyproj import CRS
+import h5py
 #%%
 def create_geodataframe_from_csv(filename, epsg_input, epsg_output, S2_tile, csv_dir, shapefile_dir):
     """
@@ -112,7 +113,7 @@ def rasterize_vector_mask(clipped_vector_mask, reference_tif):
         dtype="uint8"
     )
     
-    return raster.astype(bool).flatten(order='F')
+    return raster.astype(bool)#.flatten(order='F')
 
 
 def getTimeSeriesForMask(tif_names, tif_dates_ord, bandas_desejadas, vector_mask_path, output_file):
@@ -140,27 +141,52 @@ def getTimeSeriesForMask(tif_names, tif_dates_ord, bandas_desejadas, vector_mask
     #use xarray to handle time series
     time_var = xr.Variable('time',tif_dates_ord)
     # Load in and concatenate all individual GeoTIFFs
-    tifs_xr = [rioxarray.open_rasterio(i, chunks={'x':-1, 'y':100}) for i in tif_names] #old chunks={'x':-1, 'y':-1}
-    geotiffs_da = xr.concat(tifs_xr, dim=time_var).sel(band=bandas_desejadas).astype('uint16')
+    tifs_xr = [rioxarray.open_rasterio(i, chunks={'x':-1, 'y':-1}) for i in tif_names] #old chunks={'x':-1, 'y':-1}
+    geotiffs_da = xr.concat(tifs_xr, dim=time_var).sel(band=bandas_desejadas)#.astype('uint16')
 
     #stack x and y to allow selecting by index
     geotiffs_da_stacked = geotiffs_da.stack(pixel=('x','y'))
     #select by index
-    selection = geotiffs_da_stacked[:,:,rasterized]
+ 
+    total_selected_pixels = rasterized.sum()
+    n_time = time_var.shape[0]
+    n_bands = len(bandas_desejadas)
 
-    #dates = selection.time
-    sel_values = selection.compute()
-    np.save(output_file, sel_values)
-    sel_values = None #free memory
+    mask_y, mask_x = np.where(np.flip(rasterized,0)) #we have to use np.flip because the y dimension is in inverse order in xarray (given crs 32629)
 
-    xs = selection.x
-    np.save(str(output_file.with_suffix('')) + '_xs.npy', xs)
-    xs = None #free memory
-    ys = selection.y
-    np.save(str(output_file.with_suffix('')) + '_ys.npy', ys)
-    
+    x_sel = geotiffs_da.x.values[mask_x]
+    y_sel = geotiffs_da.y.values[mask_y] #>>>>>>>>>>>> y is in different order
 
-    return ys.shape[0]
+    with h5py.File(output_file, 'w') as hf:
+        chunk_size = 1000
+        chunk_size = min(chunk_size, total_selected_pixels)
+
+        data = hf.create_dataset(
+            "values",
+            shape=(n_time, n_bands, total_selected_pixels),
+            dtype='uint16',
+            compression='lzf', #supposed to be the best compression for fast read/write
+            chunks=(1, n_bands, chunk_size) #experiment with chunks indicated this was the best setting for balancing creation time and read (access) time
+        )
+        xs = hf.create_dataset("xs", shape=(total_selected_pixels,), dtype='int32', compression='gzip', compression_opts=9)
+        ys = hf.create_dataset("ys", shape=(total_selected_pixels,), dtype='int32', compression='gzip', compression_opts=9)
+
+        #store coordinates only once
+        xs[:] = x_sel
+        ys[:] = y_sel
+
+        ts = time.time()
+
+        for t_idx in range(n_time):
+            print("processing time step {}/{}".format(t_idx+1, n_time), end="\r")
+
+            selection_values = geotiffs_da.isel(time=t_idx).fillna(65535).values[:, mask_y, mask_x]
+        
+            data[t_idx] = selection_values
+
+        print('\nFinished h5 creation. Duration: {}min'.format(round((time.time()-ts)/60,2)))   
+
+    return total_selected_pixels
 
     
 #%%
