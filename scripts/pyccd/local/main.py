@@ -34,6 +34,7 @@ warnings.filterwarnings('ignore')
 import numpy as np
 import math
 import os
+h5py
 # Working directory (DADOS):
 # |----FOLDER PUBLIC DOCUMENTS
 #    |---- SUBFOLDER BDR_300 (DGT)
@@ -185,7 +186,7 @@ ccd_params = ccd.parameters.defaults
 ######### NOME BASE DOS FICHEIROS A SEREM GERADOS #########
 filename = fromParamsReturnName(img_collection, ccd_params, (S2_tile, tiles), BDR, min_year, max_date)
 ############ OUTPUTS ######################
-output_file = FOLDER_NPY / "{}.npy".format(filename) # ficheiro numpy (matriz) dos dados (nr de imagens x nr de bandas x nr total de pontos)
+output_file = FOLDER_NPY / "{}.h5".format(filename) # ficheiro numpy (matriz) dos dados (nr de imagens x nr de bandas x nr total de pontos)
 
 # ---------------------------------
 #      PARAMETROS DA VALIDAรรO
@@ -214,9 +215,10 @@ def main(batch_size):
                                                 bandas_desejadas, PASTA_DE_OUTPUTS, img_collection, NODATA_VALUE, raster_path)
     
     # Carregar os dados numpy para o processamento em lotes
-    sel_values = np.load(output_file, mmap_mode='r')
-    xs = np.load(str(output_file.with_suffix('')) + '_xs.npy', mmap_mode='r')
-    ys = np.load(str(output_file.with_suffix('')) + '_ys.npy', mmap_mode='r')
+    h5_file = h5py.File(output_file, 'r')
+    sel_values = h5_file['values']
+    xs = h5_file['xs']
+    ys = f5_file['ys']
     
     # Criar os batches
     batches = [
