@@ -304,7 +304,9 @@ def main(batch_size=None):
         # Cria um Parquet para cada processo
         rank_parquet_filename = FOLDER_PARQUET / f'{filename}_rank_{rank}.parquet'
         result_df = pd.concat(dfs, ignore_index=True)
-
+        for col in result_df.columns:
+            if result_df[col].apply(lambda x: isinstance(x, list)).any():
+                result_df = result_df.explode(col)
         result_df.to_parquet(rank_parquet_filename, index=False)
 
     comm.Barrier()  # Sincronizar todos os ranks antes de continuar
