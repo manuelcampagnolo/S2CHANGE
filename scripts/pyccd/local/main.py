@@ -33,8 +33,7 @@ import warnings
 warnings.filterwarnings('ignore')
 import numpy as np
 import math
-import os
-h5py
+import h5py
 # Working directory (DADOS):
 # |----FOLDER PUBLIC DOCUMENTS
 #    |---- SUBFOLDER BDR_300 (DGT)
