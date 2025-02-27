@@ -217,7 +217,7 @@ def main(batch_size):
     h5_file = h5py.File(output_file, 'r')
     sel_values = h5_file['values']
     xs = h5_file['xs']
-    ys = f5_file['ys']
+    ys = h5_file['ys']
     
     # Criar os batches
     batches = [
