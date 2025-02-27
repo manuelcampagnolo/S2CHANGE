@@ -89,8 +89,6 @@ cpus_slurm = int(os.getenv('SLURM_NTASKS', os.cpu_count()))
 #              |---- processing.py
 #              |---- read_files.py
 #              |---- utils.py
-
-import math
 #%%
 # ---------------------------------
 #             INPUTS
@@ -166,15 +164,11 @@ create_directory_if_not_exists(FOLDER_SHP)
 # ---------------------------------
 #      PARAMETROS PROCESSAMENTO
 # ---------------------------------
-# Listar todos os ficheiros na pasta e ordenar pelo tamanho (maior primeiro)
 raster_files = sorted(tiles.glob('*.*'), key=lambda f: f.stat().st_size, reverse=True)
 
-# Se a lista de arquivos não estiver vazia, escolher o maior arquivo
 raster_path = None
 if raster_files:
-    largest_file = raster_files[0]  # O maior arquivo estará no topo da lista
-
-    # Verificar se o maior arquivo é válido (não corrompido ou vazio)
+    largest_file = raster_files[0] 
     try:
         with rasterio.open(largest_file) as src:
             if src.read(1).size > 0:  # Verificar se a imagem tem dados válidos
@@ -182,7 +176,7 @@ if raster_files:
     except:
         raster_path = None  # Se houver erro ao abrir, nada é selecionado
 
-# Imprimir o arquivo selecionado
+# Imprimir o tiff selecionado
 if raster_path:
     print("Imagem selecionada:", raster_path)
 else:
