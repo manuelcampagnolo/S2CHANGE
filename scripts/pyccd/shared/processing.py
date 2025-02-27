@@ -367,11 +367,11 @@ def runDetectionForPoint(args):
     # results = ccd.detect(dates, ndvis, greens, swir2s, nbrs)
 
     # Chamar a função auxiliar para processar os resultados
-    df = process_detection_results(results, dates, ndvis, ponto_desejado, NODATA_VALUE, CRS_THEIA, CRS_WGS84)
+    df = process_detection_results(results, dates, ponto_desejado, NODATA_VALUE, CRS_THEIA, CRS_WGS84)
 
     return df
 #%%
-def process_detection_results(results, dates, ndvis, ponto_desejado, NODATA_VALUE, CRS_THEIA, CRS_WGS84):
+def process_detection_results(results, dates, ponto_desejado, NODATA_VALUE, CRS_THEIA, CRS_WGS84):
     """
     Processa os resultados da detecção de mudanças para um ponto específico.(1 pixel; all segments)
 
@@ -443,7 +443,6 @@ def process_detection_results(results, dates, ndvis, ponto_desejado, NODATA_VALU
         'Lat': ponto_desejado_wgs_y, 
         'Lon': ponto_desejado_wgs_x, 
         'ndvi_magnitude': ndvi_magnitudes,
-        'ndvis': ndvis.tolist(), 
         'dates': dates.tolist(), 
         'prediction_dates': [d.tolist() for d in prediction_dates],
         'predicted_values': [v.tolist() for v in predicted_values], 
@@ -456,7 +455,7 @@ def process_detection_results(results, dates, ndvis, ponto_desejado, NODATA_VALU
     df = pd.DataFrame(dados)
     
     # Reorganizar colunas
-    ordem_colunas = ['tBreak','tEnd', 'tStart', 'changeProb', 'Lat', 'Lon', 'ndvi_magnitude', 'ndvis', 'dates', 
+    ordem_colunas = ['tBreak','tEnd', 'tStart', 'changeProb', 'Lat', 'Lon', 'ndvi_magnitude', 'dates', 
                       'prediction_dates', 'predicted_values', 'coeficientes', 'intercept_values', 'mask_len', 'mask_num_false']
     
     df = df[ordem_colunas]
