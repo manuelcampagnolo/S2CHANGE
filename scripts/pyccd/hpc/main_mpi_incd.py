@@ -91,16 +91,36 @@ cpus_slurm = int(os.getenv('SLURM_NTASKS', os.cpu_count()))
 #              |---- utils.py
 
 import math
-
-#%% 
+#%%
 # ---------------------------------
-#   PARAMETROS PRÃ‰ PROCESSAMENTO
+#             INPUTS
 # ---------------------------------
 var = 'THEIA' # choose variable: THEIA or GEE
 BDR = 'DGT' # choose variable: DGT or NAV
 S2_tile = 'T29TNE' # escolher o tile S2
+# Caminho onde estão os dados todos
+public_documents = Path('/projects/F202410004CPCAA1/')
+# Caminhos para a base de dados de validação
+# -> BDR DGT:
+BDR_DGT = public_documents / 'BDR_300_artigo' / 'BDR_CCDC_TNE_Adjusted.shp'
+# -> BDR NAVIGATOR:
+BDR_NAVIGATOR =  public_documents / 'BDR_Navigator' / 'nvg_2018_ccd.gpkg'
+
+# -> IMAGENS SENTINEL:
+FOLDER_THEIA = public_documents / 'imagens_Theia' # Caminho dados THEIA
+FOLDER_GEE = public_documents / 's2_images' # Caminho dados GEE
+
+if var == 'THEIA':
+    tiles = FOLDER_THEIA / S2_tile
+else:
+    tiles = FOLDER_GEE / S2_tile
+#%% 
+# ---------------------------------
+#   PARAMETROS PRE PROCESSAMENTO
+# ---------------------------------
 min_year =  2017 # ano inicial da corrida do CCD
 max_date = datetime(2023, 12, 31) # data até onde se corre o ccd
+
 input_bands=['B3', 'B4', 'B8', 'B12']
 bands_dict={1: 'NDVI', 2: 'B3', 3:'B4', 4: 'B8', 5:'B12'}
 bandas_desejadas = bands_dict.keys() # to check
@@ -113,26 +133,10 @@ ROW_INDEX = 8 # plot para uma linha do CSV (escolher a linha no row_index)
 
 BATCH_SIZE = 1000  # Ajustar o tamanho do lote para processamento em paralelo
 
-# ---------------------------------
-#             INPUTS
-# ---------------------------------
-# Caminho onde estão os dados todos
-public_documents = Path('C:/Users/Public/Documents/')
-# Caminhos para a base de dados de validação
-# -> BDR DGT:
-BDR_DGT = public_documents / 'BDR_300_artigo' / 'BDR_CCDC_TNE_Adjusted.shp'
-# -> BDR NAVIGATOR:
-BDR_NAVIGATOR =  public_documents / 'BDR_Navigator' / 'nvg_2018_ccd.gpkg'
+img_collection = tiles.parts[-2]
 
-# -> IMAGENS SENTINEL:
-FOLDER_THEIA = public_documents / 'imagens_Theia' # Caminho dados THEIA
-FOLDER_GEE = public_documents / 'imagens_GEE' # Caminho dados GEE
-
-if var == 'THEIA':
-    tiles = FOLDER_THEIA / S2_tile
-else:
-    tiles = FOLDER_GEE / S2_tile
-
+CRS_THEIA = 32629
+CRS_WGS84 = 4326
 # ---------------------------------
 #            OUTPUTS
 # ---------------------------------
@@ -162,36 +166,27 @@ create_directory_if_not_exists(FOLDER_SHP)
 # ---------------------------------
 #      PARAMETROS PROCESSAMENTO
 # ---------------------------------
-# Escolher um raster com tamanho suficiente grande de forma apanhar todos os pixels:
-# Converter 800MB para bytes (1MB = 1_048_576 bytes)
-min_size = 800 * 1_048_576  
+# Listar todos os ficheiros na pasta e ordenar pelo tamanho (maior primeiro)
+raster_files = sorted(tiles.glob('*.*'), key=lambda f: f.stat().st_size, reverse=True)
 
-# Listar todos os ficheiros na pasta
-raster_files = sorted(tiles.glob('*.*'))
-
-# Filtrar ficheiros maiores que 800MB
-raster_files = [f for f in raster_files if f.stat().st_size > min_size]
-
-# Escolher a primeira imagem válida
+# Se a lista de arquivos não estiver vazia, escolher o maior arquivo
 raster_path = None
-for f in raster_files:
+if raster_files:
+    largest_file = raster_files[0]  # O maior arquivo estará no topo da lista
+
+    # Verificar se o maior arquivo é válido (não corrompido ou vazio)
     try:
-        with rasterio.open(f) as src:
-            if src.read(1).size > 0:
-                raster_path = f
-                break  
+        with rasterio.open(largest_file) as src:
+            if src.read(1).size > 0:  # Verificar se a imagem tem dados válidos
+                raster_path = largest_file
     except:
-        continue  
+        raster_path = None  # Se houver erro ao abrir, nada é selecionado
 
-print("Imagem selecionada:", raster_path)
-
-
-
-img_collection = tiles.parts[-2]
-
-CRS_THEIA = 32629
-CRS_WGS84 = 4326
-
+# Imprimir o arquivo selecionado
+if raster_path:
+    print("Imagem selecionada:", raster_path)
+else:
+    print("Nenhuma imagem válida foi encontrada.")
 # ---------------------------------
 #          PARAMETROS CCD
 # ---------------------------------
