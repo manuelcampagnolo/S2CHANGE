@@ -6,7 +6,7 @@ import platform
 # Windows
 if platform.system() == "Windows":
     user_profile = os.environ['USERPROFILE']
-    directory_path = os.path.join(user_profile, 'Downloads', 'S2CHANGE')
+    directory_path = os.path.join(user_profile, 'Desktop', 'S2CHANGE')
 else:  # Linux
     user_home = os.path.expanduser("~")
     directory_path = os.path.join(user_home, 'CCD_yml_win')
