@@ -155,29 +155,25 @@ create_directory_if_not_exists(FOLDER_SHP)
 # ---------------------------------
 #      PARAMETROS PROCESSAMENTO
 # ---------------------------------
-# Escolher um raster com tamanho suficiente grande de forma apanhar todos os pixels:
-# Converter 800MB para bytes (1MB = 1_048_576 bytes)
-min_size = 300 * 1_048_576  
+# Listar todos os ficheiros na pasta e ordenar pelo tamanho (maior primeiro)
+raster_files = sorted(tiles.glob('*.*'), key=lambda f: f.stat().st_size, reverse=True)
 
-# Listar todos os ficheiros na pasta
-raster_files = sorted(tiles.glob('*.*'))
-
-# Filtrar ficheiros maiores que 800MB
-raster_files = [f for f in raster_files if f.stat().st_size > min_size]
-
-# Escolher a primeira imagem válida
+# Se a lista de arquivos não estiver vazia, escolher o maior arquivo
 raster_path = None
-for f in raster_files:
+if raster_files:
+    largest_file = raster_files[0]
     try:
-        with rasterio.open(f) as src:
-            if src.read(1).size > 0:
-                raster_path = f
-                break  
+        with rasterio.open(largest_file) as src:
+            if src.read(1).size > 0:  # Verificar se a imagem tem dados validos
+                raster_path = largest_file
     except:
-        continue  
+        raster_path = None  # Se houver erro ao abrir, nada é selecionado
 
-print("Imagem selecionada:", raster_path)
-
+# Imprimir o tiff selecionado
+if raster_path:
+    print("Imagem selecionada:", raster_path)
+else:
+    print("Nenhuma imagem valida foi encontrada.")
 # ---------------------------------
 #          PARAMETROS CCD
 # ---------------------------------
