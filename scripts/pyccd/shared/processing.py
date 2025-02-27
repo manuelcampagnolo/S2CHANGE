@@ -425,30 +425,36 @@ def process_detection_results(results, dates, ndvis, ponto_desejado, NODATA_VALU
     
     datas = [datetime.fromordinal(data) for data in end_dates]
     end_dates_epoch = [int(data.replace(tzinfo=timezone.utc).timestamp() * 1000) for data in datas]
-    
-    def ms_to_date_str(ms):
-        return datetime.utcfromtimestamp(ms / 1000).strftime('%d%m%Y')
-
-    # Converter timestamps em formato ddmmyyyy
-    break_dates_ddmmyyyy = [ms_to_date_str(ts) for ts in break_dates_epoch]
-    end_dates_ddmmyyyy = [ms_to_date_str(ts) for ts in end_dates_epoch]
         
     ponto_desejado_wgs = convertPointToCrs(ponto_desejado, CRS_THEIA, CRS_WGS84)
     ponto_desejado_wgs_x, ponto_desejado_wgs_y = ponto_desejado_wgs
+
+    mask_array = np.array(results['processing_mask'], dtype='bool')
+    mask_len, mask_num_false = (len(mask_array), np.uint16(np.sum(~mask_array)))
     
     # se remover o ultimo elemento do tbreak ao correr a validação dá erro porque as colunas não tem o mesmo tamanho
-    dados = [{'tBreak': break_dates_epoch[:-1], 'tBreak_ddmmyyyy':break_dates_ddmmyyyy[:-1],'tEnd': end_dates_epoch,'tEnd_ddmmyyyy':end_dates_ddmmyyyy,
-              'tStart': start_dates_epoch, 'changeProb': prob,
-              'Lat': ponto_desejado_wgs_y, 'Lon': ponto_desejado_wgs_x, 'ndvi_magnitude': ndvi_magnitudes,
-                'ndvis': ndvis.tolist(), 'dates': dates.tolist(), 'prediction_dates': [d.tolist() for d in prediction_dates],
-                'predicted_values': [v.tolist() for v in predicted_values], 'coeficientes': coeficientes, 
-                'mask': np.array(results['processing_mask'], dtype='bool').tolist()}]
+    dados = [{
+        'tBreak': break_dates_epoch[:-1], 
+        'tEnd': end_dates_epoch,
+        'tStart': start_dates_epoch, 
+        'changeProb': prob,
+        'Lat': ponto_desejado_wgs_y, 
+        'Lon': ponto_desejado_wgs_x, 
+        'ndvi_magnitude': ndvi_magnitudes,
+        'ndvis': ndvis.tolist(), 
+        'dates': dates.tolist(), 
+        'prediction_dates': [d.tolist() for d in prediction_dates],
+        'predicted_values': [v.tolist() for v in predicted_values], 
+        'coeficientes': coeficientes, 
+        'mask_len': mask_len,
+        'mask_num_false': mask_num_false
+        }]
     
     df = pd.DataFrame(dados)
     
     # Reorganizar colunas
-    ordem_colunas = ['tBreak', 'tBreak_ddmmyyyy','tEnd','tEnd_ddmmyyyy', 'tStart', 'changeProb', 'Lat', 'Lon', 'ndvi_magnitude', 'ndvis', 'dates', 
-                      'prediction_dates', 'predicted_values', 'coeficientes', 'mask']
+    ordem_colunas = ['tBreak','tEnd', 'tStart', 'changeProb', 'Lat', 'Lon', 'ndvi_magnitude', 'ndvis', 'dates', 
+                      'prediction_dates', 'predicted_values', 'coeficientes', 'mask_len', 'mask_num_false']
     
     df = df[ordem_colunas]
     return df
