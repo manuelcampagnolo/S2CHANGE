@@ -394,6 +394,7 @@ def process_detection_results(results, dates, ndvis, ponto_desejado, NODATA_VALU
     end_dates = []
     coeficientes = []
     prob = []
+    intercept_values = []
     
     for num, result in enumerate(results['change_models']):
         days = np.arange(result['start_day'], result['end_day'] + 1)
@@ -404,6 +405,7 @@ def process_detection_results(results, dates, ndvis, ponto_desejado, NODATA_VALU
         prob.append(result['change_probability'])
         
         intercept = result['ndvi']['intercept']
+        intercept_values.append(intercept)
         coef = result['ndvi']['coefficients']
         coeficientes.append(coef)
 
@@ -446,6 +448,7 @@ def process_detection_results(results, dates, ndvis, ponto_desejado, NODATA_VALU
         'prediction_dates': [d.tolist() for d in prediction_dates],
         'predicted_values': [v.tolist() for v in predicted_values], 
         'coeficientes': coeficientes, 
+        'intercept_values': intercept_values,
         'mask_len': mask_len,
         'mask_num_false': mask_num_false
         }]
@@ -454,7 +457,7 @@ def process_detection_results(results, dates, ndvis, ponto_desejado, NODATA_VALU
     
     # Reorganizar colunas
     ordem_colunas = ['tBreak','tEnd', 'tStart', 'changeProb', 'Lat', 'Lon', 'ndvi_magnitude', 'ndvis', 'dates', 
-                      'prediction_dates', 'predicted_values', 'coeficientes', 'mask_len', 'mask_num_false']
+                      'prediction_dates', 'predicted_values', 'coeficientes', 'intercept_values', 'mask_len', 'mask_num_false']
     
     df = df[ordem_colunas]
     return df
