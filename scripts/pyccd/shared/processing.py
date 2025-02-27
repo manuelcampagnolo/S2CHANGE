@@ -60,6 +60,49 @@ def create_geodataframe_from_csv(filename, epsg_input, epsg_output, S2_tile, csv
     return gdf
 
 #%%
+def create_geodataframe_from_parquet(filename, epsg_input, epsg_output, S2_tile, parquet_dir, shapefile_dir):
+    """
+    Cria um GeoDataFrame a partir de um arquivo Parquet contendo coordenadas geográficas, reprojeta-o 
+    e adiciona uma coluna de quebra temporal (tBreak). Em seguida, salva o GeoDataFrame como um Shapefile
+    numa pasta criada dinamicamente com base no S2_tile.
+
+    Args:
+        filename (str): Nome do arquivo Parquet sem extensão.
+        epsg_input (int): Código EPSG do sistema de referência espacial de entrada.
+        epsg_output (int): Código EPSG do sistema de referência espacial de saída.
+        S2_tile (str): Identificador do tile S2 usado para criar a subpasta.
+        parquet_dir (Path): Caminho para a pasta onde o arquivo Parquet está localizado.
+        shapefile_dir (Path): Caminho para a pasta onde o shapefile será salvo.
+
+    Returns:
+        GeoDataFrame: Um GeoDataFrame com a geometria reprojetada e a coluna tBreak adicionada.
+    """
+    # Construir o caminho completo para o arquivo Parquet
+    parquet_path = Path(parquet_dir) / f"{filename}.parquet"
+    
+    # Carregar o arquivo Parquet para um DataFrame do pandas
+    df = pd.read_parquet(parquet_path)
+    
+    # Criar uma coluna 'geometry' com objetos Point baseados em Lat e Lon
+    geometry = [Point(lon, lat) for lon, lat in zip(df['Lon'], df['Lat'])]
+    
+    # Criar um GeoDataFrame a partir do DataFrame original e da geometria
+    gdf = gpd.GeoDataFrame(df, geometry=geometry, crs=CRS.from_epsg(epsg_input))
+    
+    # Reprojetar para o sistema de coordenadas EPSG especificado
+    gdf = gdf.to_crs(epsg=epsg_output)
+    
+    # Adicionar a coluna tBreak ao GeoDataFrame
+    gdf['tBreak'] = df['tBreak']
+    
+    shapefile_path = Path(shapefile_dir) / f"{filename}.shp"
+    
+    # Salvar o GeoDataFrame como um Shapefile
+    gdf.to_file(shapefile_path, driver='ESRI Shapefile')
+    
+    return gdf
+
+#%%
 def clip_vector_mask_to_tile(vector_mask_path : str, reference_tif_path: str):
     """
     Clips the vector mask to the extent of the tile, provided a reference tif of that tile.
@@ -377,6 +420,7 @@ def process_detection_results(results, dates, ndvis, ponto_desejado, NODATA_VALU
     end_dates = []
     coeficientes = []
     prob = []
+    intercept_values = []
     
     for num, result in enumerate(results['change_models']):
         days = np.arange(result['start_day'], result['end_day'] + 1)
@@ -387,6 +431,7 @@ def process_detection_results(results, dates, ndvis, ponto_desejado, NODATA_VALU
         prob.append(result['change_probability'])
         
         intercept = result['ndvi']['intercept']
+        intercept_values.append(intercept)
         coef = result['ndvi']['coefficients']
         coeficientes.append(coef)
 
@@ -408,30 +453,37 @@ def process_detection_results(results, dates, ndvis, ponto_desejado, NODATA_VALU
     
     datas = [datetime.fromordinal(data) for data in end_dates]
     end_dates_epoch = [int(data.replace(tzinfo=timezone.utc).timestamp() * 1000) for data in datas]
-    
-    def ms_to_date_str(ms):
-        return datetime.utcfromtimestamp(ms / 1000).strftime('%d%m%Y')
-
-    # Converter timestamps em formato ddmmyyyy
-    break_dates_ddmmyyyy = [ms_to_date_str(ts) for ts in break_dates_epoch]
-    end_dates_ddmmyyyy = [ms_to_date_str(ts) for ts in end_dates_epoch]
         
     ponto_desejado_wgs = convertPointToCrs(ponto_desejado, CRS_THEIA, CRS_WGS84)
     ponto_desejado_wgs_x, ponto_desejado_wgs_y = ponto_desejado_wgs
+
+    mask_array = np.array(results['processing_mask'], dtype='bool')
+    mask_len, mask_num_false = (len(mask_array), np.uint16(np.sum(~mask_array)))
     
     # se remover o ultimo elemento do tbreak ao correr a validação dá erro porque as colunas não tem o mesmo tamanho
-    dados = [{'tBreak': break_dates_epoch[:-1], 'tBreak_ddmmyyyy':break_dates_ddmmyyyy[:-1],'tEnd': end_dates_epoch,'tEnd_ddmmyyyy':end_dates_ddmmyyyy,
-              'tStart': start_dates_epoch, 'changeProb': prob,
-              'Lat': ponto_desejado_wgs_y, 'Lon': ponto_desejado_wgs_x, 'ndvi_magnitude': ndvi_magnitudes,
-                'ndvis': ndvis.tolist(), 'dates': dates.tolist(), 'prediction_dates': [d.tolist() for d in prediction_dates],
-                'predicted_values': [v.tolist() for v in predicted_values], 'coeficientes': coeficientes, 
-                'mask': np.array(results['processing_mask'], dtype='bool').tolist()}]
+    dados = [{
+        'tBreak': break_dates_epoch[:-1], 
+        'tEnd': end_dates_epoch,
+        'tStart': start_dates_epoch, 
+        'changeProb': prob,
+        'Lat': ponto_desejado_wgs_y, 
+        'Lon': ponto_desejado_wgs_x, 
+        'ndvi_magnitude': ndvi_magnitudes,
+        'ndvis': ndvis.tolist(), 
+        'dates': dates.tolist(), 
+        'prediction_dates': [d.tolist() for d in prediction_dates],
+        'predicted_values': [v.tolist() for v in predicted_values], 
+        'coeficientes': coeficientes, 
+        'intercept_values': intercept_values,
+        'mask_len': mask_len,
+        'mask_num_false': mask_num_false
+        }]
     
     df = pd.DataFrame(dados)
     
     # Reorganizar colunas
-    ordem_colunas = ['tBreak', 'tBreak_ddmmyyyy','tEnd','tEnd_ddmmyyyy', 'tStart', 'changeProb', 'Lat', 'Lon', 'ndvi_magnitude', 'ndvis', 'dates', 
-                      'prediction_dates', 'predicted_values', 'coeficientes', 'mask']
+    ordem_colunas = ['tBreak','tEnd', 'tStart', 'changeProb', 'Lat', 'Lon', 'ndvi_magnitude', 'ndvis', 'dates', 
+                      'prediction_dates', 'predicted_values', 'coeficientes', 'intercept_values', 'mask_len', 'mask_num_false']
     
     df = df[ordem_colunas]
     return df

@@ -23,7 +23,7 @@ if PASTA_DE_SCRIPTS not in sys.path:
     sys.path.append(str(PASTA_DE_SCRIPTS))
 import ccd
 from datetime import datetime
-from shared.processing import check_or_initialize_file, runDetectionForPoint, create_geodataframe_from_csv
+from shared.processing import check_or_initialize_file, runDetectionForPoint, create_geodataframe_from_parquet
 from shared.utils import fromParamsReturnName, getNumberOfPixelsFromNpy
 from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor
@@ -153,7 +153,7 @@ else:
 
 FOLDER_NPY = FOLDER_OUTPUTS / 'numpy' / S2_tile
 FOLDER_PLOTS = FOLDER_OUTPUTS / 'plots' / S2_tile
-FOLDER_CSV = FOLDER_OUTPUTS / 'tabular' / S2_tile
+FOLDER_PARQUET = FOLDER_OUTPUTS / 'tabular' / S2_tile
 FOLDER_SHP = FOLDER_OUTPUTS / 'shapefiles' / S2_tile
 
 # Função para criar diretórios se não existirem
@@ -164,7 +164,7 @@ def create_directory_if_not_exists(path):
 # Criar os diretórios
 create_directory_if_not_exists(FOLDER_NPY)
 create_directory_if_not_exists(FOLDER_PLOTS)
-create_directory_if_not_exists(FOLDER_CSV)
+create_directory_if_not_exists(FOLDER_PARQUET)
 create_directory_if_not_exists(FOLDER_SHP)
 
 # ---------------------------------
@@ -308,30 +308,30 @@ def main(batch_size=None):
     # Salvar os resultados localmente por processo
     dfs = [df for results in local_results for df in results]
     if dfs:
-        # Cria um CSV para cada processo
-        rank_csv_filename = FOLDER_CSV / f'{filename}_rank_{rank}.csv'
+        # Cria um Parquet para cada processo
+        rank_parquet_filename = FOLDER_PARQUET / f'{filename}_rank_{rank}.parquet'
         result_df = pd.concat(dfs, ignore_index=True)
 
-        result_df.to_csv(rank_csv_filename, index=False)
+        result_df.to_parquet(rank_parquet_filename, index=False)
 
     comm.Barrier()  # Sincronizar todos os ranks antes de continuar
 
     if rank == 0:
-        all_csv_files = list(FOLDER_CSV.glob(f'{filename}_rank_*.csv'))
+        all_parquet_files = list(FOLDER_PARQUET.glob(f'{filename}_rank_*.parquet'))
         
-        if not all_csv_files:
-            raise FileNotFoundError(f"Nenhum arquivo encontrado correspondente ao padrao {filename}_rank_*.csv em {FOLDER_CSV}")
+        if not all_parquet_files:
+            raise FileNotFoundError(f"Nenhum arquivo encontrado correspondente ao padrao {filename}_rank_*.parquet em {FOLDER_PARQUET}")
         
-        for csv_filename in all_csv_files:
+        for parquet_filename in all_parquet_files:
             try:
-                csv_file = csv_filename.stem
-                # Função para criar o shapefile para cada CSV de cada processo
-                create_geodataframe_from_csv(
-                    csv_file, CRS_WGS84, CRS_THEIA, S2_tile, FOLDER_CSV, FOLDER_SHP
+                parquet_file = parquet_filename.stem
+                # Função para criar o shapefile para cada Parquet de cada processo
+                create_geodataframe_from_parquet(
+                    parquet_file, CRS_WGS84, CRS_THEIA, S2_tile, FOLDER_PARQUET, FOLDER_SHP
                 )
                 
             except Exception as e:
-                print(f"Erro ao processar o arquivo {csv_file}: {e}")
+                print(f"Erro ao processar o arquivo {parquet_file}: {e}")
         
         print(f"Todos os shapefiles individuais foram criados em {FOLDER_SHP}.")
 
