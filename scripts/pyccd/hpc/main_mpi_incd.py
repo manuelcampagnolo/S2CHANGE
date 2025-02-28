@@ -217,7 +217,7 @@ def process_batch(args):
     return [runDetectionForPoint(arg) for arg in arg_list]
 
 # Função para processar um lote
-def process_single_batch(batch, sel_values_path, xs_path, ys_path, tif_dates_ord, progress):
+def process_single_batch(batch, sel_values_path, tif_dates_ord, progress):
     start, end = batch
 
     # Carregar apenas o bloco específico para o lote
@@ -275,8 +275,6 @@ def main(batch_size=None):
                         process_single_batch,
                         batch,
                         output_file,  # Caminho do sel_values
-                        str(output_file.with_suffix('')) + '_xs.npy',  # Caminho do xs
-                        str(output_file.with_suffix('')) + '_ys.npy',  # Caminho do ys
                         tif_dates_ord,
                         progress
                     )
