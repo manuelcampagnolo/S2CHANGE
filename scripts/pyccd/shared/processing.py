@@ -367,11 +367,11 @@ def runDetectionForPoint(args):
     # results = ccd.detect(dates, ndvis, greens, swir2s, nbrs)
 
     # Chamar a função auxiliar para processar os resultados
-    df = process_detection_results(results, ponto_desejado, NODATA_VALUE, CRS_THEIA, CRS_WGS84)
+    df = process_detection_results(results, ponto_desejado, NODATA_VALUE)
 
     return df
 #%%
-def process_detection_results(results, ponto_desejado, NODATA_VALUE, CRS_THEIA, CRS_WGS84):
+def process_detection_results(results, ponto_desejado, NODATA_VALUE):
     """
     Processa os resultados da detecção de mudanças para um ponto específico.(1 pixel; all segments)
 
@@ -428,8 +428,9 @@ def process_detection_results(results, ponto_desejado, NODATA_VALUE, CRS_THEIA, 
     datas = [datetime.fromordinal(data) for data in end_dates]
     end_dates_epoch = [int(data.replace(tzinfo=timezone.utc).timestamp() * 1000) for data in datas]
         
-    ponto_desejado_wgs = convertPointToCrs(ponto_desejado, CRS_THEIA, CRS_WGS84)
-    ponto_desejado_wgs_x, ponto_desejado_wgs_y = ponto_desejado_wgs
+    ponto_desejado_x, ponto_desejado_y = ponto_desejado
+    ponto_desejado_x = int(ponto_desejado_x)
+    ponto_desejado_y = int(ponto_desejado_y)
 
     mask_array = np.array(results['processing_mask'], dtype='bool')
     mask_len, mask_num_false = (len(mask_array), np.uint16(np.sum(~mask_array)))
@@ -440,8 +441,8 @@ def process_detection_results(results, ponto_desejado, NODATA_VALUE, CRS_THEIA, 
         'tEnd': end_dates_epoch,
         'tStart': start_dates_epoch, 
         'changeProb': prob,
-        'Lat': ponto_desejado_wgs_y, 
-        'Lon': ponto_desejado_wgs_x, 
+        'x_coord': ponto_desejado_x, 
+        'y_coord': ponto_desejado_y, 
         'ndvi_magnitude': ndvi_magnitudes,
         'prediction_dates': [d.tolist() for d in prediction_dates],
         'predicted_values': [v.tolist() for v in predicted_values], 
@@ -454,7 +455,7 @@ def process_detection_results(results, ponto_desejado, NODATA_VALUE, CRS_THEIA, 
     df = pd.DataFrame(dados)
     
     # Reorganizar colunas
-    ordem_colunas = ['tBreak','tEnd', 'tStart', 'changeProb', 'Lat', 'Lon', 'ndvi_magnitude', 
+    ordem_colunas = ['tBreak','tEnd', 'tStart', 'changeProb', 'x_coord', 'y_coord', 'ndvi_magnitude', 
                       'prediction_dates', 'predicted_values', 'coeficientes', 'intercept_values', 'mask_len', 'mask_num_false']
     
     df = df[ordem_colunas]
