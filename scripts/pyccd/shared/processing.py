@@ -83,13 +83,13 @@ def create_geodataframe_from_parquet(filename, epsg_input, epsg_output, S2_tile,
     df = pd.read_parquet(parquet_path)
     
     # Criar uma coluna 'geometry' com objetos Point baseados em Lat e Lon
-    geometry = [Point(lon, lat) for lon, lat in zip(df['Lon'], df['Lat'])]
+    geometry = [Point(x, y) for x, y in zip(df['x_coord'], df['y_coord'])]
     
     # Criar um GeoDataFrame a partir do DataFrame original e da geometria
-    gdf = gpd.GeoDataFrame(df, geometry=geometry, crs=CRS.from_epsg(epsg_input))
+    gdf = gpd.GeoDataFrame(df, geometry=geometry, crs=CRS.from_epsg(epsg_output))
     
     # Reprojetar para o sistema de coordenadas EPSG especificado
-    gdf = gdf.to_crs(epsg=epsg_output)
+    # gdf = gdf.to_crs(epsg=epsg_output)
     
     # Adicionar a coluna tBreak ao GeoDataFrame
     gdf['tBreak'] = df['tBreak']
