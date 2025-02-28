@@ -402,7 +402,7 @@ def process_detection_results(results, ponto_desejado, NODATA_VALUE):
         break_dates.append(result['break_day'])
         start_dates.append(result['start_day'])
         end_dates.append(result['end_day'])
-        prob.append(result['change_probability'])
+        prob.append(int(result['change_probability'] * 100))
         
         intercept = result['ndvi']['intercept']
         intercept_values.append(intercept)
