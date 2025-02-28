@@ -414,7 +414,7 @@ def process_detection_results(results, ponto_desejado, NODATA_VALUE):
                                 coef[3]*np.cos(days*2*2*np.pi/365.25) + coef[4]*np.sin(days*2*2*np.pi/365.25) +
                                 coef[5]*np.cos(days*3*2*np.pi/365.25) + coef[6]*np.sin(days*3*2*np.pi/365.25))
     
-    ndvi_magnitudes = [predicted_values[num][-1] - predicted_values[num + 1][0] for num in range(len(predicted_values) - 1)]
+    ndvi_magnitudes = [int(predicted_values[num][-1] - predicted_values[num + 1][0]) for num in range(len(predicted_values) - 1)]
     
     # Se não houver mais segmentos a seguir adiciona NODATA_VALUE se só existir um segmento adiciona 0
     ndvi_magnitudes.append(NODATA_VALUE if ndvi_magnitudes and any(ndvi_magnitudes) else 0)
@@ -445,7 +445,7 @@ def process_detection_results(results, ponto_desejado, NODATA_VALUE):
         'y_coord': ponto_desejado_y, 
         'ndvi_magnitude': ndvi_magnitudes,
         'prediction_dates': [d.tolist() for d in prediction_dates],
-        'predicted_values': [v.tolist() for v in predicted_values], 
+        'predicted_values': [v.astype(int).tolist() for v in predicted_values], 
         'coeficientes': coeficientes, 
         'intercept_values': intercept_values,
         'mask_len': mask_len,
