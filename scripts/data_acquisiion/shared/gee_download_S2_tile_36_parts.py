@@ -88,7 +88,7 @@ def filterS2cloudless(S2SRCol, S2CloudCol):
 
     def apply_cld_shdw_mask(img):
         not_cld_shdw = img.select('cloudmask').Not()
-        return img.updateMask(not_cld_shdw).unmask(65535)
+        return img.updateMask(not_cld_shdw).unmask(NODATA)
 
     s2_sr = joined.map(add_cld_shdw_mask).map(apply_cld_shdw_mask)
 
@@ -119,7 +119,8 @@ def download_image(image, fileName, base_folder, tile, date_millis):
             'scale': 10,
             'crs': 'EPSG:32629',
             'region': image.geometry(),
-            'format': 'GeoTIFF'
+            'format': 'GeoTIFF',
+            "nodata": NODATA
         })
         
         response = requests.get(url)
@@ -193,39 +194,68 @@ def combine_tiffs_to_mosaic(input_folder, output_folder, geopackage_path, date_m
         "height": mosaic.shape[1],
         "width": mosaic.shape[2],
         "transform": out_transform,
-        "nodata": 65535,
-        "compress" : "LZW"
+        "nodata": NODATA,
+        "compress": "LZW"
     })
     
+    # Fechar os arquivos originais
     for src in src_files_to_mosaic:
         src.close()
     
+    # Criar a pasta de saída, se não existir
+    os.makedirs(output_folder, exist_ok=True)
+    
+    # Salvar o mosaico completo antes do corte
+    output_file = os.path.join(output_folder, f"S2SR_image_{date_millis}.tif")
+    with rasterio.open(output_file, "w", **out_meta) as dest:
+        dest.write(mosaic)
+
     # Carregar o GeoPackage e extrair a geometria
     gdf = gpd.read_file(geopackage_path)
     geometries = gdf.geometry.values
     
-    # Salvar o mosaico completo
-    output_file = os.path.join(output_folder, f"S2SR_image_{date_millis}.tif")
-    
-    with rasterio.open(output_file, "w", **out_meta) as dest:
-        dest.write(mosaic)
-    
-    # Aplicar a máscara usando a geometria do GeoPackage
-    with rasterio.open(output_file, "r") as src:
-        out_image, out_transform = mask(src, geometries, crop=True)
+    try:
+        # Abrir o arquivo salvo para aplicar a máscara
+        with rasterio.open(output_file, "r") as src:
+            out_image, out_transform = mask(
+                src,
+                geometries,
+                crop=True,
+                nodata=NODATA,
+                all_touched=False,
+                filled=False
+            )
+        
+        # Se o resultado do mask não tem pixels válidos, significa que estava fora do GeoPackage
+        if np.all(out_image == NODATA):
+            print(f"Mosaic is completely outside the GeoPackage area. Deleting output folder: {output_folder}", flush=True)
+            shutil.rmtree(input_folder, ignore_errors=True)  # Apaga a pasta
+            return
+
+        # Atualizar os metadados com a nova extensão da imagem recortada
         out_meta.update({
-            "driver": "GTiff",
             "height": out_image.shape[1],
             "width": out_image.shape[2],
-            "transform": out_transform,
-            "nodata": 65535
+            "transform": out_transform
         })
-    
-    # Salvar o mosaico final recortado
-    with rasterio.open(output_file, "w", **out_meta) as dest:
-        dest.write(out_image)
-    
-    print(f"Mosaic saved to {output_file}.", flush=True)
+
+        # Definir pixels com zero em todas as bandas como NoData
+        mask_nodata = np.all(out_image == 0, axis=0)  # Verifica onde todas as bandas são zero
+        out_image[:, mask_nodata] = NODATA  # Define esses pixels como NoData
+
+        # Salvar o mosaico final recortado
+        with rasterio.open(output_file, "w", **out_meta) as dest:
+            dest.write(out_image)
+        
+        print(f"Mosaic saved to {output_file}.", flush=True)
+        
+        print(f"Removing subtiles folder: {input_folder}", flush=True)
+        shutil.rmtree(input_folder, ignore_errors=True)
+
+    except ValueError:
+        # Se o raster não tem interseção com o geopackage, apagar a pasta de saída
+        print(f"No valid data found inside the GeoPackage area. Deleting output folder: {output_folder}", flush=True)
+        shutil.rmtree(input_folder, ignore_errors=True)
 
 def process_images_in_parallel(imageList, tile_to_test, base_folder):
     with ProcessPoolExecutor(max_workers=24) as executor:
@@ -256,51 +286,48 @@ def process_and_mosaic_images(imageList, tile_to_test, base_folder):
         # Criar caminhos para guardar e combinar o mosaico
         tile_folder = os.path.join(base_folder, tile_to_test)
         mosaic_folder = os.path.join(tile_folder, str(date_millis))
-        geopackage_path = r"/users1/cpca070342024/scaetano/portugal_continental.gpkg"
+        geopackage_path = r"C:/Users/scaetano/Downloads/portugal_continental.gpkg"
 
         # Combinar as imagens e gerar o mosaico
         combine_tiffs_to_mosaic(mosaic_folder, tile_folder, geopackage_path, date_millis)
-
-        # Excluir a pasta temporária após o mosaico ser criado
-        shutil.rmtree(mosaic_folder)
-        print(f"Temporary folder {mosaic_folder} deleted.", flush=True)
 
     print("All images processed and mosaics generated.", flush=True)
 
 # ---------------------------------
 # EXECUÇÃO PRINCIPAL
 # ---------------------------------
-try:
-    # start_time = time.time()
-    base_folder = 's2_imagens'
-    params_ImgCol = {
-        'nameImage': "COPERNICUS/S2_SR_HARMONIZED",
-        'date_start': date_start,
-        'date_end': date_end,
-        'indices': ['ndvi'],
-        'cloudFilter': 's2cloudless',
-        'bandas': bandas,
-        'banda': 'ndvi'
-    }
-
-    s2_col_filtered = getImageCollection(params_ImgCol)
-    s2_col_with_date = s2_col_filtered.map(addDateBand)
-    s2_col_sorted = s2_col_with_date.sort('image_date')
-
-    s2_col_selection = s2_col_sorted.select(bandas)
-    s2_col_selection = s2_col_selection.filterMetadata('MGRS_TILE', 'EQUALS', tile_to_test[1:])
-
-    print(f'Number of images selected for tile {tile_to_test}: {s2_col_selection.size().getInfo()}', flush=True)
-    max_workers=24
-    print(f'Usando {max_workers} CPUs ', flush=True)
-
-    imageList = s2_col_selection.toList(s2_col_selection.size())
-
-    process_and_mosaic_images(imageList, tile_to_test, base_folder)
-
-    end_time = datetime.now()
-    print("Hora de fim do script:", end_time.strftime("%H:%M:%S"), flush=True)
-    # print(f"Total execution time: {end_time - start_time:.2f} seconds.", flush=True)
-
-except Exception as e:
-    print(f'Error: {e}')
+if __name__ == '__main__':
+    try:
+        # start_time = time.time()
+        base_folder = 'D:\s2_images'
+        params_ImgCol = {
+            'nameImage': "COPERNICUS/S2_SR_HARMONIZED",
+            'date_start': date_start,
+            'date_end': date_end,
+            'indices': ['ndvi'],
+            'cloudFilter': 's2cloudless',
+            'bandas': bandas,
+            'banda': 'ndvi'
+        }
+    
+        s2_col_filtered = getImageCollection(params_ImgCol)
+        s2_col_with_date = s2_col_filtered.map(addDateBand)
+        s2_col_sorted = s2_col_with_date.sort('image_date')
+    
+        s2_col_selection = s2_col_sorted.select(bandas)
+        s2_col_selection = s2_col_selection.filterMetadata('MGRS_TILE', 'EQUALS', tile_to_test[1:])
+    
+        print(f'Number of images selected for tile {tile_to_test}: {s2_col_selection.size().getInfo()}', flush=True)
+        max_workers=24
+        print(f'Usando {max_workers} CPUs ', flush=True)
+    
+        imageList = s2_col_selection.toList(s2_col_selection.size())
+    
+        process_and_mosaic_images(imageList, tile_to_test, base_folder)
+    
+        end_time = datetime.now()
+        print("Hora de fim do script:", end_time.strftime("%H:%M:%S"), flush=True)
+        # print(f"Total execution time: {end_time - start_time:.2f} seconds.", flush=True)
+    
+    except Exception as e:
+        print(f'Error: {e}')
