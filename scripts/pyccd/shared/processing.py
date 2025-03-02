@@ -14,20 +14,20 @@ from pyproj import CRS
 #%%
 def create_geodataframe_from_parquet(filename, epsg_input, epsg_output, S2_tile, parquet_dir, shapefile_dir):
     """
-    Cria um GeoDataFrame a partir de um arquivo Parquet contendo coordenadas geográficas, reprojeta-o 
-    e adiciona uma coluna de quebra temporal (tBreak). Em seguida, salva o GeoDataFrame como um Shapefile
-    numa pasta criada dinamicamente com base no S2_tile.
+    Creates a GeoDataFrame from a Parquet file containing geographic coordinates, reprojects it,
+    and adds a temporal break column (tBreak). It then saves the GeoDataFrame as a Shapefile
+    in a dynamically created folder based on the S2_tile.
 
     Args:
-        filename (str): Nome do arquivo Parquet sem extensão.
-        epsg_input (int): Código EPSG do sistema de referência espacial de entrada.
-        epsg_output (int): Código EPSG do sistema de referência espacial de saída.
-        S2_tile (str): Identificador do tile S2 usado para criar a subpasta.
-        parquet_dir (Path): Caminho para a pasta onde o arquivo Parquet está localizado.
-        shapefile_dir (Path): Caminho para a pasta onde o shapefile será salvo.
+        - filename (str): Name of the Parquet file without the extension.
+        - epsg_input (int): EPSG code of the input spatial reference system.
+        - epsg_output (int): EPSG code of the output spatial reference system.
+        - S2_tile (str): Identifier of the S2 tile used to create the subfolder.
+        - parquet_dir (Path): Path to the folder where the Parquet file is located.
+        - shapefile_dir (Path): Path to the folder where the Shapefile will be saved.
 
     Returns:
-        GeoDataFrame: Um GeoDataFrame com a geometria reprojetada e a coluna tBreak adicionada.
+        - GeoDataFrame: A GeoDataFrame with the reprojected geometry and the added tBreak column.
     """
     # Construir o caminho completo para o arquivo Parquet
     parquet_path = Path(parquet_dir) / f"{filename}.parquet"
@@ -56,26 +56,26 @@ def create_geodataframe_from_parquet(filename, epsg_input, epsg_output, S2_tile,
 #%%
 def processPointData(args):
     """
-    Processa os dados de um ponto específico, incluindo a filtragem de NODATA_VALUE e o cálculo do NDVI.
-    
+    Processes the data of a specific point, including filtering out NODATA_VALUE and calculating the NDVI.
+
     Args:
-        - i (int): Índice do ponto de interesse.
-        - sel_values (3D array): 3D-Array de valores selecionados (numero de imagens x numero de bandas x batch_size).
-        - dates (ndarray): Array de datas.
-        - xs (ndarray): Array de coordenadas x.
-        - ys (ndarray): Array de coordenadas y.
-        - NODATA_VALUE (float): Valor que representa dados ausentes.
-        - FOLDER_OUTPUTS (str): Diretório para salvar os resultados.
-        - img_collection (ndarray): Coleção de imagens Sentinel-2.
-    
+        - i (int): Index of the point of interest.
+        - sel_values (3D array): 3D array of selected values (number of images x number of bands x batch_size).
+        - dates (ndarray): Array of dates.
+        - xs (ndarray): Array of x coordinates.
+        - ys (ndarray): Array of y coordinates.
+        - NODATA_VALUE (float): Value representing missing data.
+        - FOLDER_OUTPUTS (str): Directory to save the results.
+        - img_collection (ndarray): Sentinel-2 image collection.
+
     Returns:
-        - dates (ndarray): Array de datas filtradas.
-        - ndvis (ndarray): Array de valores NDVI.
-        - greens (ndarray): Array de valores da banda verde.
-        - reds (ndarray): Array de valores da banda vermelha.
-        - nirs (ndarray): Array de valores da banda NIR.
-        - swir2s (ndarray): Array de valores da banda SWIR2.
-        - ponto_desejado (tuple): Coordenadas do ponto desejado (x, y).
+        - dates (ndarray): Array of filtered dates.
+        - ndvis (ndarray): Array of NDVI values.
+        - greens (ndarray): Array of green band values.
+        - reds (ndarray): Array of red band values.
+        - nirs (ndarray): Array of NIR band values.
+        - swir2s (ndarray): Array of SWIR2 band values.
+        - pixel (tuple): Coordinates of the pixel (x, y).
     """
     i, sel_values, dates, xs, ys, NODATA_VALUE, MAX_VALUE_NDVI, FOLDER_OUTPUTS, CRS_THEIA, CRS_WGS84, img_collection = args
 
@@ -122,20 +122,20 @@ def processPointData(args):
 #%%
 def runDetectionForPoint(args):
     """
-    Executa o CCD para um ponto específico.
-    
+    Executes the CCD for a specific point.
+
     Args:
-        - i (int): Índice do ponto de interesse.
-        - sel_values (ndarray): Array de valores selecionados.
-        - dates (ndarray): Array de datas.
-        - xs (ndarray): Array de coordenadas x.
-        - ys (ndarray): Array de coordenadas y.
-        - NODATA_VALUE (float): Valor que representa dados ausentes.
-        - FOLDER_OUTPUTS (str): Diretório para salvar os resultados.
-        - img_collection (ndarray): Coleção de imagens Sentinel-2.
+        - i (int): Index of the point of interest.
+        - sel_values (ndarray): Array of selected values.
+        - dates (ndarray): Array of dates.
+        - xs (ndarray): Array of x coordinates.
+        - ys (ndarray): Array of y coordinates.
+        - NODATA_VALUE (float): Value representing missing data.
+        - FOLDER_OUTPUTS (str): Directory to save the results.
+        - img_collection (ndarray): Sentinel-2 image collection.
 
     Returns:
-        - df (DataFrame): DataFrame com os resultados do CCD.
+        - df (DataFrame): DataFrame with the CCD results.
     """
     # Processar os dados do ponto
     dates, ndvis, greens, reds, nirs, swir2s, ponto_desejado, NODATA_VALUE, CRS_THEIA, CRS_WGS84 = processPointData(args)
@@ -151,19 +151,19 @@ def runDetectionForPoint(args):
 #%%
 def process_detection_results(results, ponto_desejado, NODATA_VALUE, CRS_THEIA, CRS_WGS84):
     """
-    Processa os resultados da detecção de mudanças para um ponto específico.(1 pixel; all segments)
+    Processes the change detection results for a specific point (1 pixel; all segments).
 
     Args:
-        - results (dict): Resultados da detecção de mudanças, esperado como um dicionário com 'change_models' e 'processing_mask'.
-        - dates (ndarray): Array de datas.
-        - ndvis (ndarray): Array de valores NDVI.
-        - ponto_desejado (tuple): Coordenadas do ponto desejado tuple (x,y) 'crs': 'EPSG:32629',
-        - NODATA_VALUE (float): Valor que representa dados ausentes.
-        - CRS_THEIA (str): Sistema de coordenadas de referência (THEIA).
-        - CRS_WGS84 (str): Sistema de coordenadas de referência (WGS84).
+        - results (dict): Change detection results, expected as a dictionary with 'change_models' and 'processing_mask'.
+        - dates (ndarray): Array of dates.
+        - ndvis (ndarray): Array of NDVI values.
+        - desired_point (tuple): Coordinates of the desired point, tuple (x, y) 'crs': 'EPSG:32629'.
+        - NODATA_VALUE (float): Value representing missing data.
+        - CRS_THEIA (str): Coordinate reference system (THEIA).
+        - CRS_WGS84 (str): Coordinate reference system (WGS84).
 
     Returns:
-        - df (DataFrame): DataFrame que contém os resultados processados da detecção de mudanças.
+        - df (DataFrame): DataFrame containing the processed change detection results.
     """
     #predicted_values = []
     #prediction_dates = []
