@@ -10,7 +10,7 @@ if platform.system() == "Windows":
 else:  # Linux
     user_home = os.path.expanduser("~")
     directory_path = os.path.join(user_home, 'CCD_yml_win')
-os.chdir(directory_path)
+os.chdir(directory_path)   
 import pandas as pd
 import rasterio
 import os
@@ -24,15 +24,14 @@ if PASTA_DE_SCRIPTS not in sys.path:
 import ccd
 from shared.avaliacao_exatidao_pyccd import runValidation
 from datetime import datetime
-from shared.processing import check_or_initialize_file, runDetectionForPoint, create_geodataframe_from_csv
+from shared.processing import runDetectionForPoint, create_geodataframe_from_parquet
+from shared.preprocessing import check_or_initialize_file
 from shared.utils import fromParamsReturnName, getNumberOfPixelsFromNpy
 from shared.plot import plotFromCSV
 from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor
 import warnings
 warnings.filterwarnings('ignore')
-import numpy as np
-import math
 import os
 import h5py
 # Working directory (DADOS):
