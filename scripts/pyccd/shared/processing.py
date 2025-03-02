@@ -235,7 +235,7 @@ def process_detection_results(results, ponto_desejado, NODATA_VALUE, CRS_THEIA, 
     df = pd.DataFrame(dados)
     
     # Reorganizar colunas
-    ordem_colunas = ['tBreak','tEnd', 'tStart', 'changeProb', 'x_coord', 'y_coord', 'ndvi_magnitude', 
+    ordem_colunas = ['tBreak','tEnd', 'tStart', 'changeProb', 'x_coord', 'y_coord', #'ndvi_magnitude', 
                      'coeficientes', 'intercept_values']
                       #'prediction_dates', 'predicted_values', 'coeficientes', 'intercept_values']
                       #'mask_len', 'mask_num_false']
