@@ -197,6 +197,30 @@ bandFilter = None #nรฃo implementado ainda - nรฃo mexer
 #%%
 # Função auxiliar para processar um batch
 def process_batch(args):
+    """
+    Processes a batch of points for change detection.
+
+    This function takes a batch of selected values and processes each point in the batch 
+    by calling the `runDetectionForPoint` function. It creates a list of arguments for each 
+    point in the batch and returns the results for all points.
+
+    Args:
+        - args (tuple): A tuple containing the following elements:
+            - i (int): Index of the point being processed within the batch. Used to iterate through each point in the batch.
+            - sel_values_block (ndarray): 3D array of selected values for the batch (number of images x number of bands x batch_size).
+            - xs_slice (ndarray): Array of x coordinates for the batch.
+            - ys_slice (ndarray): Array of y coordinates for the batch.
+            - tif_dates_ord (ndarray): Array of ordered dates corresponding to the images.
+            - NODATA_VALUE (float): Value representing missing data in the dataset.
+            - MAX_VALUE_NDVI (float): Maximum possible NDVI value used for scaling.
+            - PASTA_DE_OUTPUTS (str): Directory to save the output results.
+            - CRS_THEIA (str): Coordinate Reference System (CRS) for the Theia dataset.
+            - CRS_WGS84 (str): Coordinate Reference System (CRS) for the WGS84 standard.
+            - img_collection (ndarray): Collection of Sentinel-2 images.
+
+    Returns:
+        - list: A list of results from `runDetectionForPoint` for each point in the batch.
+    """
     sel_values_block, xs_slice, ys_slice, tif_dates_ord = args
     arg_list = [
         (i, sel_values_block, tif_dates_ord, xs_slice, ys_slice, NODATA_VALUE, MAX_VALUE_NDVI, PASTA_DE_OUTPUTS, CRS_THEIA, CRS_WGS84, img_collection)
