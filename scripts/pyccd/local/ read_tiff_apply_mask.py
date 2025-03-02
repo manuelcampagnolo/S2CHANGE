@@ -262,7 +262,7 @@ def main(batch_size):
         for col in result_df.columns:
             if result_df[col].apply(lambda x: isinstance(x, list)).any():
                 result_df = result_df.explode(col)
-        print(f"Salvando o ficheiro parquet com {len(result_df)} registos.")
+        print(f"Saving the parquet file with {len(result_df)} records.")
         result_df.to_parquet(FOLDER_PARQUET / '{}.parquet'.format(filename), index=False)
     
     if EXECUTAR_PLOT:
