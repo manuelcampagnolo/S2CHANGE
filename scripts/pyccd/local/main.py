@@ -105,9 +105,11 @@ BDR = "NAV"
 # -> IMAGENS SENTINEL:
 IMAGENS_S2 = PASTA_DE_INPUTS / 's2_images'
 
-tiles = IMAGENS_S2 / S2_tile
+tiles = IMAGENS_S2 / S2_tile # tiff files
+batch_size = 10#000 # Número de pixels para cada lote -- to be done sequentially on each core (either hpc or local)
+
 # ---------------------------------
-#   PARAMETROS PRE PROCESSAMENTO
+#   PARAMETROS PRE PROCESSAMENTO  / PYCCD
 # ---------------------------------
 min_year =  2017 # ano inicial da corrida do CCD
 max_date = datetime(2024, 12, 31) # data atรฉ onde se corre o ccd
@@ -122,8 +124,6 @@ MAX_VALUE_NDVI = 10000
 EXECUTAR_PLOT = False # (false para nรฃo fazer; true para fazer)
 ROW_INDEX = 8 # plot para uma linha do CSV (escolher a linha no row_index)
 
-batch_size = 10#000 # Número de pixels para cada lote
-
 img_collection = tiles.parts[-2]
 
 CRS_THEIA = 32629
@@ -135,7 +135,7 @@ PASTA_DE_OUTPUTS = Path('C:/Users/Public/Documents/outputs_RI')
 FOLDER_NPY = PASTA_DE_OUTPUTS / 'numpy' / S2_tile
 FOLDER_PLOTS = PASTA_DE_OUTPUTS / 'plots' / S2_tile
 FOLDER_PARQUET = PASTA_DE_OUTPUTS / 'tabular' / S2_tile
-FOLDER_SHP = PASTA_DE_OUTPUTS / 'shapefiles' / S2_tile
+#FOLDER_SHP = PASTA_DE_OUTPUTS / 'shapefiles' / S2_tile
 
 # Funรงรฃo para criar diretรณrios se nรฃo existirem
 def create_directory_if_not_exists(path):
@@ -149,7 +149,7 @@ def create_directory_if_not_exists(path):
 create_directory_if_not_exists(FOLDER_NPY)
 create_directory_if_not_exists(FOLDER_PLOTS)
 create_directory_if_not_exists(FOLDER_PARQUET)
-create_directory_if_not_exists(FOLDER_SHP)
+#create_directory_if_not_exists(FOLDER_SHP)
 
 # ---------------------------------
 #      PARAMETROS PROCESSAMENTO
