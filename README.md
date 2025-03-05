@@ -70,7 +70,7 @@ base em análise automática de imagens de satélite
 </details>
 
 <details markdown="block">
-<summary> Call EuroHPC March 2025/summary>
+<summary> Call EuroHPC March 2025 </summary>
 
 * [Application](documents/EHPC-DEV-2025D03-088_Campagnolo_Consolidated_online_forms_submetido.pdf)
 
