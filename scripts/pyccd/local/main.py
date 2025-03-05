@@ -154,6 +154,8 @@ create_directory_if_not_exists(FOLDER_PARQUET)
 # ---------------------------------
 #      PARAMETROS PROCESSAMENTO / only needs to be done once for dreating npy/hdf5 files
 # ---------------------------------
+
+# This should be moved within check_or_initialize_file (which is shared) 
 # Listar todos os ficheiros na pasta e ordenar pelo tamanho (maior primeiro)
 raster_files = sorted(tiles.glob('*.*'), key=lambda f: f.stat().st_size, reverse=True)
 
