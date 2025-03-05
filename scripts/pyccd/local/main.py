@@ -152,7 +152,7 @@ create_directory_if_not_exists(FOLDER_PARQUET)
 #create_directory_if_not_exists(FOLDER_SHP)
 
 # ---------------------------------
-#      PARAMETROS PROCESSAMENTO
+#      PARAMETROS PROCESSAMENTO / only needs to be done once for dreating npy/hdf5 files
 # ---------------------------------
 # Listar todos os ficheiros na pasta e ordenar pelo tamanho (maior primeiro)
 raster_files = sorted(tiles.glob('*.*'), key=lambda f: f.stat().st_size, reverse=True)
@@ -174,15 +174,19 @@ if raster_path:
 else:
     print("Nenhuma imagem valida foi encontrada.")
 # ---------------------------------
-#          PARAMETROS CCD
+#          PARAMETROS CCD / PYCCD
 # ---------------------------------
 alpha = ccd.parameters.defaults['ALPHA'] # Looks for alpha in the parameters.py file
 ccd_params = ccd.parameters.defaults
 ######### NOME BASE DOS FICHEIROS A SEREM GERADOS #########
+
+# BDR is an arbitrary name for ROI
 filename = fromParamsReturnName(img_collection, ccd_params, (S2_tile, tiles), BDR, min_year, max_date)
-############ OUTPUTS ######################
+
+############ OUTPUTS ###################### need to be consisten and -- 'h5' should be an option
 output_file = FOLDER_NPY / "{}.h5".format(filename) # ficheiro numpy (matriz) dos dados (nr de imagens x nr de bandas x nr total de pontos)
 
+"""
 # ---------------------------------
 #      PARAMETROS DA VALIDAรรO
 # ---------------------------------
@@ -195,6 +199,54 @@ theta = 60 # +/- theta dias de diferenca
 # banda a filtrar com base na magnitude
 bandFilter = None #nรฃo implementado ainda - nรฃo mexer
 #%%
+"""
+
+def main(batch_size):
+    # Verificar a existência do arquivo .npy e inicializar ou carregar os dados
+    # Create npy/h5 file if "output_file doesn't exist
+    # obs: calculation of raster_path should be included in check_or_initialize_file
+    tif_dates_ord, N = check_or_initialize_file(output_file, tiles, var, S2_tile, min_year, max_date, REGIAO_INTERESSE, 
+                                                bandas_desejadas, PASTA_DE_OUTPUTS, img_collection, NODATA_VALUE, raster_path)
+    
+    # Carregar os dados numpy para o processamento em lotes
+    h5_file = h5py.File(output_file, 'r')
+    sel_values = h5_file['values']
+    xs = h5_file['xs']
+    ys = h5_file['ys']
+    
+    # Criar os batches # N is the total number of pixels; 
+    batches = [
+        (sel_values[:, :, start:end], xs[start:end], ys[start:end], tif_dates_ord)
+        for start, end in zip(range(0, N, batch_size), range(batch_size, N + batch_size, batch_size))
+    ]
+    
+    
+    dfs = []
+    with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
+        tqdm_bar = tqdm(total=len(batches))
+        
+        # Processar os batches paralelamente
+        # function process_batch defined below
+        for batch_results in executor.map(process_batch, batches):
+            dfs.extend(batch_results)  # Adiciona os resultados processados; dataframe or list of dataframes
+            tqdm_bar.update(1)
+        
+        tqdm_bar.close()
+    
+    # Concatenar os resultados de todos os lotes num único DataFrame  // dataframe could be problematic 
+    # try to write this as a fucntion with imnput: dfs; output: parquet file path
+    if dfs:
+        result_df = pd.concat(dfs, ignore_index=True)
+        for col in result_df.columns:
+            if result_df[col].apply(lambda x: isinstance(x, list)).any():
+                result_df = result_df.explode(col)
+        print(f"Saving the parquet file with {len(result_df)} records.")
+        result_df.to_parquet(FOLDER_PARQUET / '{}.parquet'.format(filename), index=False)
+    
+    #if EXECUTAR_PLOT:
+    #    plotFromCSV(FOLDER_PARQUET / '{}.parquet'.format(filename), ROW_INDEX, save_dir=FOLDER_PLOTS / '{}_RowIndex{}.png'.format(filename, ROW_INDEX))
+
+
 # Função auxiliar para processar um batch
 def process_batch(args):
     """
@@ -228,49 +280,8 @@ def process_batch(args):
     # Retorna resultados para todos os pontos no batch
     return [runDetectionForPoint(arg) for arg in arg_list]
 #%%
-def main(batch_size):
-    # Verificar a existência do arquivo .npy e inicializar ou carregar os dados
-    tif_dates_ord, N = check_or_initialize_file(output_file, tiles, var, S2_tile, min_year, max_date, REGIAO_INTERESSE, 
-                                                bandas_desejadas, PASTA_DE_OUTPUTS, img_collection, NODATA_VALUE, raster_path)
-    
-    # Carregar os dados numpy para o processamento em lotes
-    h5_file = h5py.File(output_file, 'r')
-    sel_values = h5_file['values']
-    xs = h5_file['xs']
-    ys = h5_file['ys']
-    
-    # Criar os batches
-    batches = [
-        (sel_values[:, :, start:end], xs[start:end], ys[start:end], tif_dates_ord)
-        for start, end in zip(range(0, N, batch_size), range(batch_size, N + batch_size, batch_size))
-    ]
-    
-    dfs = []
-    with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
-        tqdm_bar = tqdm(total=len(batches))
-        
-        # Processar os batches paralelamente
-        for batch_results in executor.map(process_batch, batches):
-            dfs.extend(batch_results)  # Adiciona os resultados processados
-            tqdm_bar.update(1)
-        
-        tqdm_bar.close()
-    
-    # Concatenar os resultados de todos os lotes num único DataFrame
-    if dfs:
-        result_df = pd.concat(dfs, ignore_index=True)
-        for col in result_df.columns:
-            if result_df[col].apply(lambda x: isinstance(x, list)).any():
-                result_df = result_df.explode(col)
-        print(f"Saving the parquet file with {len(result_df)} records.")
-        result_df.to_parquet(FOLDER_PARQUET / '{}.parquet'.format(filename), index=False)
-    
-    if EXECUTAR_PLOT:
-        plotFromCSV(FOLDER_PARQUET / '{}.parquet'.format(filename), ROW_INDEX, save_dir=FOLDER_PLOTS / '{}_RowIndex{}.png'.format(filename, ROW_INDEX))
+
 #%%
 # Executar o código
 if __name__ == '__main__':
     main(batch_size)
-    # create_geodataframe_from_csv(filename, CRS_WGS84, CRS_THEIA, S2_tile, FOLDER_CSV, FOLDER_SHP)
-    # if BDR == 'DGT':
-    #     runValidation(filename, FOLDER_CSV, REGIAO_INTERESSE, dt_ini, dt_end, bandFilter, theta)
