@@ -142,6 +142,7 @@ FOLDER_PLOTS = FOLDER_OUTPUTS / 'plots' / S2_tile
 FOLDER_PARQUET = FOLDER_OUTPUTS / 'tabular' / S2_tile
 FOLDER_SHP = FOLDER_OUTPUTS / 'shapefiles' / S2_tile
 
+# should be in "shared"
 # FunÃ§Ã£o para criar diretÃ³rios se nÃ£o existirem
 def create_directory_if_not_exists(path):
     if not path.exists():
@@ -154,7 +155,7 @@ create_directory_if_not_exists(FOLDER_PARQUET)
 create_directory_if_not_exists(FOLDER_SHP)
 
 # ---------------------------------
-#      PARAMETROS PROCESSAMENTO
+#      PARAMETROS PROCESSAMENTO / move to check_or_initialize_file
 # ---------------------------------
 raster_files = sorted(tiles.glob('*.*'), key=lambda f: f.stat().st_size, reverse=True)
 
@@ -168,11 +169,6 @@ if raster_files:
     except:
         raster_path = None  # Se houver erro ao abrir, nada Ã© selecionado
 
-# Imprimir o tiff selecionado
-#if raster_path:
-    #print("Imagem selecionada:", raster_path)
-#else:
-    #print("Nenhuma imagem vÃ¡lida foi encontrada.")
 # ---------------------------------
 #          PARAMETROS CCD
 # ---------------------------------
@@ -181,8 +177,10 @@ ccd_params = ccd.parameters.defaults
 ######### NOME BASE DOS FICHEIROS A SEREM GERADOS #########
 filename = fromParamsReturnName(img_collection, ccd_params, (S2_tile, tiles), BDR, min_year, max_date)
 ############ OUTPUTS ######################
+# review
 output_file = FOLDER_NPY / "{}.h5".format(filename) # ficheiro numpy (matriz) dos dados (nr de imagens x nr de bandas x nr total de pontos)
 
+"""
 # ---------------------------------
 #      PARAMETROS DA VALIDAÃ‡ÃƒO
 # ---------------------------------
@@ -194,40 +192,17 @@ dt_end = '2021-09-30' # data final
 theta = 60 # +/- theta dias de diferenÃ§a
 # bandar a filtrar com base na magnitude
 bandFilter = None #nÃ£o implementado ainda - nÃ£o mexer
+"""
+
 #%% ConfiguraÃ§Ãµes MPI
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
 #%%
-# FunÃ§Ã£o para processar um lote
-def process_batch(args):
-    sel_values_block, xs_slice, ys_slice, tif_dates_ord = args
-    arg_list = [
-        (i, sel_values_block, tif_dates_ord, xs_slice, ys_slice, NODATA_VALUE, MAX_VALUE_NDVI, FOLDER_OUTPUTS, CRS_THEIA, CRS_WGS84, img_collection)
-        for i in range(sel_values_block.shape[2])
-    ]
-    return [runDetectionForPoint(arg) for arg in arg_list]
-
-# FunÃ§Ã£o para processar um lote
-def process_single_batch(batch, sel_values_path, tif_dates_ord, progress):
-    start, end = batch
-
-    # Carregar apenas o bloco especÃ­fico para o lote
-    h5_file = h5py.File(sel_values_path, 'r')
-    sel_values_block = h5_file['values'][:, :, start:end]
-    xs_slice = h5_file['xs'][start:end]
-    ys_slice = h5_file['ys'][start:end]
-
-    # Processar o bloco especÃ­fico
-    result = process_batch((sel_values_block, xs_slice, ys_slice, tif_dates_ord))
-
-    # Atualizar a barra de progresso compartilhada
-    progress.value += 1
-    return result
 
 def main(batch_size=None):
     if rank == 0:
-        # Processo mestre
+        # root rank
         tif_dates_ord, N = check_or_initialize_file(
             output_file, tiles, var, S2_tile, min_year, max_date, BDR_FILE,
             bandas_desejadas, FOLDER_OUTPUTS, img_collection, NODATA_VALUE, raster_path
@@ -290,24 +265,33 @@ def main(batch_size=None):
 
     comm.Barrier()  # Sincronizar todos os ranks antes de continuar
 
-    # if rank == 0:
-    #     all_parquet_files = list(FOLDER_PARQUET.glob(f'{filename}_rank_*.parquet'))
-        
-        # if not all_parquet_files:
-        #     raise FileNotFoundError(f"Nenhum arquivo encontrado correspondente ao padrao {filename}_rank_*.parquet em {FOLDER_PARQUET}")
-        
-        # for parquet_filename in all_parquet_files:
-        #     try:
-        #         parquet_file = parquet_filename.stem
-        #         # FunÃ§Ã£o para criar o shapefile para cada Parquet de cada processo
-        #         create_geodataframe_from_parquet(
-        #             parquet_file, CRS_WGS84, CRS_THEIA, S2_tile, FOLDER_PARQUET, FOLDER_SHP
-        #         )
-                
-        #     except Exception as e:
-        #         print(f"Erro ao processar o arquivo {parquet_file}: {e}")
-        
-        # print(f"Todos os shapefiles individuais foram criados em {FOLDER_SHP}.")
+
+# FunÃ§Ã£o para processar um lote
+def process_batch(args):
+    sel_values_block, xs_slice, ys_slice, tif_dates_ord = args
+    arg_list = [
+        (i, sel_values_block, tif_dates_ord, xs_slice, ys_slice, NODATA_VALUE, MAX_VALUE_NDVI, FOLDER_OUTPUTS, CRS_THEIA, CRS_WGS84, img_collection)
+        for i in range(sel_values_block.shape[2])
+    ]
+    return [runDetectionForPoint(arg) for arg in arg_list]
+
+# FunÃ§Ã£o para processar um lote
+def process_single_batch(batch, sel_values_path, tif_dates_ord, progress):
+    start, end = batch
+
+    # Carregar apenas o bloco especÃ­fico para o lote
+    h5_file = h5py.File(sel_values_path, 'r')
+    sel_values_block = h5_file['values'][:, :, start:end]
+    xs_slice = h5_file['xs'][start:end]
+    ys_slice = h5_file['ys'][start:end]
+
+    # Processar o bloco especÃ­fico
+    result = process_batch((sel_values_block, xs_slice, ys_slice, tif_dates_ord))
+
+    # Atualizar a barra de progresso compartilhada
+    progress.value += 1
+    return result
+
 
 if __name__ == '__main__':
     #if rank == 0:
