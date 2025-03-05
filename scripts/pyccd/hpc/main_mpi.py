@@ -98,7 +98,7 @@ var = 'GEE' # choose variable: THEIA or GEE
 BDR = 'NAV' # choose variable: DGT or NAV
 S2_tile = 'T29SPB' # escolher o tile S2
 # Caminho onde estao os dados todos
-public_documents = Path('/projects/F202410004CPCAA1/')
+public_documents = Path('/projects/F202410004CPCAA1/') # MACC project F202410004CPCAA1
 # Caminhos para a base de dados de validacao
 BDR_FILE = Path('/home/scaetano/CCDC_Mask_dissolve.gpkg')
 # -> IMAGENS SENTINEL:
