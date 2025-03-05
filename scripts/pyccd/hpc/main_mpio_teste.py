@@ -23,7 +23,7 @@ if PASTA_DE_SCRIPTS not in sys.path:
     sys.path.append(str(PASTA_DE_SCRIPTS))
 import ccd
 from datetime import datetime
-from shared.processing import check_or_initialize_file, runDetectionForPoint#, create_geodataframe_from_parquet
+from shared.preprocessing import check_or_initialize_file, runDetectionForPoint#, create_geodataframe_from_parquet
 from shared.utils import fromParamsReturnName#, getNumberOfPixelsFromNpy
 from tqdm import tqdm
 import warnings
