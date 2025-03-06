@@ -45,6 +45,25 @@ warnings.filterwarnings('ignore')
 #endregion
 
 # ---------------------------------
+#             INPUTS
+# ---------------------------------
+var = 'GEE' # choose variable: THEIA or GEE
+BDR = 'NAV' # choose variable: DGT or NAV
+S2_tile = 'T29SPB' # escolher o tile S2
+# Caminho onde estao os dados todos
+public_documents = Path('/projects/F202410004CPCAA1/') # MACC project F202410004CPCAA1
+# Caminhos para a base de dados de validacao
+BDR_FILE = Path('/home/scaetano/CCDC_Mask_dissolve.gpkg')
+# -> IMAGENS SENTINEL:
+FOLDER_THEIA = public_documents / 'imagens_Theia' # Caminho dados THEIA
+FOLDER_GEE = public_documents / 's2_images' # Caminho dados GEE
+
+if var == 'THEIA':
+    tiles = FOLDER_THEIA / S2_tile
+else:
+    tiles = FOLDER_GEE / S2_tile
+#%% 
+# ---------------------------------
 #   PARAMETROS PRE PROCESSAMENTO
 # ---------------------------------
 min_year =  2017 # ano inicial da corrida do CCD
