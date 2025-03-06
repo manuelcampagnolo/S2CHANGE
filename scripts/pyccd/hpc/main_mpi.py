@@ -1,9 +1,16 @@
 # -*- coding: utf-8 -*-
+#region Imports and Path Setup
+# Standard library imports
 import os
+import sys
 import platform
+from datetime import datetime
+from pathlib import Path
+from concurrent.futures import ProcessPoolExecutor
+from multiprocessing import Manager
+import warnings
 
-# Verifica o sistema operacional
-# Windows
+# Set up path for custom modules
 if platform.system() == "Windows":
     user_profile = os.environ['USERPROFILE']
     directory_path = os.path.join(user_profile, 'Desktop', 'S2CHANGE')
@@ -11,105 +18,32 @@ else:  # Linux
     user_home = os.path.expanduser("~")
     directory_path = os.path.join(user_home, 'S2CHANGE')
 os.chdir(directory_path)
-import pandas as pd
-import rasterio
-import sys
-from pathlib import Path
-# Assumir onde esta a pasta dos scripts do PyCCD
-PASTA_DE_SCRIPTS = Path(__name__ ).parent.absolute() / 'scripts' / 'pyccd' 
 
+# Assume where the PyCCD scripts folder is
+PASTA_DE_SCRIPTS = Path(__name__).parent.absolute() / 'scripts' / 'pyccd'
 if PASTA_DE_SCRIPTS not in sys.path:
     sys.path.append(str(PASTA_DE_SCRIPTS))
-import ccd
-from datetime import datetime
-from shared.processing import runDetectionForPoint#, create_geodataframe_from_parquet
-from shared.preprocessing import check_or_initialize_file
-from shared.utils import fromParamsReturnName, getNumberOfPixelsFromNpy
-from tqdm import tqdm
-from concurrent.futures import ProcessPoolExecutor
-import warnings
-warnings.filterwarnings('ignore')
-import numpy as np
-from mpi4py import MPI
-import platform
-from multiprocessing import Manager
-from pathlib import Path
+
+# Third-party libraries
+import pandas as pd
+import rasterio
 import h5py
+from tqdm import tqdm
+from mpi4py import MPI
+
+# PyCCD module imports
+import ccd
+from shared.processing import runDetectionForPoint
+from shared.preprocessing import check_or_initialize_file
+from shared.utils import fromParamsReturnName
+
+# Environment variables
 cpus_slurm = int(os.getenv('SLURM_NTASKS', os.cpu_count()))
 
-# Working directory (DADOS):
-# |----FOLDER PUBLIC DOCUMENTS
-#    |---- SUBFOLDER BDR_300 (DGT)
-#         |---- file.shp
-#    |---- SUBFOLDER BDR_Navigator
-#         |---- file.gpkg
-#    |---- SUBFOLDER IMAGENS GEE
-#         |---- folder TILES
-#              |---- files.tif
-#    |---- SUBFOLDER IMAGENS THEIA
-#         |---- folder TILES
-#              |---- files.tif
-#    |---- SUBFOLDER output_BDR300
-#         |---- folder numpy
-#              |---- files.npy
-#         |---- folder plots
-#              |---- plots.png
-#         |---- folder tabular (csv e validaÃƒÂ§ÃƒÂ£o)
-#              |---- files.csv
-#    |---- SUBFOLDER output_NAV
-#         |---- folder numpy
-#              |---- files.npy
-#         |---- folder plots
-#              |---- plots.png
-#         |---- folder tabular (csv)
-#              |---- files.csv
+# Suppress warnings
+warnings.filterwarnings('ignore')
+#endregion
 
-# Working directory (PyCCD):
-# |----FOLDER CCD_yml_win
-#    |---- SUBFOLDER scripts
-#    |---- SUBFOLDER pyccd_theia
-#         |---- SUBFOLDER ccd
-#              |---- SUBFOLDER models
-#                   |---- __init__.py
-#                   |---- lasso.py
-#                   |---- robust_fit.py
-#                   |---- tmask.py
-#              |---- __init__.py
-#              |---- app.py
-#              |---- change.py
-#              |---- math_utils.py
-#              |---- parameters.py
-#              |---- procedures.py
-#              |---- qa.py
-#              |---- version.py
-#         |---- SUBFOLDER notebooks 
-#              |---- addNewImageToFile.py
-#              |---- avaliacao_exatidao_pyccd.py
-#              |---- main.py (** ficheiro principal **)
-#              |---- plot.py
-#              |---- processing.py
-#              |---- read_files.py
-#              |---- utils.py
-#%%
-# ---------------------------------
-#             INPUTS
-# ---------------------------------
-var = 'GEE' # choose variable: THEIA or GEE
-BDR = 'NAV' # choose variable: DGT or NAV
-S2_tile = 'T29SPB' # escolher o tile S2
-# Caminho onde estao os dados todos
-public_documents = Path('/projects/F202410004CPCAA1/') # MACC project F202410004CPCAA1
-# Caminhos para a base de dados de validacao
-BDR_FILE = Path('/home/scaetano/CCDC_Mask_dissolve.gpkg')
-# -> IMAGENS SENTINEL:
-FOLDER_THEIA = public_documents / 'imagens_Theia' # Caminho dados THEIA
-FOLDER_GEE = public_documents / 's2_images' # Caminho dados GEE
-
-if var == 'THEIA':
-    tiles = FOLDER_THEIA / S2_tile
-else:
-    tiles = FOLDER_GEE / S2_tile
-#%% 
 # ---------------------------------
 #   PARAMETROS PRE PROCESSAMENTO
 # ---------------------------------
