@@ -133,7 +133,7 @@ def main(batch_size=None):
             output_file, tiles, var, S2_tile, min_year, max_date, BDR_FILE,
             bandas_desejadas, FOLDER_OUTPUTS, img_collection, NODATA_VALUE, raster_path
         )
-        
+
         # Criar lotes de dados distribuídos
         indices = list(range(0, N, batch_size))
         batches = [(start, min(start + batch_size, N)) for start in indices]
@@ -146,29 +146,32 @@ def main(batch_size=None):
     tif_dates_ord = comm.bcast(tif_dates_ord, root=0)
     my_batches = comm.scatter(batches_per_rank, root=0)
 
-    # Abrir o ficheiro HDF5 com suporte a MPI
-    with h5py.File(output_file, 'r', driver='mpio', comm=comm) as h5_file:
-        # Criar uma barra de progresso compartilhada
-        with Manager() as manager:
-            progress = manager.Value('i', 0)  # Contador compartilhado
-            total_batches = len(my_batches)  # Número total de lotes
+    # Criar um Manager para compartilhar variáveis entre processos
+    with Manager() as manager:
+        progress = manager.Value('i', 0)  # Contador compartilhado
+        lock = Lock()  # Criar um Lock para controle seguro
+        total_batches = len(my_batches)  # Número total de lotes
 
-            # Inicializar o container para os resultados fora do loop
-            local_results = []
+        # Inicializar o container para os resultados fora do loop
+        local_results = []
 
-            with tqdm(total=total_batches, desc=f"Processo {rank}") as pbar:
-                # Função para atualizar a barra de progresso
-                def update_progress(_):
-                    pbar.n = progress.value  # Atualiza a barra de progresso com o valor compartilhado
+        with tqdm(total=total_batches, desc=f"Processo {rank}") as pbar:
+            # Função para atualizar a barra de progresso
+            def update_progress():
+                with lock:  # Bloqueio para evitar race conditions
+                    pbar.n = progress.value  # Atualiza a barra de progresso
                     pbar.refresh()
+            
+            # Processar os lotes atribuídos
+            for batch in my_batches:
+                result = process_batch(batch, output_file, tif_dates_ord, progress)
 
-                # Processar os lotes atribuídos
-                for batch in my_batches:
-                    result = process_batch(batch, h5_file, tif_dates_ord, progress)
-                    local_results.extend(result)  # Armazenar os resultados locais
-                    with progress.get_lock():
-                        progress.value += 1
-                    update_progress(None)  # Atualiza a barra de progresso
+                local_results.extend(result)  # Armazenar os resultados locais
+                
+                with lock:  # Bloqueio manual para modificar progress.value
+                    progress.value += 1
+                
+                update_progress()  # Atualiza a barra de progresso
 
         # Salvar resultados em Parquet após o processamento de todos os lotes
         if local_results:
