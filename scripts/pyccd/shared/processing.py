@@ -79,40 +79,40 @@ def processPointData(args):
     """
     i, sel_values, dates, xs, ys, NODATA_VALUE, MAX_VALUE_NDVI, FOLDER_OUTPUTS, CRS_THEIA, CRS_WGS84, img_collection = args
 
-    # Extrair o ponto de interesse
+    # Extract the point of interest
     ponto = sel_values[:, :, i]
 
-    # Coordenadas do ponto desejado
+    # Coordinates of the point
     ponto_desejado = xs[i], ys[i]
 
-    # Combinar datas e valores do ponto numa matriz
+    # Combine dates and point values into a matrix
     ponto_with_dates = np.column_stack((dates, ponto[:, 0], ponto[:, 1:]))
 
-    # Aplicar máscara para remover NODATA_VALUE
+    # Apply a mask to remove NODATA_VALUE
     mask = (ponto_with_dates != NODATA_VALUE).all(axis=1)
     ponto_with_dates_filtered = ponto_with_dates[mask].transpose()
 
-    # Separar as bandas e as datas
+    # Separate the bands and dates
     dates, greens, reds, nirs, swir2s = ponto_with_dates_filtered
 
-    # Calcular o NDVI
+    # Calculate NDVI
     ndvis = np.where((nirs + reds) > 0, MAX_VALUE_NDVI * (nirs - reds) / (nirs + reds), NODATA_VALUE)
     
     # Calcular o NBR
     # nbrs = np.where((nirs + swir2s) > 0, MAX_VALUE_NDVI * (nirs - swir2s) / (nirs + swir2s), NODATA_VALUE)
     
-    # Criar um novo array com NDVI na posição 1
+    # Create a new array with NDVI in position 1
     ponto_with_dates_updated = np.vstack((dates, ndvis, greens, reds, nirs, swir2s))
     # ponto_with_dates_updated = np.vstack((dates, ndvis, greens, reds, nirs, swir2s, nbrs))
     
     
-    # Filtrar novamente para remover NODATA_VALUE
+    # Filter again to remove NODATA_VALUE
     ponto_with_dates_updated1 = ponto_with_dates_updated.transpose()
     ponto_with_dates_updated2 = ponto_with_dates_updated1[~np.any(ponto_with_dates_updated1 == NODATA_VALUE, axis=1)]
     ponto_with_dates_final = ponto_with_dates_updated2.transpose()
     
 
-    # Separar as bandas e as datas novamente após a filtragem
+    # Separate the bands and dates again after filtering
     dates, ndvis, greens, reds, nirs, swir2s = ponto_with_dates_final
     # dates, ndvis, greens, reds, nirs, swir2s, nbrs = ponto_with_dates_final
 
@@ -137,19 +137,18 @@ def runDetectionForPoint(args):
     Returns:
         - df (DataFrame): DataFrame with the CCD results.
     """
-    # Processar os dados do ponto
+    # Process the point data
     dates, ndvis, greens, reds, nirs, swir2s, ponto_desejado, NODATA_VALUE, CRS_THEIA, CRS_WGS84 = processPointData(args)
 
-    # Executar a detecção de mudanças
+    # Execute change detection
     results = ccd.detect(dates, ndvis, greens, swir2s)
     # results = ccd.detect(dates, ndvis, greens, swir2s, nbrs)
 
-    # Chamar a função auxiliar para processar os resultados
-    df = process_detection_results(results, ponto_desejado, NODATA_VALUE, CRS_THEIA, CRS_WGS84)
+    df = process_detection_results(results, ponto_desejado, NODATA_VALUE)
 
     return df
 #%%
-def process_detection_results(results, ponto_desejado, NODATA_VALUE, CRS_THEIA, CRS_WGS84):
+def process_detection_results(results, ponto_desejado, NODATA_VALUE):
     """
     Processes the change detection results for a specific point (1 pixel; all segments).
 
@@ -159,8 +158,6 @@ def process_detection_results(results, ponto_desejado, NODATA_VALUE, CRS_THEIA, 
         - ndvis (ndarray): Array of NDVI values.
         - desired_point (tuple): Coordinates of the desired point, tuple (x, y) 'crs': 'EPSG:32629'.
         - NODATA_VALUE (float): Value representing missing data.
-        - CRS_THEIA (str): Coordinate reference system (THEIA).
-        - CRS_WGS84 (str): Coordinate reference system (WGS84).
 
     Returns:
         - df (DataFrame): DataFrame containing the processed change detection results.
@@ -215,7 +212,7 @@ def process_detection_results(results, ponto_desejado, NODATA_VALUE, CRS_THEIA, 
     # mask_array = np.array(results['processing_mask'], dtype='bool')
     # mask_len, mask_num_false = (len(mask_array), np.uint16(np.sum(~mask_array)))
     
-    # se remover o ultimo elemento do tbreak ao correr a validação dá erro porque as colunas não tem o mesmo tamanho
+    # If you remove the last element from tbreak when running the validation, an error occurs because the columns do not have the same size.
     dados = [{
         'tBreak': break_dates_epoch[:-1], 
         'tEnd': end_dates_epoch,
@@ -234,7 +231,7 @@ def process_detection_results(results, ponto_desejado, NODATA_VALUE, CRS_THEIA, 
     
     df = pd.DataFrame(dados)
     
-    # Reorganizar colunas
+    # Reorganize columns
     ordem_colunas = ['tBreak','tEnd', 'tStart', 'changeProb', 'x_coord', 'y_coord', #'ndvi_magnitude', 
                      'coeficientes', 'intercept_values']
                       #'prediction_dates', 'predicted_values', 'coeficientes', 'intercept_values']
