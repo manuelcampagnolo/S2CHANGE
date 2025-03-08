@@ -6,23 +6,23 @@ from datetime import datetime, timedelta
 #%%
 def plotFromCSV(csv_file, row_index=0, save_dir=None):
     """
-    Plota os dados de um arquivo CSV contendo informações do CCD.
-    
+    Plots data from a CSV file containing CCD information.
+
     Args:
-    - csv_file (str): Caminho para o arquivo CSV contendo os dados.
-    - row_index (int): Índice da linha do CSV a ser utilizada para plotar.
-    - save_dir (str): Diretório onde o gráfico será salvo. Se None, o gráfico não será salvo.
-    
+    - csv_file (str): Path to the CSV file containing the data.
+    - row_index (int): Index of the row in the CSV to be used for plotting.
+    - save_dir (str): Directory where the plot will be saved. If None, the plot will not be saved.
+
     Returns:
-    - Gráfico para um pixel com as informações do CCD.
+    - Plot for a pixel with CCD information.
     """
-    # Ler o cabeçalho
+    # Read the header
     header = pd.read_csv(csv_file, nrows=0).columns
 
-    # Ler apenas a linha especificada no CSV
+    # Read only the specified row from the CSV
     df = pd.read_csv(csv_file, skiprows=lambda x: x != row_index + 1, nrows=1, header=None)
 
-    # Aplicar o cabeçalho ao DataFrame
+    # Apply the header to the DataFrame
     df.columns = header
     
     # Garantir que as colunas sejam convertidas corretamente
@@ -33,7 +33,7 @@ def plotFromCSV(csv_file, row_index=0, save_dir=None):
     df['coeficientes'] = df['coeficientes'].apply(eval)
     df['mask'] = df['mask'].apply(eval)
         
-    # Extrair a linha especificada pelo índice do CSV
+    # Extract the specified row from the CSV
     row = df.iloc[0]
     
     ndvis = np.array(row['ndvis'])
@@ -49,14 +49,11 @@ def plotFromCSV(csv_file, row_index=0, save_dir=None):
     start_dates = [datetime.fromtimestamp(s / 1000).toordinal() for s in eval(row['tStart'])]
     end_dates = [datetime.fromtimestamp(e / 1000).toordinal() for e in eval(row['tEnd'])]
 
-    # Plotagem
+    # Plotting
     plt.style.use('ggplot')
     fg = plt.figure(figsize=(14, 4), dpi=90)
     
-    #limite_inicial = datetime.strptime('2018-01-01', '%Y-%m-%d')
-    #limite_final = datetime.strptime('2023-12-31', '%Y-%m-%d')
-    
-    a1 = fg.add_subplot(1, 1, 1)#, xlim=(limite_inicial, limite_final))
+    a1 = fg.add_subplot(1, 1, 1)
     plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d-%m-%Y'))
     plt.gca().xaxis.set_major_locator(mdates.DayLocator())
     
@@ -99,10 +96,6 @@ def plotFromCSV(csv_file, row_index=0, save_dir=None):
         e_date = datetime.fromordinal(e)
         a1.axvline(e_date, color='brown', linestyle='--')
         a1.text(mdates.date2num(e_date) + 1, a1.get_ylim()[0], e_date.strftime('%d-%m-%Y'), rotation=90, ha='right', weight='bold', va='bottom', color='brown', size=8, alpha=0.6)
-
-    # reference_start_date = datetime.strptime('2018-09-12', '%Y-%m-%d')
-    # reference_end_date = datetime.strptime('2021-09-30', '%Y-%m-%d')
-    # a1.axvspan(reference_start_date, reference_end_date, facecolor='pink', alpha=0.3, label='Período de Referência')
 
     plt.ylabel('NDVI')
     
