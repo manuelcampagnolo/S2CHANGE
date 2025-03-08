@@ -36,11 +36,15 @@ input_config['tiles'] = (
 )
 
 #%% Pre-processing
+input_bands = ['B3', 'B4', 'B8', 'B12']
+bands_dict = {1:'B3', 2:'B4', 3:'B8', 4:'B12'} # a banda NDVI só é adicionada mais à frente na funcao processPointData
+bandas_desejadas = list(bands_dict.keys())
+
 preprocessing_config = {
     'min_year': 2017, # CCD start year
     'max_date': datetime(2024, 12, 31), # CCD end date
     'input_bands': ['B3', 'B4', 'B8', 'B12'],
-    'bands_dict': {1: 'NDVI', 2: 'B3', 3: 'B4', 4: 'B8', 5: 'B12'},
+    'bandas_desejadas': bandas_desejadas,
     'nodata_value': 65535,
     'max_value_ndvi': 10000,
     'execute_plot': False, # False will not execute plot

@@ -1,16 +1,9 @@
 # -*- coding: utf-8 -*-
-#region Imports and Path Setup
-# Standard library imports
 import os
-import sys
 import platform
-from datetime import datetime
-from pathlib import Path
-from concurrent.futures import ProcessPoolExecutor
-from multiprocessing import Manager
-import warnings
 
-# Set up path for custom modules
+# Verifica o sistema operacional
+# Windows
 if platform.system() == "Windows":
     user_profile = os.environ['USERPROFILE']
     directory_path = os.path.join(user_profile, 'Desktop', 'S2CHANGE')
@@ -18,32 +11,86 @@ else:  # Linux
     user_home = os.path.expanduser("~")
     directory_path = os.path.join(user_home, 'S2CHANGE')
 os.chdir(directory_path)
-
-# Assume where the PyCCD scripts folder is
-PASTA_DE_SCRIPTS = Path(__name__).parent.absolute() / 'scripts' / 'pyccd'
-if PASTA_DE_SCRIPTS not in sys.path:
-    sys.path.append(str(PASTA_DE_SCRIPTS))
-
-# Third-party libraries
 import pandas as pd
 import rasterio
-import h5py
-from tqdm import tqdm
-from mpi4py import MPI
+import sys
+from pathlib import Path
+# Assumir onde esta a pasta dos scripts do PyCCD
+PASTA_DE_SCRIPTS = Path(__name__ ).parent.absolute() / 'scripts' / 'pyccd' 
 
-# PyCCD module imports
+if PASTA_DE_SCRIPTS not in sys.path:
+    sys.path.append(str(PASTA_DE_SCRIPTS))
 import ccd
-from shared.processing import runDetectionForPoint
+from datetime import datetime
+from shared.processing import runDetectionForPoint#, create_geodataframe_from_parquet
 from shared.preprocessing import check_or_initialize_file
-from shared.utils import fromParamsReturnName
-
-# Environment variables
+from shared.utils import fromParamsReturnName, getNumberOfPixelsFromNpy
+from tqdm import tqdm
+from concurrent.futures import ProcessPoolExecutor
+import warnings
+warnings.filterwarnings('ignore')
+import numpy as np
+from mpi4py import MPI
+import platform
+from multiprocessing import Manager
+from pathlib import Path
+import h5py
 cpus_slurm = int(os.getenv('SLURM_NTASKS', os.cpu_count()))
 
-# Suppress warnings
-warnings.filterwarnings('ignore')
-#endregion
+# Working directory (DADOS):
+# |----FOLDER PUBLIC DOCUMENTS
+#    |---- SUBFOLDER BDR_300 (DGT)
+#         |---- file.shp
+#    |---- SUBFOLDER BDR_Navigator
+#         |---- file.gpkg
+#    |---- SUBFOLDER IMAGENS GEE
+#         |---- folder TILES
+#              |---- files.tif
+#    |---- SUBFOLDER IMAGENS THEIA
+#         |---- folder TILES
+#              |---- files.tif
+#    |---- SUBFOLDER output_BDR300
+#         |---- folder numpy
+#              |---- files.npy
+#         |---- folder plots
+#              |---- plots.png
+#         |---- folder tabular (csv e validaÃƒÂ§ÃƒÂ£o)
+#              |---- files.csv
+#    |---- SUBFOLDER output_NAV
+#         |---- folder numpy
+#              |---- files.npy
+#         |---- folder plots
+#              |---- plots.png
+#         |---- folder tabular (csv)
+#              |---- files.csv
 
+# Working directory (PyCCD):
+# |----FOLDER CCD_yml_win
+#    |---- SUBFOLDER scripts
+#    |---- SUBFOLDER pyccd_theia
+#         |---- SUBFOLDER ccd
+#              |---- SUBFOLDER models
+#                   |---- __init__.py
+#                   |---- lasso.py
+#                   |---- robust_fit.py
+#                   |---- tmask.py
+#              |---- __init__.py
+#              |---- app.py
+#              |---- change.py
+#              |---- math_utils.py
+#              |---- parameters.py
+#              |---- procedures.py
+#              |---- qa.py
+#              |---- version.py
+#         |---- SUBFOLDER notebooks 
+#              |---- addNewImageToFile.py
+#              |---- avaliacao_exatidao_pyccd.py
+#              |---- main.py (** ficheiro principal **)
+#              |---- plot.py
+#              |---- processing.py
+#              |---- read_files.py
+#              |---- utils.py
+#%%
 # ---------------------------------
 #             INPUTS
 # ---------------------------------
