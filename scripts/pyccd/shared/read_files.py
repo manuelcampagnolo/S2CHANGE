@@ -49,6 +49,24 @@ def convertPointToCrs(point, source_crs, target_crs):
     return new_x, new_y
 #%%
 def read_tif_files_theia(S2_tile, tiles, min_year, max_date):
+    """
+    Reads and filters Theia Sentinel-2 TIFF files from a specified directory based on a year range and maximum date.
+
+    This function iterates over a range of years (from `min_year` to the year of `max_date`) and searches for TIFF 
+    files with filenames that match a specific pattern. It returns the files that match the year range and are 
+    earlier or equal to the specified `max_date`.
+
+    Args:
+        - S2_tile (str): The Sentinel-2 tile name (not used in the function but could be useful for filtering).
+        - tiles (str): Path to the base folder containing the Theia TIFF files.
+        - min_year (int): The starting year for filtering the files.
+        - max_date (datetime): The maximum date for filtering the files. Only files with timestamps earlier than or equal 
+          to this date will be included.
+
+    Returns:
+        - list_files (list): A list of the filtered TIFF file names.
+        - date_objects (list): A list of the dates corresponding to the filtered TIFF files.
+    """
     list_files=[]
     
     end_year = max_date.year
@@ -74,6 +92,21 @@ def read_tif_files_theia(S2_tile, tiles, min_year, max_date):
     return list_files, date_objects
 #%%
 def read_tif_files_gee(S2_tile, tiles, max_date):
+    """
+    Reads and filters GEE Sentinel-2 TIFF files from a specified directory based on a maximum date.
+    It filters the files by their embedded timestamp and returns a list of files and corresponding dates that 
+    are earlier or equal to the provided `max_date`.
+
+    Args:
+        - S2_tile (str): The Sentinel-2 tile name (not used in the function, but could be relevant for filtering).
+        - tiles (str): Path to the base folder containing the TIFF files.
+        - max_date (datetime): The maximum date for filtering the files. Only files with a timestamp less than or equal 
+          to this date are returned.
+
+    Returns:
+        - list_files (list): A list of the filtered TIFF file names.
+        - date_objects (list): A list of the dates corresponding to the filtered TIFF files.
+    """
     list_files = []
     
     base_folder = tiles
@@ -85,7 +118,7 @@ def read_tif_files_gee(S2_tile, tiles, max_date):
             if tiff_pattern.match(file):
                 tiff_files1.append(file)
     
-    # Filtrar os arquivos pela data
+    # Filter the files by date
     tiff_files = []
     L = len('S2SR_image_')
     for file in sorted(tiff_files1):
