@@ -120,88 +120,82 @@ ccd_params = ccd.parameters.defaults
 filename = fromParamsReturnName(img_collection, ccd_params, (S2_tile, tiles), BDR, min_year, max_date)
 ############ OUTPUTS ######################
 output_file = FOLDER_NPY / "{}.h5".format(filename) # ficheiro numpy (matriz) dos dados (nr de imagens x nr de bandas x nr total de pontos)
-
-# Função principal
+#%%
 def main(batch_size=None):
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     size = comm.Get_size()
 
     if rank == 0:
-        # Processo mestre
+        # root rank
         tif_dates_ord, N = check_or_initialize_file(
             output_file, tiles, var, S2_tile, min_year, max_date, BDR_FILE,
             bandas_desejadas, FOLDER_OUTPUTS, img_collection, NODATA_VALUE, raster_path
         )
-
-        # Criar lotes de dados distribuídos
+        
+        # Split data indexes
         indices = list(range(0, N, batch_size))
         batches = [(start, min(start + batch_size, N)) for start in indices]
+        print(f"[Rank {rank}] Total batches created: {len(batches)}")
+
+        # Split batches between rans
         batches_per_rank = [batches[i::size] for i in range(size)]
     else:
         tif_dates_ord = None
         batches_per_rank = None
 
-    # Broadcast de dados entre os processos
+    # Share data between processes
     tif_dates_ord = comm.bcast(tif_dates_ord, root=0)
     my_batches = comm.scatter(batches_per_rank, root=0)
 
-    # Criar um Manager para compartilhar variáveis entre processos
+    # Create shared progress bar
     with Manager() as manager:
-        progress = manager.Value('i', 0)  # Contador compartilhado
-        lock = Lock()  # Criar um Lock para controle seguro
-        total_batches = len(my_batches)  # Número total de lotes
+        progress = manager.Value('i', 0)  # Shared counter
+        total_batches = len(my_batches)  # Total number of lots
 
-        # Inicializar o container para os resultados fora do loop
         local_results = []
 
         with tqdm(total=total_batches, desc=f"Processo {rank}") as pbar:
-            # Função para atualizar a barra de progresso
-            def update_progress():
-                with lock:  # Bloqueio para evitar race conditions
-                    pbar.n = progress.value  # Atualiza a barra de progresso
-                    pbar.refresh()
-            
-            # Processar os lotes atribuídos
+            def update_progress(_):
+                pbar.n = progress.value  # Update progress bar with shared value
+                pbar.refresh()
+
             for batch in my_batches:
                 result = process_batch(batch, output_file, tif_dates_ord, progress)
-
-                local_results.extend(result)  # Armazenar os resultados locais
-                
-                with lock:  # Bloqueio manual para modificar progress.value
+                local_results.extend(result)
+                with progress.get_lock():
                     progress.value += 1
-                
-                update_progress()  # Atualiza a barra de progresso
+                update_progress(None)
 
-        # Salvar resultados em Parquet após o processamento de todos os lotes
-        if local_results:
-            result_df = pd.concat(local_results, ignore_index=True)
-            result_df.to_parquet(FOLDER_PARQUET / f'{filename}_rank_{rank}.parquet', index=False)
+    # Saving results locally per process
+    if local_results:
+        result_df = pd.concat(local_results, ignore_index=True)
+        result_df.to_parquet(FOLDER_PARQUET / f'{filename}_rank_{rank}.parquet', index=False)
 
-    # Sincronizar todos os processos antes de finalizar
+    # Sync all ranks before continuing
     comm.Barrier()
     
     if rank == 0:
-        print(f"Todos os lotes foram processados por {size} ranks.")
+        print(f"All batches were processed by {size} ranks.")
 
-# Função para processar um único lote
-def process_batch(batch, h5_file, tif_dates_ord):
+# Function to process a single batch
+def process_batch(batch, output_file, tif_dates_ord):
     start, end = batch
-
-    # Carregar apenas o bloco específico para o lote
+    h5_file = h5py.File(output_file, 'r')
+    # Load only the specific block for the batch
     sel_values_block = h5_file['values'][:, :, start:end]
     xs_slice = h5_file['xs'][start:end]
     ys_slice = h5_file['ys'][start:end]
 
-    # Criar a lista de argumentos para o processamento
+    # Create the list of arguments for processing
     arg_list = [
         (i, sel_values_block, tif_dates_ord, xs_slice, ys_slice, NODATA_VALUE, MAX_VALUE_NDVI, FOLDER_OUTPUTS, CRS_THEIA, CRS_WGS84, img_collection)
         for i in range(sel_values_block.shape[2])
     ]
     
-    # Processar o lote específico
+    # Process the specific batch
     return [runDetectionForPoint(arg) for arg in arg_list]
 
 if __name__ == '__main__':
-    # Chamar a função principal com o tamanho do lote
+    # Call the main function with the batch size
     main(BATCH_SIZE)
