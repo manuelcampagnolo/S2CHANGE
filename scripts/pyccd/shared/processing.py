@@ -114,7 +114,7 @@ def processPointData(args):
     # dates, ndvis, greens, reds, nirs, swir2s, nbrs = ponto_with_dates_final
 
 
-    return dates, ndvis, greens, reds, nirs, swir2s, ponto_desejado, NODATA_VALUE, CRS_THEIA, CRS_WGS84
+    return dates, ndvis, greens, reds, nirs, swir2s, ponto_desejado, NODATA_VALUE
     #return dates, ndvis, greens, reds, nirs, swir2s, nbrs, ponto_desejado, NODATA_VALUE, CRS_THEIA, CRS_WGS84
 #%%
 def runDetectionForPoint(args):
@@ -135,7 +135,7 @@ def runDetectionForPoint(args):
         - df (DataFrame): DataFrame with the CCD results.
     """
     # Process the point data
-    dates, ndvis, greens, reds, nirs, swir2s, ponto_desejado, NODATA_VALUE, CRS_THEIA, CRS_WGS84 = processPointData(args)
+    dates, ndvis, greens, reds, nirs, swir2s, ponto_desejado, NODATA_VALUE = processPointData(args)
 
     # Execute change detection
     results = ccd.detect(dates, ndvis, greens, swir2s)
