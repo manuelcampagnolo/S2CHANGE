@@ -29,27 +29,24 @@ def create_geodataframe_from_parquet(filename, epsg_input, epsg_output, S2_tile,
     Returns:
         - GeoDataFrame: A GeoDataFrame with the reprojected geometry and the added tBreak column.
     """
-    # Construir o caminho completo para o arquivo Parquet
+    # Build the full path to the Parquet file  
     parquet_path = Path(parquet_dir) / f"{filename}.parquet"
     
-    # Carregar o arquivo Parquet para um DataFrame do pandas
+    # Load the Parquet file into a pandas DataFrame
     df = pd.read_parquet(parquet_path)
     
-    # Criar uma coluna 'geometry' com objetos Point baseados em Lat e Lon
+    # Create a 'geometry' column with Point objects based on Lat and Lon
     geometry = [Point(lon, lat) for lon, lat in zip(df['Lon'], df['Lat'])]
     
-    # Criar um GeoDataFrame a partir do DataFrame original e da geometria
+    # Reproject to the specified EPSG coordinate system
     gdf = gpd.GeoDataFrame(df, geometry=geometry, crs=CRS.from_epsg(epsg_input))
-    
-    # Reprojetar para o sistema de coordenadas EPSG especificado
     gdf = gdf.to_crs(epsg=epsg_output)
     
-    # Adicionar a coluna tBreak ao GeoDataFrame
+    # Add the tBreak column to the GeoDataFrame
     gdf['tBreak'] = df['tBreak']
-    
+
+    # Save the GeoDataFrame as a Shapefile
     shapefile_path = Path(shapefile_dir) / f"{filename}.shp"
-    
-    # Salvar o GeoDataFrame como um Shapefile
     gdf.to_file(shapefile_path, driver='ESRI Shapefile')
     
     return gdf
