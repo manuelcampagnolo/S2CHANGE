@@ -8,7 +8,7 @@ from shapely.geometry import Point
 import geopandas as gpd
 import os
 import time
-from shared.read_files import read_tif_files_theia, read_tif_files_gee, readPoints, convertPointToCrs
+from shared.read_files import read_tif_files_theia, read_tif_files_gee, convertPointToCrs
 from shared.utils import get_largest_tif_by_pixels
 from pyproj import CRS
 #%%
