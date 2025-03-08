@@ -23,7 +23,7 @@ input_config = {
     'roi': ROI,
     's2_tile': S2_TILE,
     'data_path': data_path,
-    'validation_path': Path('/home/scaetano/CCDC_Mask_dissolve.gpkg'),
+    'validation_path': data_path / 'CCDC_Mask_dissolve.gpkg',
     'theia_images': data_path / 'imagens_Theia',
     'gee_images': data_path / 's2_images'
 }
@@ -37,7 +37,7 @@ input_config['tiles'] = (
 
 #%% Pre-processing
 input_bands = ['B3', 'B4', 'B8', 'B12']
-bands_dict = {1:'B3', 2:'B4', 3:'B8', 4:'B12'} # a banda NDVI só é adicionada mais à frente na funcao processPointData
+bands_dict = {1:'B3', 2:'B4', 3:'B8', 4:'B12'} # NDVI band is only added later in the processPointData function
 bandas_desejadas = list(bands_dict.keys())
 
 preprocessing_config = {
