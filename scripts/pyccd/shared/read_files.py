@@ -109,10 +109,3 @@ def read_tif_files_gee(S2_tile, tiles, max_date):
             date_objects.append(date_obj)
     
     return list_files, date_objects
-#%%
-def readPoints(caminho_arquivo, n_samples=None, random_state_value=42):
-    dados_geoespaciais_metros = caminho_arquivo # seria melhor ler csv; apenas coordenadas interessam
-    if n_samples:
-        dados_geoespaciais_metros = dados_geoespaciais_metros.sample(n_samples, random_state=random_state_value).copy()
-
-    return dados_geoespaciais_metros
