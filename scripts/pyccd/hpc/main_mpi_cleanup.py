@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
-#region Imports and Path Setup
+#%% Imports and Path Setup
 # Standard library imports
 import os
 import sys
 import platform
-from datetime import datetime
 from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor
 from multiprocessing import Manager
@@ -40,8 +39,6 @@ cpus_slurm = int(os.getenv('SLURM_NTASKS', os.cpu_count()))
 
 # Suppress warnings
 warnings.filterwarnings('ignore')
-#endregion
-
 #%% ConfiguraÃ§Ãµes MPI
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
