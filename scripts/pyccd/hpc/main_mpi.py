@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# TESTE HPC MPI COM HDF5 ---> INCD
 import os
 import platform
 
@@ -17,92 +18,36 @@ import sys
 from pathlib import Path
 # Assumir onde esta a pasta dos scripts do PyCCD
 PASTA_DE_SCRIPTS = Path(__name__ ).parent.absolute() / 'scripts' / 'pyccd' 
-
+from concurrent.futures import ProcessPoolExecutor
 if PASTA_DE_SCRIPTS not in sys.path:
     sys.path.append(str(PASTA_DE_SCRIPTS))
 import ccd
 from datetime import datetime
-from shared.processing import runDetectionForPoint#, create_geodataframe_from_parquet
 from shared.preprocessing import check_or_initialize_file
-from shared.utils import fromParamsReturnName, getNumberOfPixelsFromNpy
+from shared.processing import runDetectionForPoint#, create_geodataframe_from_parquet
+from shared.utils import fromParamsReturnName#, getNumberOfPixelsFromNpy
 from tqdm import tqdm
-from concurrent.futures import ProcessPoolExecutor
 import warnings
 warnings.filterwarnings('ignore')
-import numpy as np
 from mpi4py import MPI
 import platform
-from multiprocessing import Manager
+from multiprocessing import Manager, Lock
 from pathlib import Path
 import h5py
 cpus_slurm = int(os.getenv('SLURM_NTASKS', os.cpu_count()))
-
-# Working directory (DADOS):
-# |----FOLDER PUBLIC DOCUMENTS
-#    |---- SUBFOLDER BDR_300 (DGT)
-#         |---- file.shp
-#    |---- SUBFOLDER BDR_Navigator
-#         |---- file.gpkg
-#    |---- SUBFOLDER IMAGENS GEE
-#         |---- folder TILES
-#              |---- files.tif
-#    |---- SUBFOLDER IMAGENS THEIA
-#         |---- folder TILES
-#              |---- files.tif
-#    |---- SUBFOLDER output_BDR300
-#         |---- folder numpy
-#              |---- files.npy
-#         |---- folder plots
-#              |---- plots.png
-#         |---- folder tabular (csv e validaÃƒÂ§ÃƒÂ£o)
-#              |---- files.csv
-#    |---- SUBFOLDER output_NAV
-#         |---- folder numpy
-#              |---- files.npy
-#         |---- folder plots
-#              |---- plots.png
-#         |---- folder tabular (csv)
-#              |---- files.csv
-
-# Working directory (PyCCD):
-# |----FOLDER CCD_yml_win
-#    |---- SUBFOLDER scripts
-#    |---- SUBFOLDER pyccd_theia
-#         |---- SUBFOLDER ccd
-#              |---- SUBFOLDER models
-#                   |---- __init__.py
-#                   |---- lasso.py
-#                   |---- robust_fit.py
-#                   |---- tmask.py
-#              |---- __init__.py
-#              |---- app.py
-#              |---- change.py
-#              |---- math_utils.py
-#              |---- parameters.py
-#              |---- procedures.py
-#              |---- qa.py
-#              |---- version.py
-#         |---- SUBFOLDER notebooks 
-#              |---- addNewImageToFile.py
-#              |---- avaliacao_exatidao_pyccd.py
-#              |---- main.py (** ficheiro principal **)
-#              |---- plot.py
-#              |---- processing.py
-#              |---- read_files.py
-#              |---- utils.py
 #%%
 # ---------------------------------
 #             INPUTS
 # ---------------------------------
-var = 'GEE' # choose variable: THEIA or GEE
+var = 'THEIA' # choose variable: THEIA or GEE
 BDR = 'NAV' # choose variable: DGT or NAV
-S2_tile = 'T29SPB' # escolher o tile S2
+S2_tile = 'T29TNE' # escolher o tile S2
 # Caminho onde estao os dados todos
-public_documents = Path('/projects/F202410004CPCAA1/') # MACC project F202410004CPCAA1
+public_documents = Path('/users1/cpca070342024/scaetano')
 # Caminhos para a base de dados de validacao
-BDR_FILE = Path('/home/scaetano/CCDC_Mask_dissolve.gpkg')
+BDR_FILE = Path('/users1/cpca070342024/scaetano/CCDC_Mask_dissolve.gpkg')
 # -> IMAGENS SENTINEL:
-FOLDER_THEIA = public_documents / 'imagens_Theia' # Caminho dados THEIA
+FOLDER_THEIA = public_documents / 'imagens_THEIA' # Caminho dados THEIA
 FOLDER_GEE = public_documents / 's2_images' # Caminho dados GEE
 
 if var == 'THEIA':
@@ -126,7 +71,7 @@ MAX_VALUE_NDVI = 10000
 EXECUTAR_PLOT = False # (false para nÃ£o fazer; true para fazer)
 ROW_INDEX = 8 # plot para uma linha do CSV (escolher a linha no row_index)
 
-BATCH_SIZE = 1000  # Ajustar o tamanho do lote para processamento em paralelo
+BATCH_SIZE = 50  # Ajustar o tamanho do lote para processamento em paralelo
 
 img_collection = tiles.parts[-2]
 
@@ -135,14 +80,13 @@ CRS_WGS84 = 4326
 # ---------------------------------
 #            OUTPUTS
 # ---------------------------------
-FOLDER_OUTPUTS = Path('/projects/F202410004CPCAA1/outputs_RI')
+FOLDER_OUTPUTS = Path('/users1/cpca070342024/scaetano/outputs_RI')
 
 FOLDER_NPY = FOLDER_OUTPUTS / 'numpy' / S2_tile
 FOLDER_PLOTS = FOLDER_OUTPUTS / 'plots' / S2_tile
 FOLDER_PARQUET = FOLDER_OUTPUTS / 'tabular' / S2_tile
 FOLDER_SHP = FOLDER_OUTPUTS / 'shapefiles' / S2_tile
 
-# should be in "shared"
 # FunÃ§Ã£o para criar diretÃ³rios se nÃ£o existirem
 def create_directory_if_not_exists(path):
     if not path.exists():
@@ -155,7 +99,7 @@ create_directory_if_not_exists(FOLDER_PARQUET)
 create_directory_if_not_exists(FOLDER_SHP)
 
 # ---------------------------------
-#      PARAMETROS PROCESSAMENTO / move to check_or_initialize_file
+#      PARAMETROS PROCESSAMENTO
 # ---------------------------------
 raster_files = sorted(tiles.glob('*.*'), key=lambda f: f.stat().st_size, reverse=True)
 
@@ -168,7 +112,6 @@ if raster_files:
                 raster_path = largest_file
     except:
         raster_path = None  # Se houver erro ao abrir, nada Ã© selecionado
-
 # ---------------------------------
 #          PARAMETROS CCD
 # ---------------------------------
@@ -177,30 +120,14 @@ ccd_params = ccd.parameters.defaults
 ######### NOME BASE DOS FICHEIROS A SEREM GERADOS #########
 filename = fromParamsReturnName(img_collection, ccd_params, (S2_tile, tiles), BDR, min_year, max_date)
 ############ OUTPUTS ######################
-# review
 output_file = FOLDER_NPY / "{}.h5".format(filename) # ficheiro numpy (matriz) dos dados (nr de imagens x nr de bandas x nr total de pontos)
 
-"""
-# ---------------------------------
-#      PARAMETROS DA VALIDAÃ‡ÃƒO
-# ---------------------------------
-# datas do filtro das datas da anÃ¡lise (DGT 300)
-########### NÃ£o alterar ################
-dt_ini = '2018-09-12' # data inicial
-dt_end = '2021-09-30' # data final
-# Margem de tolerÃ¢ncia entre a quebra do Modelo e do Analista
-theta = 60 # +/- theta dias de diferenÃ§a
-# bandar a filtrar com base na magnitude
-bandFilter = None #nÃ£o implementado ainda - nÃ£o mexer
-"""
-
-#%% ConfiguraÃ§Ãµes MPI
-comm = MPI.COMM_WORLD
-rank = comm.Get_rank()
-size = comm.Get_size()
-#%%
-
+# Função principal
 def main(batch_size=None):
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    size = comm.Get_size()
+
     if rank == 0:
         # root rank
         tif_dates_ord, N = check_or_initialize_file(
@@ -208,7 +135,7 @@ def main(batch_size=None):
             bandas_desejadas, FOLDER_OUTPUTS, img_collection, NODATA_VALUE, raster_path
         )
 
-        # Dividir os Ã­ndices de dados
+        # Dividir os ÃƒÂ­ndices de dados
         indices = list(range(0, N, batch_size))
         batches = [
             (start, min(start + batch_size, N)) for start in indices
@@ -228,18 +155,18 @@ def main(batch_size=None):
     # Criar uma barra de progresso compartilhada
     with Manager() as manager:
         progress = manager.Value('i', 0)  # Contador compartilhado
-        total_batches = len(my_batches)  # NÃºmero total de lotes
+        total_batches = len(my_batches)  # NÃƒÂºmero total de lotes
 
         with tqdm(total=total_batches, desc=f"Processo {rank}") as pbar:
             def update_progress(_):
                 pbar.n = progress.value  # Atualiza a barra de progresso com o valor compartilhado
                 pbar.refresh()
 
-            # Processar os lotes atribuÃ­dos usando ProcessPoolExecutor
+            # Processar os lotes atribuÃƒÂ­dos usando ProcessPoolExecutor
             with ProcessPoolExecutor(max_workers=cpus_slurm) as executor:
                 futures = [
                     executor.submit(
-                        process_single_batch,
+                        process_batch,
                         batch,
                         output_file,  # Caminho do sel_values
                         tif_dates_ord,
@@ -264,38 +191,32 @@ def main(batch_size=None):
         result_df.to_parquet(rank_parquet_filename, index=False)
 
     comm.Barrier()  # Sincronizar todos os ranks antes de continuar
+    
+    if rank == 0:
+        print(f"Todos os lotes foram processados por {size} ranks.")
 
-
-# FunÃ§Ã£o para processar um lote
-def process_batch(args):
-    sel_values_block, xs_slice, ys_slice, tif_dates_ord = args
-    arg_list = [
-        (i, sel_values_block, tif_dates_ord, xs_slice, ys_slice, NODATA_VALUE, MAX_VALUE_NDVI, FOLDER_OUTPUTS, CRS_THEIA, CRS_WGS84, img_collection)
-        for i in range(sel_values_block.shape[2])
-    ]
-    return [runDetectionForPoint(arg) for arg in arg_list]
-
-# FunÃ§Ã£o para processar um lote
-def process_single_batch(batch, sel_values_path, tif_dates_ord, progress):
+# Função para processar um único lote
+def process_batch(batch, sel_values_path, tif_dates_ord, progress):
     start, end = batch
-
-    # Carregar apenas o bloco especÃ­fico para o lote
+    
     h5_file = h5py.File(sel_values_path, 'r')
+    # Carregar apenas o bloco específico para o lote
     sel_values_block = h5_file['values'][:, :, start:end]
     xs_slice = h5_file['xs'][start:end]
     ys_slice = h5_file['ys'][start:end]
 
-    # Processar o bloco especÃ­fico
-    result = process_batch((sel_values_block, xs_slice, ys_slice, tif_dates_ord))
+    # Criar a lista de argumentos para o processamento
+    arg_list = [
+        (i, sel_values_block, tif_dates_ord, xs_slice, ys_slice, NODATA_VALUE, MAX_VALUE_NDVI, FOLDER_OUTPUTS, CRS_THEIA, CRS_WGS84, img_collection)
+        for i in range(sel_values_block.shape[2])
+    ]
 
     # Atualizar a barra de progresso compartilhada
     progress.value += 1
-    return result
-
+    
+    # Processar o lote específico
+    return [runDetectionForPoint(arg) for arg in arg_list]
 
 if __name__ == '__main__':
-    #if rank == 0:
-        # print(f"Numero total de pixels processados: {N}")
-        # print(f"Executando com batch_size = {BATCH_SIZE} e N = {N}")
-        # print(f'Numero de CPUs para o ProcessPoolExecutor: {cpus_slurm}')
+    # Chamar a função principal com o tamanho do lote
     main(BATCH_SIZE)
