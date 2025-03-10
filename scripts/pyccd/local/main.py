@@ -26,7 +26,7 @@ from shared.avaliacao_exatidao_pyccd import runValidation
 from datetime import datetime
 from shared.processing import runDetectionForPoint, create_geodataframe_from_parquet
 from shared.preprocessing import check_or_initialize_file
-from shared.utils import fromParamsReturnName, getNumberOfPixelsFromNpy
+from shared.utils import fromParamsReturnName, explode_columns, getNumberOfPixelsFromNpy
 from shared.plot import plotFromCSV
 from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor
@@ -239,9 +239,7 @@ def main(batch_size):
     # try to write this as a fucntion with imnput: dfs; output: parquet file path
     if dfs:
         result_df = pd.concat(dfs, ignore_index=True)
-        for col in result_df.columns:
-            if result_df[col].apply(lambda x: isinstance(x, list)).any():
-                result_df = result_df.explode(col)
+        result_df = explode_columns(result_df)
         print(f"Saving the parquet file with {len(result_df)} records.")
         result_df.to_parquet(FOLDER_PARQUET / '{}.parquet'.format(filename), index=False)
     
