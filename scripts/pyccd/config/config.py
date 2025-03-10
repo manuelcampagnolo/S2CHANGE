@@ -6,7 +6,6 @@ if module_path not in sys.path:
 from pathlib import Path
 from datetime import datetime
 import ccd
-from mpi4py import MPI
 from shared.utils import fromParamsReturnName
 
 #%% Source variables
