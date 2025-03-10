@@ -55,6 +55,26 @@ def fromParamsReturnName(col_name, ccd_params, tifs_info, roi_name, min_year, ma
 
     return name
 
+def explode_columns(df):
+    """
+    Expands columns containing lists by converting each list element into a separate row.
+    
+    Parameters:
+        df (pd.DataFrame): Input DataFrame with potential list-type columns.
+
+    Returns:
+        pd.DataFrame: A DataFrame where list-type columns are exploded into multiple rows.
+    """
+    # Iterate through each column to check for lists
+    for col in df.columns:
+        if df[col].apply(lambda x: isinstance(x, list)).any():
+            df[col] = df[col].apply(pd.Series)
+    
+    # Explode all columns properly and reset index
+    df_exploded = df.apply(pd.Series.explode).reset_index(drop=True)
+
+    return df_exploded
+
 def getNumberOfPixelsFromNpy(npy_path):
     """
     Returns the number of pixels based on the npy file.
