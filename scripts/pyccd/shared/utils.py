@@ -1,7 +1,6 @@
 from shared.read_files import read_tif_files_theia, read_tif_files_gee
 import numpy as np
 import rasterio
-import pandas as pd
 
 def fromParamsReturnName(col_name, ccd_params, tifs_info, roi_name, min_year, max_date):
     """
@@ -54,26 +53,6 @@ def fromParamsReturnName(col_name, ccd_params, tifs_info, roi_name, min_year, ma
     name = "{0}-NDVI_XX{1}YM{2}NOBS{3}LDA{4}ITER{5}_START{6}_END{7}_ROI{8}".format(col_name, chi, minYears, n_obs, lam, maxIter, start_date, end_date, roi_name)
 
     return name
-
-def explode_columns(df):
-    """
-    Expands columns containing lists by converting each list element into a separate row.
-    
-    Parameters:
-        df (pd.DataFrame): Input DataFrame with potential list-type columns.
-
-    Returns:
-        pd.DataFrame: A DataFrame where list-type columns are exploded into multiple rows.
-    """
-    # Iterate through each column to check for lists
-    for col in df.columns:
-        if df[col].apply(lambda x: isinstance(x, list)).any():
-            df[col] = df[col].apply(pd.Series)
-    
-    # Explode all columns properly and reset index
-    df_exploded = df.apply(pd.Series.explode).reset_index(drop=True)
-
-    return df_exploded
 
 def getNumberOfPixelsFromNpy(npy_path):
     """
