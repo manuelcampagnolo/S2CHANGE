@@ -34,13 +34,9 @@ from shared.processing import runDetectionForPoint, explode_columns
 from shared.preprocessing import check_or_initialize_file
 from config.config import input_config, preprocessing_config, outputs_config, ccd_config
 
-# Environment variables
-cpus_slurm = int(os.getenv('SLURM_NTASKS', os.cpu_count()))
-
 # Suppress warnings
 warnings.filterwarnings('ignore')
 #%%
-
 def main(batch_size=None):
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
