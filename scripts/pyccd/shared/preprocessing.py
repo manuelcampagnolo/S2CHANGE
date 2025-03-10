@@ -149,7 +149,7 @@ def getTimeSeriesForMask(tif_names, tif_dates_ord, bandas_desejadas, vector_mask
 
     return total_selected_pixels
 #%%
-def check_or_initialize_file(output_file, tiles, var, S2_tile, min_year, max_date, vector_mask_path, bandas_desejadas, FOLDER_OUTPUTS, img_collection, NODATA_VALUE, raster_path):
+def check_or_initialize_file(output_file, tiles, var, S2_tile, min_year, max_date, vector_mask_path, bandas_desejadas):
     """
     Checks for the existence of a specific h5py file and, depending on this verification, 
     performs different operations to process geospatial data.

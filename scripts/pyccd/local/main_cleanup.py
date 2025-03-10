@@ -42,16 +42,12 @@ def main(batch_size):
     # Check input file existance, create if does not exist
     tif_dates_ord, N = check_or_initialize_file(outputs_config['output_file'], 
                                                 input_config['tiles'], 
-                                                input_config['data_source'], 
-                                                input_config['s2_tile'], 
+                                                input_config['data_source_folder'], 
+                                                input_config['s2_tile_folder'], 
                                                 preprocessing_config['min_year'], 
                                                 preprocessing_config['max_date'], 
-                                                input_config['validation_path'], 
-                                                preprocessing_config['bandas_desejadas'], 
-                                                outputs_config['output_path'], 
-                                                preprocessing_config['img_collection'], 
-                                                preprocessing_config['nodata_value'])
-                                                # raster_path - This variable is not actually used in the function
+                                                input_config['roi'], 
+                                                preprocessing_config['bandas_desejadas'])
     
     # Load data for batch processing
     h5_file = h5py.File(outputs_config['output_file'], 'r')
@@ -78,6 +74,7 @@ def main(batch_size):
     
     # Concatenate results into single df
     # dataframe could be problematic, try to write this as a function with input: dfs; output: parquet file path
+    # call to function, add to processing.py
     if dfs:
         result_df = pd.concat(dfs, ignore_index=True)
         for col in result_df.columns:

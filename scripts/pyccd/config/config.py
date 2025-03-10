@@ -10,29 +10,28 @@ from mpi4py import MPI
 from shared.utils import fromParamsReturnName
 
 #%% Source variables
-DATA_SOURCE = 'GEE' # choose variable: THEIA or GEE
-S2_TILE = 'T29SPB' # choose S2 tile
-ROI = 'NAV' # choose variable: DGT or NAV
+data_source_folder = 'GEE' # choose variable: THEIA or GEE
+s2_tile_folder = 'T29SPB' # choose S2 tile
+roi_filename = 'NAV' # choose variable: DGT or NAV
 
 # Base path
 data_path = Path('/projects/F202410004CPCAA1/')
 
 #%% Inputs
 input_config = {
-    'data_source': DATA_SOURCE,
-    'roi': ROI,
-    's2_tile': S2_TILE,
+    'data_source_folder': data_source_folder,
+    's2_tile_folder': s2_tile_folder,
     'data_path': data_path,
-    'validation_path': data_path / 'CCDC_Mask_dissolve.gpkg',
+    'roi': data_path / 'CCDC_Mask_dissolve.gpkg',
     'theia_images': data_path / 'imagens_Theia',
     'gee_images': data_path / 's2_images'
 }
 
 # Determine tile path based on selected data source
 input_config['tiles'] = (
-    input_config['theia_images'] / S2_TILE 
-    if DATA_SOURCE == 'THEIA' 
-    else input_config['gee_images'] / S2_TILE
+    input_config['theia_images'] / s2_tile_folder 
+    if data_source_folder == 'THEIA' 
+    else input_config['gee_images'] / s2_tile_folder
 )
 
 #%% Pre-processing
@@ -58,7 +57,7 @@ preprocessing_config = {
 #%% Outputs
 # Output paths
 outputs_config = {
-    'output_path': Path('/projects/F202410004CPCAA1/outputs_RI'),
+    'output_path': Path(f'{data_path}/outputs_ROI'),
     'folders': {}
 }
 
@@ -69,7 +68,7 @@ def create_directory_if_not_exists(path):
         print(f"Directory created: {path}")
 
 for folder_type in ['numpy', 'plots', 'tabular', 'shapefiles']:
-    outputs_config['folders'][folder_type] = outputs_config['output_path'] / folder_type / S2_TILE
+    outputs_config['folders'][folder_type] = outputs_config['output_path'] / folder_type / s2_tile_folder
     create_directory_if_not_exists(outputs_config['folders'][folder_type])
 
 #%% CCD/PyCCD Parameters
@@ -82,8 +81,8 @@ ccd_config = {
 filename = fromParamsReturnName(
     preprocessing_config['img_collection'], 
     ccd_config['parameters'], 
-    (S2_TILE, input_config['tiles']), 
-    ROI, 
+    (s2_tile_folder, input_config['tiles']), 
+    roi_filename, 
     preprocessing_config['min_year'], 
     preprocessing_config['max_date']
 )

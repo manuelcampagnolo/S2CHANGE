@@ -50,16 +50,12 @@ def main(batch_size=None):
         # root rank
         tif_dates_ord, N = check_or_initialize_file(outputs_config['output_file'], 
                                                     input_config['tiles'], 
-                                                    input_config['data_source'], 
-                                                    input_config['s2_tile'], 
+                                                    input_config['data_source_folder'], 
+                                                    input_config['s2_tile_folder'], 
                                                     preprocessing_config['min_year'], 
                                                     preprocessing_config['max_date'], 
-                                                    input_config['validation_path'], 
-                                                    preprocessing_config['bandas_desejadas'], 
-                                                    outputs_config['output_path'], 
-                                                    preprocessing_config['img_collection'], 
-                                                    preprocessing_config['nodata_value'])
-                                                    # raster_path - This variable is not actually used in the function
+                                                    input_config['roi'], 
+                                                    preprocessing_config['bandas_desejadas'])
 
         # Split data indexes
         indices = list(range(0, N, batch_size))
