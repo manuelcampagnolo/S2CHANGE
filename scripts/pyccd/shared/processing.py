@@ -211,7 +211,7 @@ def process_detection_results(results, ponto_desejado, NODATA_VALUE):
     
     # If you remove the last element from tbreak when running the validation, an error occurs because the columns do not have the same size.
     dados = [{
-        'tBreak': break_dates_epoch[:-1], 
+        'tBreak': break_dates_epoch, 
         'tEnd': end_dates_epoch,
         'tStart': start_dates_epoch, 
         'changeProb': prob,
