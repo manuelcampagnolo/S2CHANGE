@@ -1,7 +1,7 @@
 from shared.read_files import read_tif_files_theia, read_tif_files_gee
 import numpy as np
-from pathlib import Path
 import rasterio
+import pandas as pd
 
 def fromParamsReturnName(col_name, ccd_params, tifs_info, roi_name, min_year, max_date):
     """
