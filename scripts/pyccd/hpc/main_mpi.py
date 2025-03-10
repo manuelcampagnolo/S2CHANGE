@@ -101,7 +101,7 @@ def main(batch_size=None):
     if local_results:
         result_df = pd.concat(local_results, ignore_index=True)
         result_df = explode_columns(result_df)
-        result_df.to_parquet(outputs_config['folders']['tabular'] / f'{ccd_config['filename']}_rank_{rank}.parquet', index=False)
+        result_df.to_parquet(outputs_config['folders']['tabular'] / f"{ccd_config['filename']}_rank_{rank}.parquet", index=False)
 
     # Sync all ranks before continuing
     comm.Barrier()
