@@ -24,9 +24,9 @@ if PASTA_DE_SCRIPTS not in sys.path:
 import ccd
 from shared.avaliacao_exatidao_pyccd import runValidation
 from datetime import datetime
-from shared.processing import runDetectionForPoint, create_geodataframe_from_parquet
+from shared.processing import runDetectionForPoint, explode_columns#, create_geodataframe_from_parquet
 from shared.preprocessing import check_or_initialize_file
-from shared.utils import fromParamsReturnName, explode_columns, getNumberOfPixelsFromNpy
+from shared.utils import fromParamsReturnName, getNumberOfPixelsFromNpy
 from shared.plot import plotFromCSV
 from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor
