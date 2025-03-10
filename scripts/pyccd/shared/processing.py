@@ -12,6 +12,26 @@ from shared.read_files import read_tif_files_theia, read_tif_files_gee
 from shared.utils import get_largest_tif_by_pixels
 from pyproj import CRS
 #%%
+def explode_columns(df):
+    """
+    Expands columns containing lists by converting each list element into a separate row.
+    
+    Parameters:
+        df (pd.DataFrame): Input DataFrame with potential list-type columns.
+
+    Returns:
+        pd.DataFrame: A DataFrame where list-type columns are exploded into multiple rows.
+    """
+    # Iterate through each column to check for lists
+    for col in df.columns:
+        if df[col].apply(lambda x: isinstance(x, list)).any():
+            df[col] = df[col].apply(pd.Series)
+    
+    # Explode all columns properly and reset index
+    df_exploded = df.apply(pd.Series.explode).reset_index(drop=True)
+
+    return df_exploded
+#%%
 def create_geodataframe_from_parquet(filename, epsg_input, epsg_output, S2_tile, parquet_dir, shapefile_dir):
     """
     Creates a GeoDataFrame from a Parquet file containing geographic coordinates, reprojects it,
