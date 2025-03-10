@@ -21,8 +21,8 @@ if PASTA_DE_SCRIPTS not in sys.path:
 import ccd
 from datetime import datetime
 from shared.preprocessing import check_or_initialize_file
-from shared.processing import runDetectionForPoint#, create_geodataframe_from_parquet
-from shared.utils import fromParamsReturnName, explode_columns #, getNumberOfPixelsFromNpy
+from shared.processing import runDetectionForPoint, explode_columns#, create_geodataframe_from_parquet
+from shared.utils import fromParamsReturnName#, getNumberOfPixelsFromNpy
 from tqdm import tqdm
 import warnings
 warnings.filterwarnings('ignore')
