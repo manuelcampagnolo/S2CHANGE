@@ -14,21 +14,26 @@ from pyproj import CRS
 #%%
 def explode_columns(df):
     """
-    Expands columns containing lists by converting each list element into a separate row.
-    
-    Parameters:
-        df (pd.DataFrame): Input DataFrame with potential list-type columns.
+    Explodes the lists in the specified columns of a DataFrame into multiple rows.
+    Also repeats the values in the columns 'x_coord' and 'y_coord' for each newly created row.
+
+    Args:
+        - df (pandas.DataFrame): The input DataFrame containing columns with lists. 
+                            The columns 'tBreak', 'tEnd', 'tStart', 'changeProb', 'coeficientes', and 'intercept_values' 
+                            are the ones to be exploded. The columns 'x_coord' and 'y_coord' will be maintained 
+                            with the same value across the newly created rows.
 
     Returns:
-        pd.DataFrame: A DataFrame where list-type columns are exploded into multiple rows.
+        - pandas.DataFrame: A DataFrame with exploded lists in the specified columns. 
+                        Each list in the exploded columns is transformed into a separate row, while the other columns 
+                        ('x_coord' and 'y_coord') are repeated for each new row created from the lists.
     """
-    # Iterate through each column to check for lists
-    for col in df.columns:
-        if df[col].apply(lambda x: isinstance(x, list)).any():
-            df[col] = df[col].apply(pd.Series)
-    
-    # Explode all columns properly and reset index
-    df_exploded = df.apply(pd.Series.explode).reset_index(drop=True)
+    df = df.reset_index(drop=True)
+    df_exploded = df.explode(['tBreak', 'tEnd', 'tStart', 'changeProb', 'coeficientes', 'intercept_values'], ignore_index=True)
+
+    # Repeat the values of 'x_coord' and 'y_coord' for each row generated after the explosion
+    df_exploded['x_coord'] = df['x_coord'].repeat(df['tBreak'].apply(len)).values
+    df_exploded['y_coord'] = df['y_coord'].repeat(df['tBreak'].apply(len)).values
 
     return df_exploded
 #%%
