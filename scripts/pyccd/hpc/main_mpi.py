@@ -74,24 +74,22 @@ def main(batch_size=None):
     tif_dates_ord = comm.bcast(tif_dates_ord, root=0)
     my_batches = comm.scatter(batches_per_rank, root=0)
 
-    # Create shared progress bar
-    with Manager() as manager:
-        progress = manager.Value('i', 0)  # Shared counter
-        lock = manager.Lock()
-        total_batches = len(my_batches)  # Total number of lots
+    start_time = time.time()
 
-        local_results = []
+    local_results = []
+    total_batches = len(my_batches)
 
-        with tqdm(total=total_batches, desc=f"Processo {rank}") as pbar:
-            def update_progress(lock):
-                with lock:
-                    progress.value += 1
-                    pbar.update(1)
-        
-            for batch in my_batches:
-                result = process_batch(batch, outputs_config['output_file'], tif_dates_ord)
-                local_results.extend(result)
-                update_progress(lock)
+    for i, batch in enumerate(my_batches):
+        result = process_batch(batch, outputs_config['output_file'], tif_dates_ord)
+        local_results.extend(result)
+
+        elapsed_time = time.time() - start_time
+        minutes = elapsed_time // 60
+        seconds = elapsed_time % 60
+
+        if i % 10 == 0:  # updates every 10 batches
+            print(f"[Rank {rank}] Processed {i+1}/{total_batches} batches "
+                  f"({(i+1)/total_batches*100:.2f}%) - Elapsed Time: {int(minutes)}m {int(seconds)}s")
 
     # Saving results locally per process
     if local_results:
