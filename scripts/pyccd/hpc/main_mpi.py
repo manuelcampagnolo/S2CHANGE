@@ -57,14 +57,13 @@ def main(batch_size=None):
         
         N=1000000
         
-        # Dividir os ÃƒÂ­ndices de dados
         indices = list(range(0, N, batch_size))
         batches = [
             (start, min(start + batch_size, N)) for start in indices
         ]
         print(f"[Rank {rank}] Total de batches criados: {len(batches)}")
 
-        # Dividir lotes entre ranks
+        # Split batches between ranks
         batches_per_rank = [batches[i::size] for i in range(size)]
     else:
         tif_dates_ord = None
