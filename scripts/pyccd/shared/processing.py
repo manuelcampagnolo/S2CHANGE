@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 import pandas as pd
 import ccd
 from shapely.geometry import Point
-import geopandas as gpd
+#import geopandas as gpd
 import os
 import time
 from shared.read_files import read_tif_files_theia, read_tif_files_gee
@@ -37,6 +37,7 @@ def explode_columns(df):
 
     return df_exploded
 #%%
+'''
 def create_geodataframe_from_parquet(filename, epsg_input, epsg_output, S2_tile, parquet_dir, shapefile_dir):
     """
     Creates a GeoDataFrame from a Parquet file containing geographic coordinates, reprojects it,
@@ -75,6 +76,7 @@ def create_geodataframe_from_parquet(filename, epsg_input, epsg_output, S2_tile,
     gdf.to_file(shapefile_path, driver='ESRI Shapefile')
     
     return gdf
+'''
 #%%
 def processPointData(args):
     """
