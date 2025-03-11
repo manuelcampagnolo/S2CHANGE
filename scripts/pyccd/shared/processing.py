@@ -1,16 +1,8 @@
 # -*- coding: utf-8 -*-
-from pathlib import Path
 import numpy as np
 from datetime import datetime, timezone
 import pandas as pd
 import ccd
-from shapely.geometry import Point
-#import geopandas as gpd
-import os
-import time
-from shared.read_files import read_tif_files_theia, read_tif_files_gee
-from shared.utils import get_largest_tif_by_pixels
-from pyproj import CRS
 #%%
 def explode_columns(df):
     """
