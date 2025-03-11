@@ -16,16 +16,10 @@ def explode_columns(df):
                             with the same value across the newly created rows.
 
     Returns:
-        - pandas.DataFrame: A DataFrame with exploded lists in the specified columns. 
-                        Each list in the exploded columns is transformed into a separate row, while the other columns 
-                        ('x_coord' and 'y_coord') are repeated for each new row created from the lists.
+        - pandas.DataFrame: A DataFrame with exploded lists in the specified columns.
     """
     df = df.reset_index(drop=True)
     df_exploded = df.explode(['tBreak', 'tEnd', 'tStart', 'changeProb', 'coeficientes', 'intercept_values'], ignore_index=True)
-
-    # Repeat the values of 'x_coord' and 'y_coord' for each row generated after the explosion
-    df_exploded['x_coord'] = df['x_coord'].repeat(df['tBreak'].apply(len)).values
-    df_exploded['y_coord'] = df['y_coord'].repeat(df['tBreak'].apply(len)).values
 
     return df_exploded
 #%%
