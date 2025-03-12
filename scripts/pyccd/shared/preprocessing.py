@@ -183,8 +183,9 @@ def check_or_initialize_file(output_file, tiles, var, S2_tile, min_year, max_dat
         tif_dates_ord = [d.toordinal() for d in tif_dates]
         # aux = np.load(str(output_file.with_suffix('')) + '_xs.npy')
         with h5py.File(output_file, 'r') as hf:
-            aux = hf["xs"][:] 
-        N = aux.shape[0] #gets number of pixels/points
+            N = hf["xs"].shape[0]
+            #aux = hf["xs"][:] 
+        #N = aux.shape[0] #gets number of pixels/points
 
     else:
         # If the numpy file does not exist, execute the entire initial process of creating the numpy file
