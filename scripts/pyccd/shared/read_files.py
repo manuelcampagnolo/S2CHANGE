@@ -57,13 +57,14 @@ def read_tif_files_theia(S2_tile, tiles, min_year, max_date):
     earlier or equal to the specified `max_date`.
 
     Args:
-        - S2_tile (str): The Sentinel-2 tile name (not used in the function but could be useful for filtering).
-        - tiles (str): Path to the base folder containing the Theia TIFF files.
-        - min_year (int): The starting year for filtering the files.
-        - max_date (datetime): The maximum date for filtering the files. Only files with timestamps earlier than or equal 
+        S2_tile (str) : The Sentinel-2 tile name (not used in the function but could be useful for filtering).
+        tiles (str) : Path to the base folder containing the Theia TIFF files.
+        min_year (int) : The starting year for filtering the files.
+        max_date (datetime) : The maximum date for filtering the files. Only files with timestamps earlier than or equal 
           to this date will be included.
 
     Returns:
+        (list_files, date_objects) (tuple) :
         - list_files (list): A list of the filtered TIFF file names.
         - date_objects (list): A list of the dates corresponding to the filtered TIFF files.
     """
@@ -98,12 +99,13 @@ def read_tif_files_gee(S2_tile, tiles, max_date):
     are earlier or equal to the provided `max_date`.
 
     Args:
-        - S2_tile (str): The Sentinel-2 tile name (not used in the function, but could be relevant for filtering).
-        - tiles (str): Path to the base folder containing the TIFF files.
-        - max_date (datetime): The maximum date for filtering the files. Only files with a timestamp less than or equal 
+        S2_tile (str) : The Sentinel-2 tile name (not used in the function, but could be relevant for filtering).
+        tiles (str) : Path to the base folder containing the TIFF files.
+        max_date (datetime) : The maximum date for filtering the files. Only files with a timestamp less than or equal 
           to this date are returned.
 
     Returns:
+        (list_files, date_objects) (tuple) :
         - list_files (list): A list of the filtered TIFF file names.
         - date_objects (list): A list of the dates corresponding to the filtered TIFF files.
     """
