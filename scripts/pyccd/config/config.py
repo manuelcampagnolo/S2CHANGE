@@ -66,7 +66,7 @@ def create_directory_if_not_exists(path):
         path.mkdir(parents=True, exist_ok=True)
         print(f"Directory created: {path}")
 
-for folder_type in ['numpy', 'plots', 'tabular', 'shapefiles']:
+for folder_type in ['hdf5', 'plots', 'tabular', 'shapefiles']:
     outputs_config['folders'][folder_type] = outputs_config['output_path'] / folder_type / s2_tile_folder
     create_directory_if_not_exists(outputs_config['folders'][folder_type])
 
@@ -89,4 +89,4 @@ filename = fromParamsReturnName(
 ccd_config['filename'] = filename
 
 # Set output file path
-outputs_config['output_file'] = outputs_config['folders']['numpy'] / f"{filename}.h5"
+outputs_config['output_file'] = outputs_config['folders']['hdf5'] / f"{filename}.h5"
