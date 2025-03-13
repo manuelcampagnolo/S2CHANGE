@@ -83,7 +83,8 @@ filename = fromParamsReturnName(
     (s2_tile_folder, input_config['tiles']), 
     roi_filename, 
     preprocessing_config['min_year'], 
-    preprocessing_config['max_date']
+    preprocessing_config['max_date'],
+    outputs_config['folders']['numpy']
 )
 ccd_config['filename'] = filename
 

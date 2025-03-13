@@ -1,16 +1,21 @@
 from shared.read_files import read_tif_files_theia, read_tif_files_gee
 import numpy as np
 import rasterio
+import datetime as dt
+import os
 
-def fromParamsReturnName(col_name, ccd_params, tifs_info, roi_name, min_year, max_date):
+def fromParamsReturnName(col_name, ccd_params, tifs_info, roi_name, min_year, max_date, output_folder):
     """
     Returns file name based on execution parameters.
 
     Args:
-        col_name:  image collection name (Theia, GEE).
-        ccd_params : parameters found on ccd parameters.py file.
-        tifs_info : path and tile name of tifs in image collection (in the for of (S2_tiles, tiles)).
-        roi_name : name to identify the ROI (polygons) used in the run.
+        col_name (str) :  image collection name (Theia, GEE).
+        ccd_params (dict) : parameters found on ccd parameters.py file.
+        tifs_info (tuple) : tile name and path of tifs in image collection (in the form of (tile_name, tile_path)).
+        roi_name (str) : name to identify the ROI (polygons) used in the run.
+        min_year (int) : first year of the time series (e.g. 2017).
+        max_date (datetime) : datetime object corresponding to the last date of the time series.
+        output_folder (str) : path to the numpy output folder, needed to bypass reading img collection in case a tif_dates_ord.npy file exists. 
 
     Returns:
         name : file name.
@@ -36,17 +41,26 @@ def fromParamsReturnName(col_name, ccd_params, tifs_info, roi_name, min_year, ma
     ### TODO
 
     #get start and end dates
-    S2_tile, tiles = tifs_info
+    tile_name, tile_path = tifs_info
     
     # Extract the dataset type from col_name
     suffix = col_name.split('_')[-1]
     
     # Load dataset and retrieve dates
     if suffix == 'THEIA':
-        _ , dates = read_tif_files_theia(S2_tile,tiles, min_year, max_date)
+        _ , dates = read_tif_files_theia(tile_name, tile_path, min_year, max_date)
     else:
-        _ , dates = read_tif_files_gee(S2_tile,tiles, max_date)
-    
+        _ , dates = read_tif_files_gee(tile_name, tile_path, max_date)
+
+    if len(dates) == 0:
+        if os.path.exists(output_folder / 'tif_dates_ord.npy'):
+            print("No images found in the {} folder".format(tile_path))
+            print("    - Reading dates from existing tif_dates_ord.npy file")
+            dates_ord = np.load(output_folder / 'tif_dates_ord.npy')
+            dates = [dt.datetime.fromordinal(x) for x in dates_ord]
+        else:
+            raise Exception("No images found in the {} folder. Cannot return filename.".format(tile_path))
+
     start_date = min(dates).strftime("%Y%m%d")
     end_date = max(dates).strftime("%Y%m%d")
 
@@ -96,3 +110,18 @@ def get_largest_tif_by_pixels(tif_paths):
             print(f"Error processing {path}: {e}")
 
     return largest_tif
+
+def getStrDateFromOrdinal(dates_ord):
+    """
+    Given a list of ordinal dates, converts to strings in the format yyyymmdd.
+
+    Args:
+        dates_ord (list) : list of dates in ordinal (integers).
+
+    Returns:
+
+    """
+
+    dates_str = [dt.datetime.fromordinal(x).strftime('%Y%m%d') for x in dates_ord]
+
+    return dates_str
