@@ -84,7 +84,7 @@ filename = fromParamsReturnName(
     roi_filename, 
     preprocessing_config['min_year'], 
     preprocessing_config['max_date'],
-    outputs_config['folders']['numpy']
+    outputs_config['folders']['hdf5']
 )
 ccd_config['filename'] = filename
 
