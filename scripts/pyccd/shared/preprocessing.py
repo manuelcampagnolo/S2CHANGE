@@ -199,6 +199,10 @@ def check_or_initialize_file(output_file, tiles, var, S2_tile, min_year, max_dat
             tif_names, tif_dates = read_tif_files_gee(S2_tile, tiles, max_date)
         tif_names = [os.path.join(tiles, i) for i in tif_names]
         tif_dates_ord = [d.toordinal() for d in tif_dates]
+
+        # Save tif_dates_ord as a numpy file for future use
+        np.save(output_file.parent / 'tif_dates_ord.npy', np.array(tif_dates_ord))
+        
         print(f'Processing {var} data... ({tiles})')
         start_time = time.time()
 
