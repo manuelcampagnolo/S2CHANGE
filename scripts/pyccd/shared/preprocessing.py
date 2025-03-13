@@ -174,18 +174,19 @@ def check_or_initialize_file(output_file, tiles, var, S2_tile, min_year, max_dat
         
     if os.path.exists(output_file):
         print(f"The file '{output_file}' already exists. Loading and processing the existing data...")
-        print('Collecting name and date of the TIFFs...')
-        if var == 'THEIA':
-            tif_names, tif_dates = read_tif_files_theia(S2_tile, tiles, min_year, max_date)
-        else:
-            tif_names, tif_dates = read_tif_files_gee(S2_tile, tiles, max_date)
-        tif_names = [os.path.join(tiles, i) for i in tif_names]
-        tif_dates_ord = [d.toordinal() for d in tif_dates]
-        # aux = np.load(str(output_file.with_suffix('')) + '_xs.npy')
         with h5py.File(output_file, 'r') as hf:
             N = hf["xs"].shape[0]
-            #aux = hf["xs"][:] 
-        #N = aux.shape[0] #gets number of pixels/points
+        if os.path.exists(output_file.parent / 'tif_dates_ord.npy'):
+            print("Collecting dates from existing tif_dates_ord.npy file")
+            tif_dates_ord = list(np.load(output_file.parent / 'tif_dates_ord.npy'))
+        else:
+            print('Collecting name and date of the TIFFs...')
+            if var == 'THEIA':
+                tif_names, tif_dates = read_tif_files_theia(S2_tile, tiles, min_year, max_date)
+            else:
+                tif_names, tif_dates = read_tif_files_gee(S2_tile, tiles, max_date)
+            tif_names = [os.path.join(tiles, i) for i in tif_names]
+            tif_dates_ord = [d.toordinal() for d in tif_dates]
 
     else:
         # If the numpy file does not exist, execute the entire initial process of creating the numpy file
