@@ -127,7 +127,7 @@ def getTimeSeriesForMask(tif_names, tif_dates_ord, bandas_desejadas, vector_mask
             shape=(n_time, n_bands, total_selected_pixels),
             dtype='uint16',
             compression='lzf', #supposed to be the best compression for fast read/write
-            chunks=(1, n_bands, chunk_size) #experiment with chunks indicated this was the best setting for balancing creation time and read (access) time
+            chunks=(n_time, n_bands, chunk_size) #experiment with chunks indicated this was the best setting for balancing creation time and read (access) time
         )
         xs = hf.create_dataset("xs", shape=(total_selected_pixels,), dtype='int32', compression='gzip', compression_opts=9)
         ys = hf.create_dataset("ys", shape=(total_selected_pixels,), dtype='int32', compression='gzip', compression_opts=9)
