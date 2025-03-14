@@ -119,7 +119,7 @@ def getTimeSeriesForMask(tif_names, tif_dates_ord, bandas_desejadas, vector_mask
     y_sel = geotiffs_da.y.values[mask_y] #>>>>>>>>>>>> y is in different order
 
     with h5py.File(output_file, 'w') as hf:
-        chunk_size = 1000
+        chunk_size = 1
         chunk_size = min(chunk_size, total_selected_pixels)
 
         data = hf.create_dataset(
