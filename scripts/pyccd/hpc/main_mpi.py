@@ -9,20 +9,6 @@ from concurrent.futures import ProcessPoolExecutor
 from multiprocessing import Manager
 import warnings
 
-# Set up path for custom modules
-if platform.system() == "Windows":
-    user_profile = os.environ['USERPROFILE']
-    directory_path = os.path.join(user_profile, 'Desktop', 'S2CHANGE')
-else:  # Linux
-    user_home = os.path.expanduser("~")
-    directory_path = os.path.join(user_home, 'S2CHANGE')
-os.chdir(directory_path)
-
-# PyCCD script folder path
-PASTA_DE_SCRIPTS = Path(__name__).parent.absolute() / 'scripts' / 'pyccd'
-if PASTA_DE_SCRIPTS not in sys.path:
-    sys.path.append(str(PASTA_DE_SCRIPTS))
-
 # Third-party libraries
 import pandas as pd
 import h5py
@@ -30,6 +16,7 @@ from tqdm import tqdm
 from mpi4py import MPI
 
 # PyCCD module imports
+sys.path.append(str(Path(__file__).parents[1]))
 from shared.processing import runDetectionForPoint, explode_columns
 from shared.preprocessing import check_or_initialize_file
 from config.config import input_config, preprocessing_config, outputs_config, ccd_config
