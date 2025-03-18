@@ -48,7 +48,7 @@ preprocessing_config = {
     'max_value_ndvi': 10000,
     'execute_plot': False, # False will not execute plot
     'row_index': 8, # Chooses the CSV row to plot to
-    'batch_size': 1000, 
+    'batch_size': 10, 
     'img_collection': input_config['tiles'].parts[-2],
     'crs_theia': 32629,
     'wgs84': 4326
