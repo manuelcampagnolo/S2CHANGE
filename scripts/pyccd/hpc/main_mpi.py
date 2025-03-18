@@ -42,13 +42,13 @@ def main(batch_size=None):
             preprocessing_config['bandas_desejadas']
             )
         
-        N=1000000
+        N=100000 # Number of pixels to be processed
         
         indices = list(range(0, N, batch_size))
         batches = [
             (start, min(start + batch_size, N)) for start in indices
         ]
-        print(f"[Rank {rank}] Total de batches criados: {len(batches)}")
+        print(f"[Rank {rank}] Total batches created: {len(batches)}")
 
         # Split batches between ranks
         batches_per_rank = [batches[i::size] for i in range(size)]
