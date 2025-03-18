@@ -14,7 +14,8 @@ s2_tile_folder = 'T29SPB' # choose S2 tile
 roi_filename = 'NAV' # choose variable: DGT or NAV
 
 # Base path
-data_path = Path('/projects/F202410004CPCAA1/')
+# data_path = Path('/projects/F202410004CPCAA1/')
+data_path = Path('/users1/cpca070342024/scaetano/')
 
 #%% Inputs
 input_config = {
