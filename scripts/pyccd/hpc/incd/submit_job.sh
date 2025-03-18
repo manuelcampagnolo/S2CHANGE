@@ -2,8 +2,8 @@
 #SBATCH --job-name=PyMPI              # Job Name
 #SBATCH --time=24:00:00               # Execution Time (HH:MM:SS)
 #SBATCH --nodes=5                     # Number of Nodes
-#SBATCH --ntasks-per-node=24          # Number of Tasks per Node
-#SBATCH --cpus-per-task=4            # CPUs per Task
+#SBATCH --ntasks-per-node=96          # Number of Tasks per Node
+#SBATCH --cpus-per-task=1            # CPUs per Task
 #SBATCH --mem-per-cpu=5333            # Memory per CPU
 #SBATCH --partition=fct               # Partition
 #SBATCH --account=cpca070342024       # Account
