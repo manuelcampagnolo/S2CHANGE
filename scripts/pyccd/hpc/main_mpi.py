@@ -5,14 +5,12 @@ import os
 import sys
 import platform
 from pathlib import Path
-from concurrent.futures import ProcessPoolExecutor
-from multiprocessing import Manager
 import warnings
+import time
 
 # Third-party libraries
 import pandas as pd
 import h5py
-from tqdm import tqdm
 from mpi4py import MPI
 
 # PyCCD module imports
@@ -66,16 +64,15 @@ def main(batch_size=None):
     total_batches = len(my_batches)
 
     for i, batch in enumerate(my_batches):
-        result = process_batch(batch, outputs_config['output_file'], tif_dates_ord)
+        result = process_batch(batch, outputs_config['output_file'], tif_dates_ord, rank)
         local_results.extend(result)
 
         elapsed_time = time.time() - start_time
         minutes = elapsed_time // 60
         seconds = elapsed_time % 60
 
-        if i % 10 == 0:  # updates every 10 batches
-            print(f"[Rank {rank}] Processed {i+1}/{total_batches} batches "
-                  f"({(i+1)/total_batches*100:.2f}%) - Elapsed Time: {int(minutes)}m {int(seconds)}s")
+        print(f"[Rank {rank}] Processed {i+1}/{total_batches} batches "
+              f"({(i+1)/total_batches*100:.2f}%) - Elapsed Time: {int(minutes)}m {int(seconds)}s")
 
     # Saving results locally per process
     if local_results:
