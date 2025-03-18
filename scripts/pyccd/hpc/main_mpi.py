@@ -69,7 +69,7 @@ def main(batch_size=None):
     total_batches = len(my_batches)
 
     for i, batch in enumerate(my_batches):
-        result = process_batch(batch, outputs_config['output_file'], tif_dates_ord, rank)
+        result = process_batch(batch, outputs_config['output_file'], tif_dates_ord)
         local_results.extend(result)
 
         elapsed_time = time.time() - start_time
