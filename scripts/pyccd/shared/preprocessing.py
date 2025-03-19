@@ -119,7 +119,7 @@ def getTimeSeriesForMask(tif_names, tif_dates_ord, bandas_desejadas, vector_mask
     y_sel = geotiffs_da.y.values[mask_y] #>>>>>>>>>>>> y is in different order
 
     with h5py.File(output_file, 'w') as hf:
-        chunk_size = 1
+        chunk_size = 100
         chunk_size = min(chunk_size, total_selected_pixels)
 
         data = hf.create_dataset(
@@ -127,7 +127,7 @@ def getTimeSeriesForMask(tif_names, tif_dates_ord, bandas_desejadas, vector_mask
             shape=(n_time, n_bands, total_selected_pixels),
             dtype='uint16',
             compression='lzf', #supposed to be the best compression for fast read/write
-            chunks=(n_time, n_bands, chunk_size) #experiment with chunks indicated this was the best setting for balancing creation time and read (access) time
+            chunks=(16, n_bands, chunk_size) #this chunk setting may not be the best for read speed. needs to be improved
         )
         xs = hf.create_dataset("xs", shape=(total_selected_pixels,), dtype='int32', compression='gzip', compression_opts=9)
         ys = hf.create_dataset("ys", shape=(total_selected_pixels,), dtype='int32', compression='gzip', compression_opts=9)
@@ -139,7 +139,7 @@ def getTimeSeriesForMask(tif_names, tif_dates_ord, bandas_desejadas, vector_mask
         ts = time.time()
 
         for t_idx in range(n_time):
-            print("processing time step {}/{}".format(t_idx+1, n_time), end="\r")
+            print("processing time step {}/{}. Time elapsed {}min".format(t_idx+1, n_time, round((time.time()-ts)/60,2)), end="\r")
 
             selection_values = geotiffs_da.isel(time=t_idx).fillna(65535).values[:, mask_y, mask_x]
         
