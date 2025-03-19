@@ -4,18 +4,6 @@ import numpy as np
 from ccd.models import FittedModel
 from ccd.math_utils import calc_rmse
 import logging
-
-# Import the Cython implementation
-try:
-    from .cython_lasso import CythonLasso
-    CYTHON_AVAILABLE = True
-except ImportError:
-    CYTHON_AVAILABLE = False
-    logging.getLogger(__name__).warning(
-        "Cython lasso implementation not available. "
-        "Falling back to scikit-learn implementation."
-    )
-
 log = logging.getLogger(__name__)
 
 def __coefficient_cache_key(observation_dates):
@@ -39,6 +27,8 @@ def coefficient_matrix(dates, avg_days_yr, num_coefficients):
     matrix = np.zeros(shape=(len(dates), 7), order='F')
 
     # lookup optimizations
+    # Before optimization - 12.53% of total runtime
+    # After optimization  - 10.57% of total runtime
     cos = np.cos
     sin = np.sin
 
@@ -60,6 +50,33 @@ def coefficient_matrix(dates, avg_days_yr, num_coefficients):
     return matrix
 
 
+# def fitted_model(dates, spectra_obs, max_iter, avg_days_yr, num_coefficients):
+#     """Create a fully fitted lasso model.
+
+#     Args:
+#         dates: list or ordinal observation dates
+#         spectra_obs: list of values corresponding to the observation dates for
+#             a single spectral band
+#         num_coefficients: how many coefficients to use for the fit
+#         max_iter: maximum number of iterations that the coefficients
+#             undergo to find the convergence point.
+
+#     Returns:
+#         sklearn.linear_model.Lasso().fit(observation_dates, observations)
+
+#     Example:
+#         fitted_model(dates, obs).predict(...)
+#     """
+#     coef_matrix = coefficient_matrix(dates, avg_days_yr, num_coefficients)
+#     print(dates)
+#     lasso = linear_model.Lasso(max_iter=max_iter)#, alpha=1
+#     model = lasso.fit(coef_matrix, spectra_obs)
+
+#     predictions = model.predict(coef_matrix)
+#     rmse, residuals = calc_rmse(spectra_obs, predictions, num_pm=num_coefficients)
+
+#     return FittedModel(fitted_model=model, rmse=rmse, residual=residuals)
+
 def fitted_model(dates, spectra_obs, max_iter, avg_days_yr, num_coefficients, alpha):
     """Create a fully fitted lasso model.
 
@@ -70,10 +87,9 @@ def fitted_model(dates, spectra_obs, max_iter, avg_days_yr, num_coefficients, al
         num_coefficients: how many coefficients to use for the fit
         max_iter: maximum number of iterations that the coefficients
             undergo to find the convergence point.
-        alpha: regularization parameter for Lasso
 
     Returns:
-        FittedModel with fitted model, RMSE, and residuals
+        sklearn.linear_model.Lasso().fit(observation_dates, observations)
 
     Example:
         fitted_model(dates, obs).predict(...)
@@ -83,36 +99,25 @@ def fitted_model(dates, spectra_obs, max_iter, avg_days_yr, num_coefficients, al
     # Check if coef_matrix is empty
     if len(coef_matrix) == 0:
         log.warning('Empty input matrix. Returning default result.')
-        return FittedModel(fitted_model=None, rmse=None, residual=None)
+        return FittedModel(fitted_model=None, rmse=None, residual=None)  # Adjust to your needs
     
-    # Use Cython implementation if available, otherwise fall back to sklearn
-    if CYTHON_AVAILABLE:
-        if alpha != 0:
-            lasso = CythonLasso(alpha=alpha, max_iter=max_iter)
-            model = lasso.fit(coef_matrix, spectra_obs)
-            # The Cython implementation already calculates RMSE and residuals
-            rmse = model.rmse
-            residuals = model.residual
-        else:
-            # For alpha=0, use LinearRegression from sklearn
-            lasso = linear_model.LinearRegression()
-            model = lasso.fit(coef_matrix, spectra_obs)
-            predictions = model.predict(coef_matrix)
-            rmse, residuals = calc_rmse(spectra_obs, predictions, num_pm=num_coefficients)
+    # print(dates)
+    # lasso = linear_model.Lasso(max_iter=max_iter)
+    if alpha!=0:
+        lasso = linear_model.Lasso(alpha,max_iter=max_iter)
+    # lasso = linear_model.Lasso(max_iter=max_iter)
     else:
-        # Use sklearn implementation as fallback
-        if alpha != 0:
-            lasso = linear_model.Lasso(alpha=alpha, max_iter=max_iter)
-        else:
-            lasso = linear_model.LinearRegression()
-            
-        model = lasso.fit(coef_matrix, spectra_obs)
-        predictions = model.predict(coef_matrix)
-        rmse, residuals = calc_rmse(spectra_obs, predictions, num_pm=num_coefficients)
+        lasso = linear_model.LinearRegression()
+
+    model = lasso.fit(coef_matrix, spectra_obs)
+
+    predictions = model.predict(coef_matrix)
+    rmse, residuals = calc_rmse(spectra_obs, predictions, num_pm=num_coefficients)
 
     return FittedModel(fitted_model=model, rmse=rmse, residual=residuals)
 
 
 def predict(model, dates, avg_days_yr):
     coef_matrix = coefficient_matrix(dates, avg_days_yr, 8)
+
     return model.fitted_model.predict(coef_matrix)
