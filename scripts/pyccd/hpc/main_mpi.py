@@ -7,6 +7,8 @@ os.environ["OPENBLAS_NUM_THREADS"] = "1"
 os.environ["MKL_NUM_THREADS"] = "1"
 os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
 os.environ["NUMEXPR_NUM_THREADS"] = "1"
+num_cpus = int(os.getenv("SLURM_CPUS_PER_TASK"))
+from concurrent.futures import ProcessPoolExecutor
 import sys
 import platform
 from pathlib import Path
@@ -68,16 +70,21 @@ def main(batch_size=None):
     local_results = []
     total_batches = len(my_batches)
 
-    for i, batch in enumerate(my_batches):
-        result = process_batch(batch, outputs_config['output_file'], tif_dates_ord)
-        local_results.extend(result)
+    with ProcessPoolExecutor(max_workers=num_cpus) as executor:
+        futures = []
+        for i, batch in enumerate(my_batches):
+            futures.append(executor.submit(process_batch, batch, outputs_config['output_file'], tif_dates_ord))
 
-        elapsed_time = time.time() - start_time
-        minutes = elapsed_time // 60
-        seconds = elapsed_time % 60
+        for i, future in enumerate(futures):
+            result = future.result()
+            local_results.extend(result)
 
-        print(f"[Rank {rank}] Processed {i+1}/{total_batches} batches "
-              f"({(i+1)/total_batches*100:.2f}%) - Elapsed Time: {int(minutes)}m {int(seconds)}s")
+            elapsed_time = time.time() - start_time
+            minutes = elapsed_time // 60
+            seconds = elapsed_time % 60
+
+            print(f"[Rank {rank}] Processed {i+1}/{total_batches} batches "
+                  f"({(i+1)/total_batches*100:.2f}%) - Elapsed Time: {int(minutes)}m {int(seconds)}s")
 
     # Saving results locally per process
     if local_results:
