@@ -1,6 +1,7 @@
 ## Example data from tile T29SPB
 
 - HDF5 file with 5k points and 798 dates (shape = (798, 4, 5000))
+  - Download from Google Drive: [link](https://drive.google.com/file/d/1RtHaxVYKscoHrLVVxzHiyHaGFmJAxEEd/view?usp=sharing)
 - tif_dates_ord.py - file with dates
 
 Files should be placed in:
