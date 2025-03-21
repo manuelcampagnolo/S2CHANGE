@@ -64,7 +64,7 @@ cdef floating compute_rmse(int n_samples, int num_params, const floating[::1] re
 
 def lasso_coordinate_descent(floating[:, ::1] X, floating[::1] y, 
                             floating alpha=1.0, int max_iter=1000, 
-                            floating tol=1e-4):
+                            floating tol=1e-4, bint fit_intercept=True):
     """
     Lasso regression using coordinate descent.
     
@@ -80,11 +80,14 @@ def lasso_coordinate_descent(floating[:, ::1] X, floating[::1] y,
         Maximum number of iterations
     tol : float, default=1e-4
         Tolerance for the optimization
+    fit_intercept : bool, default=True
+        Whether to calculate the intercept for this model
         
     Returns:
     --------
     dict: Contains the model results:
         'coef_': ndarray of coefficients
+        'intercept_': intercept term
         'n_iter': number of iterations
         'residuals': ndarray of residuals
         'rmse': root mean squared error
@@ -97,18 +100,33 @@ def lasso_coordinate_descent(floating[:, ::1] X, floating[::1] y,
     cdef floating z_j, p_j, old_w_j
     cdef floating[::1] X_j_squared = np.zeros(n_features, dtype=np.float64)
     
+    # Handle intercept
+    cdef floating[::1] X_mean = np.zeros(n_features, dtype=np.float64)
+    cdef floating y_mean = 0.0
+    cdef floating intercept = 0.0
+    
     # Initialize coefficient arrays
     cdef floating[::1] w = np.zeros(n_features, dtype=np.float64)
     cdef floating[::1] w_old = np.zeros(n_features, dtype=np.float64)
     cdef floating[::1] residuals = np.zeros(n_samples, dtype=np.float64)
     
+    if fit_intercept:
+        # Calculate means for centering
+        y_mean = np.mean(y)
+        for j in range(n_features):
+            X_mean[j] = np.mean(X[:, j])
+        
+        # Center y for initial residuals
+        for i in range(n_samples):
+            residuals[i] = y[i] - y_mean
+    else:
+        # Just copy y to residuals initially
+        for i in range(n_samples):
+            residuals[i] = y[i]
+    
     # Precompute X_j^T * X_j for each feature
     for j in range(n_features):
         X_j_squared[j] = column_dot_product(n_samples, X, j)
-    
-    # Initial residuals: r = y - X.dot(w) = y (since w is initially 0)
-    for i in range(n_samples):
-        residuals[i] = y[i]
     
     # Coordinate descent
     for iteration in range(max_iter):
@@ -148,9 +166,16 @@ def lasso_coordinate_descent(floating[:, ::1] X, floating[::1] y,
     # Calculate final RMSE
     cdef floating rmse = compute_rmse(n_samples, n_features, residuals)
     
+    # Calculate intercept if needed
+    if fit_intercept:
+        intercept = y_mean
+        for j in range(n_features):
+            intercept -= w[j] * X_mean[j]
+    
     # Convert memoryviews to numpy arrays for returning
     result = {
         'coef_': np.asarray(w),
+        'intercept_': intercept,
         'n_iter': iteration + 1,
         'residuals': np.asarray(residuals),
         'rmse': rmse
@@ -163,10 +188,11 @@ class CythonLasso:
     Python wrapper class that behaves like sklearn's Lasso but uses
     the Cython implementation.
     """
-    def __init__(self, alpha=1.0, max_iter=1000, tol=1e-4):
+    def __init__(self, alpha=1.0, max_iter=1000, tol=1e-4, fit_intercept=True):
         self.alpha = alpha
         self.max_iter = max_iter
         self.tol = tol
+        self.fit_intercept = fit_intercept
         self.coef_ = None
         self.intercept_ = 0.0
         self.n_iter_ = None
@@ -184,10 +210,12 @@ class CythonLasso:
             X_cont, y_cont, 
             alpha=self.alpha, 
             max_iter=self.max_iter,
-            tol=self.tol
+            tol=self.tol,
+            fit_intercept=self.fit_intercept
         )
         
         self.coef_ = result['coef_']
+        self.intercept_ = result['intercept_']
         self.n_iter_ = result['n_iter']
         self.rmse = result['rmse']
         self.residual = result['residuals']
@@ -200,4 +228,4 @@ class CythonLasso:
         
         # Ensure array is contiguous
         X = np.ascontiguousarray(X, dtype=np.float64)
-        return X.dot(self.coef_)
+        return X.dot(self.coef_) + self.intercept_
