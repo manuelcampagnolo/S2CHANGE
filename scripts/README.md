@@ -45,7 +45,7 @@ The program can be set to process only the hdf5 file creation, the change detect
     - Image names should be in a predefined format containing the image date
 - Geometries of the region of interest (`.shp or .gpkg`) for masking Sentinel-2 images
 
-Typicall directory structure:
+Typical directory structure:
 ```
 data_dir
    |-- ROI_mask.gpkg
