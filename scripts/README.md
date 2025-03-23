@@ -1,82 +1,91 @@
 # PyCCD
 
-## Instalação do ambiente virtual
-Para começar o processamento do algoritmo PyCCD, é necessário instalar um ambiente virtual utilizando os ficheiros .yml correspondentes ao sistema operativo:
+## Install dependencies
+Para começar o processamento do algoritmo PyCCD, é necessário instalar um ambiente virtual utilizando os ficheiros .yml correspondentes ao sistema operativo.
+### Windows (via conda)
+1. Clone repository
+```
+git clone https://github.com/manuelcampagnolo/S2CHANGE.git
+```
+2. Change directory `cd S2CHANGE`
 
-* **WINDOWS:** https://github.com/manuelcampagnolo/S2CHANGE/blob/main/ccdISA_win.yml
-* **LINUX:** https://github.com/manuelcampagnolo/S2CHANGE/blob/main/ccdISA_linux.yml
+3. Install dependencies from `yml` file using conda
+```
+conda env create -f ccdISA_win.yml
+```
+4. Activate virtual environment
+```
+conda activate ccdISA
+```
 
-1. Download do ficheiro .yml apropriado e criação do ambiente virtual através da linha de comandos:
-**conda env create -f ccdISA_win.yml**
-2. Ativar o ambiente virtual:
-**conda activate ccdISA_v2**
-3. Verificar se o ambiente foi criado:
-**conda env list**
-4. Iniciar o ambiente virtual e executar o PyCCD
+### Linux (via conda)
+1. Clone repository
+```
+git clone https://github.com/manuelcampagnolo/S2CHANGE.git
+```
+2. Change directory `cd S2CHANGE`
 
-## Inputs e outputs do algoritmo
-Os inputs e outputs do algoritmo estão numa pasta partilhada da máquina do ISA, tendo o seguinte diretório: *C:\Users\Public\Documents*
+3. Install dependencies from `yml` file using conda
+```
+conda env create -f ccdISA_linux.yml
+```
+> For the HPC machine, use ccdISA_macc.yml
+4. Activate virtual environment
+```
+conda activate ccdISA
+```
+
+## Execution
+The program will process a time series of Sentinel-2 images using a mask that determines the region of interest and store the selected pixels in a hdf5 file. Then, it will read the hdf5 file and run the change detection algorithm for each pixel. The result is saved as a dataframe in the parquet format.
 
 ### Inputs
-* Imagens Sentinel-2 (Theia ou s2cloudless)
-* Base de dados de referência (BDR-DGT ou BDR-Navigator)
-* Nome do tile (T29TNE, T29SNB, ...)
+The program can be set to process only the hdf5 file creation, the change detection or the entire pipeline. First, we describe the inputs to process the entire pipeline.
+- Time series of Sentinel-2 images, on a per tile basis
+    - Data source can be GEE or Theia
+    - Image names should be in a predefined format containing the image date
+- Geometries of the region of interest (`.shp or .gpkg`) for masking Sentinel-2 images
 
-Os inputs têm a seguinte configuração:
-**Working directory (DADOS):**
- |----FOLDER PUBLIC DOCUMENTS
-    ||--- SUBFOLDER BDR_300 (DGT)
-         |||-- file.shp
-    ||--- SUBFOLDER BDR_Navigator
-         |||-- file.gpkg
-    ||--- SUBFOLDER IMAGENS GEE
-         |||-- folder TILES
-              ||||- files.tif
-    ||--- SUBFOLDER IMAGENS THEIA
-         |||-- folder TILES
-              ||||- files.tif
+Typicall directory structure:
+```
+data_dir
+   |-- ROI_mask.gpkg
+   |-- imagens_Theia (if using Theia)
+      |-- T29SPB
+         ...
+      |-- T29TNE
+   |-- s2_images (if using GEE)
+      |-- T29SPB
+         ...
+      |-- T29TNE
+   |-- outputs_ROI
+      |-- hdf5
+         |-- T29SPB
+            ...
+         |-- T29TNE
+      |-- plots
+      |-- tabular
+      |-- shapefiles
+```
 
-### Outputs (outputs_BDR300 & outputs_BDR-NAV)
-* Ficheiro numpy dos dados
-* Plots (se pedido)
-* CSV com os resultados do PyCCD / validação dos resultados (if BDR == DGT)
-* Shapefiles com as datas de quebra e resultados do PyCCD
+**Existing hdf5 file**
 
-Os outputs têm a seguinte configuração:
-**Working directory (DADOS):**
-|---- FOLDER PUBLIC DOCUMENTS ||--- SUBFOLDER output_BDR300 |||-- folder numpy ||||- files.npy |||-- folder plots ||||- plots.png |||-- folder tabular (csv e validação) ||||- files.csv ||--- SUBFOLDER output_NAV 
-|||-- folder numpy ||||- files.npy |||-- folder plots ||||- plots.png |||-- folder tabular (csv) ||||- files.csv
+Alternatively, if a hdf5 already exists, it should be placed along with the `tif_dates_ord.npy` file in the output folder of the corresponding tile, such as:
+```
+outputs_ROI
+  |-- hdf5
+    |-- T29SPB
+      |-- tif_dates_ord.npy
+      |-- s2_images-NDVI_XX999YM1NOBS6LDA2ITER1000_START20170412_END20241229_ROINAV.h5
+```
 
-## Processamento do PyCCD
-O algoritmo é processado para o tile definido para cada um dos pontos dentro das geometrias dadas pela BDR. 
-O script onde se deve fazer a corrida/alteração dos inputs é o main.py, que se encontra no seguinte diretório: *C:\Users\nome-do-utilizador\Desktop\CCD_yml_win\S2CHANGE\scripts\pyccd_theia\notebooks\main.py*
+### Configurations
+The user needs to define some execution parameters in the [pyccd/config/config.py](https://github.com/manuelcampagnolo/S2CHANGE/blob/main/scripts/pyccd/config/config.py) file.
 
-O algoritmo é dividido por duas pastas: notebooks (que são scripts de apoio ao processamento) e ccd (onde contém o algoritmo todo do PyCCD, incluindo os modelos).
+*Source variables*
+- `data_source_folder`: should be set to `GEE` or `THEIA`, according to the input images used
+- `s2_tile_folder`: tile to be processed (e.g. `T29SPB`)
+- `roi_filename`: a name to identify the region of interest
 
-O conteúdo das pastas do algoritmo PyCCD é organizado da seguinte forma:
-**Working directory (PyCCD):**
- |----FOLDER CCD_yml_win
-    ||--- SUBFOLDER scripts
-    ||--- SUBFOLDER pyccd_theia
-         |||-- SUBFOLDER ccd
-              ||||- SUBFOLDER models
-                   ||||| init.py
-                   ||||| lasso.py
-                   ||||| robust_fit.py
-                   ||||| tmask.py
-              ||||- init.py
-              ||||- app.py
-              ||||- change.py
-              ||||- math_utils.py
-              ||||- parameters.py
-              ||||- procedures.py
-              ||||- qa.py
-              ||||- version.py
-         |||-- SUBFOLDER notebooks 
-              ||||- addNewImageToFile.py
-              ||||- avaliacao_exatidao_pyccd.py
-              ||||- main.py (**ficheiro principal**)
-              ||||- plot.py
-              ||||- processing.py
-              ||||- read_files.py
-              ||||- utils.py
+*Base path*
+- Set `data_path` accordingly (for instance, it should be the path to `data_dir` in the example above)
+
