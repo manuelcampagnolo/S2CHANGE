@@ -7,6 +7,10 @@
 #SBATCH --partition=normal-x86         # Partition ---> large-x86 number of nodes: 128
 #SBATCH --account=F202410004CPCAA1X    # Account
 
+# Load Conda
+source /home/scaetano/miniconda3/etc/profile.d/conda.sh
+conda activate ccdISA
+
 # Load OpenMPI
 module load OpenMPI/4.1.5-GCC-12.2.0 || { echo "Error loading OpenMPI"; exit 1; }
 export OMPI_MCA_orte_base_help_aggregate=0
