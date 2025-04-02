@@ -19,8 +19,11 @@ def explode_columns(df):
         - pandas.DataFrame: A DataFrame with exploded lists in the specified columns.
     """
     df = df.reset_index(drop=True)
-    df_exploded = df.explode(['tBreak', 'tEnd', 'tStart', 'changeProb', 'coeficientes', 'intercept_values'], ignore_index=True)
-
+    df_exploded = df.explode(['tBreak', 'tEnd', 'tStart', 'changeProb', 'coeficientes','intercept_values', 
+                              'greenStart', 'greenStart2', 'greenEnd', 'greenEnd2',
+                              'redStart', 'redStart2', 'redEnd', 'redEnd2', 
+                              'nirStart', 'nirStart2', 'nirEnd', 'nirEnd2',
+                              'swir2Start', 'swir2Start2', 'swir2End', 'swir2End2'], ignore_index=True)
     return df_exploded
 #%%
 '''
@@ -154,11 +157,11 @@ def runDetectionForPoint(args):
     results = ccd.detect(dates, ndvis, greens, swir2s)
     # results = ccd.detect(dates, ndvis, greens, swir2s, nbrs)
 
-    df = process_detection_results(results, ponto_desejado, NODATA_VALUE)
+    df = process_detection_results(results, ponto_desejado, NODATA_VALUE, dates, ndvis, greens, reds, nirs, swir2s)
 
     return df
 #%%
-def process_detection_results(results, ponto_desejado, NODATA_VALUE):
+def process_detection_results(results, ponto_desejado, NODATA_VALUE, dates, ndvis, greens, reds, nirs, swir2s):
     """
     Processes the change detection results for a specific point (1 pixel; all segments).
 
@@ -172,19 +175,39 @@ def process_detection_results(results, ponto_desejado, NODATA_VALUE):
     Returns:
         - df (DataFrame): DataFrame containing the processed change detection results.
     """
-    #predicted_values = []
-    #prediction_dates = []
+    # predicted_values = []
+    # prediction_dates = []
     break_dates = []
     start_dates = []
     end_dates = []
     coeficientes = []
     prob = []
     intercept_values = []
-    ndvi_magnitudes=[]
+    
+    greenStart = []
+    greenEnd = []
+    greenStart2 = []
+    greenEnd2 = []
+    
+    redStart = []
+    redEnd = []
+    redStart2 = []
+    redEnd2 = []
+    
+    nirStart = []
+    nirEnd = []
+    nirStart2 = []
+    nirEnd2 = []
+    
+    swir2Start = []
+    swir2End = []
+    swir2Start2 = []
+    swir2End2 = []
+    #ndvi_magnitudes=[]
     
     for num, result in enumerate(results['change_models']):
-        #days = np.arange(result['start_day'], result['end_day'] + 1)
-        #prediction_dates.append(days)
+        # days = np.arange(result['start_day'], result['end_day'] + 1)
+        # prediction_dates.append(days)
         break_dates.append(result['break_day'])
         start_dates.append(result['start_day'])
         end_dates.append(result['end_day'])
@@ -195,6 +218,29 @@ def process_detection_results(results, ponto_desejado, NODATA_VALUE):
         
         # coef = result['ndvi']['coefficients']
         coeficientes.append(result['ndvi']['coefficients'])
+        
+        idx_start = np.searchsorted(dates, result['start_day'])
+        idx_end = np.searchsorted(dates, result['end_day'])
+
+        greenStart.append(greens[idx_start])
+        greenEnd.append(greens[idx_end])
+        greenStart2.append(greens[idx_start+1])
+        greenEnd2.append(greens[idx_end-1])
+        
+        redStart.append(reds[idx_start])
+        redEnd.append(reds[idx_end])
+        redStart2.append(reds[idx_start+1])
+        redEnd2.append(reds[idx_end-1])
+        
+        nirStart.append(nirs[idx_start])
+        nirEnd.append(nirs[idx_end])
+        nirStart2.append(nirs[idx_start+1])
+        nirEnd2.append(nirs[idx_end-1])
+        
+        swir2Start.append(swir2s[idx_start])
+        swir2End.append(swir2s[idx_end])
+        swir2Start2.append(swir2s[idx_start+1])
+        swir2End2.append(swir2s[idx_end-1])
 
         # predicted_values.append(intercept + coef[0] * days +
         #                         coef[1]*np.cos(days*1*2*np.pi/365.25) + coef[2]*np.sin(days*1*2*np.pi/365.25) +
@@ -205,7 +251,7 @@ def process_detection_results(results, ponto_desejado, NODATA_VALUE):
     # ndvi_magnitudes.extend(ndvi_magnitudes_1)
     # # Se não houver mais segmentos a seguir adiciona NODATA_VALUE se só existir um segmento adiciona -65535
     # ndvi_magnitudes.append(NODATA_VALUE if ndvi_magnitudes and any(ndvi_magnitudes) else -NODATA_VALUE)
-    
+        
     datas = [datetime.fromordinal(data) for data in break_dates]
     break_dates_epoch = [int(data.replace(tzinfo=timezone.utc).timestamp() * 1000) for data in datas]
     
@@ -234,17 +280,36 @@ def process_detection_results(results, ponto_desejado, NODATA_VALUE):
         # 'prediction_dates': [d.tolist() for d in prediction_dates],
         # 'predicted_values': [[int(value) for value in sublist] for sublist in predicted_values], 
         'coeficientes': coeficientes, 
-        'intercept_values': intercept_values
-        #'mask_len': mask_len,
-        #'mask_num_false': mask_num_false
-        }]
+        'intercept_values': intercept_values,
+        
+        'greenStart': greenStart,
+        'greenEnd': greenEnd,
+        'greenStart2': greenStart2,
+        'greenEnd2': greenEnd2,
+        
+        'redStart': redStart,
+        'redEnd': redEnd,
+        'redStart2': redStart2,
+        'redEnd2': redEnd2,
+        
+        'nirStart': nirStart,
+        'nirEnd': nirEnd,
+        'nirStart2': nirStart2,
+        'nirEnd2': nirEnd2,
+        
+        'swir2Start': swir2Start,
+        'swir2End': swir2End,
+        'swir2Start2': swir2Start2,
+        'swir2End2': swir2End2
+    }]
+
     
     df = pd.DataFrame(dados)
     
     # Reorganize columns
-    ordem_colunas = ['tBreak','tEnd', 'tStart', 'changeProb', 'x_coord', 'y_coord', #'ndvi_magnitude', 
-                     'coeficientes', 'intercept_values']
-                      #'prediction_dates', 'predicted_values', 'coeficientes', 'intercept_values']
-                      #'mask_len', 'mask_num_false']
+    ordem_colunas = ['tBreak','tEnd', 'tStart', 'changeProb', 'x_coord', 'y_coord', 'coeficientes', 'intercept_values', 
+                     'greenStart', 'greenStart2', 'greenEnd', 'greenEnd2', 'redStart', 'redStart2', 'redEnd', 'redEnd2',
+                     'nirStart', 'nirStart2', 'nirEnd', 'nirEnd2', 'swir2Start', 'swir2Start2', 'swir2End', 'swir2End2']
+    
     df = df[ordem_colunas]
     return df
