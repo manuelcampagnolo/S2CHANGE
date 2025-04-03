@@ -12,8 +12,6 @@ ctypedef fused floating:
     float
     double
 
-cdef floating scaled_alpha = alpha * n_samples
-
 cdef floating soft_threshold(floating z, floating alpha) nogil:
     """Soft thresholding operator for Lasso coordinate descent"""
     if z > alpha:
@@ -101,6 +99,9 @@ def lasso_coordinate_descent(floating[:, ::1] X, floating[::1] y,
     cdef floating diff
     cdef floating z_j, p_j, old_w_j
     cdef floating[::1] X_j_squared = np.zeros(n_features, dtype=np.float64)
+
+    # Scale alpha
+    cdef floating scaled_alpha = alpha * n_samples
     
     # Handle intercept
     cdef floating[::1] X_mean = np.zeros(n_features, dtype=np.float64)
