@@ -99,9 +99,6 @@ def lasso_coordinate_descent(floating[:, ::1] X, floating[::1] y,
     cdef floating diff
     cdef floating z_j, p_j, old_w_j
     cdef floating[::1] X_j_squared = np.zeros(n_features, dtype=np.float64)
-
-    # Scale alpha
-    cdef floating scaled_alpha = alpha * n_samples
     
     # Handle intercept
     cdef floating[::1] X_mean = np.zeros(n_features, dtype=np.float64)
@@ -113,6 +110,12 @@ def lasso_coordinate_descent(floating[:, ::1] X, floating[::1] y,
     cdef floating[::1] w_old = np.zeros(n_features, dtype=np.float64)
     cdef floating[::1] residuals = np.zeros(n_samples, dtype=np.float64)
     
+    # Declare X_centered at function level
+    cdef floating[:, ::1] X_centered = np.zeros((n_samples, n_features), dtype=np.float64)
+    
+    # Reference to data that will be used in coordinate descent
+    cdef floating[:, ::1] X_work
+    
     if fit_intercept:
         # Calculate means for centering
         y_mean = np.mean(y)
@@ -122,14 +125,25 @@ def lasso_coordinate_descent(floating[:, ::1] X, floating[::1] y,
         # Center y for initial residuals
         for i in range(n_samples):
             residuals[i] = y[i] - y_mean
+            
+        # Create centered X for use in coordinate descent
+        for i in range(n_samples):
+            for j in range(n_features):
+                X_centered[i, j] = X[i, j] - X_mean[j]
+                
+        # Use X_centered in coordinate descent
+        X_work = X_centered
     else:
         # Just copy y to residuals initially
         for i in range(n_samples):
             residuals[i] = y[i]
+            
+        # Use original X in coordinate descent
+        X_work = X
     
-    # Precompute X_j^T * X_j for each feature
+    # Precompute X_j^T * X_j for each feature using the working X
     for j in range(n_features):
-        X_j_squared[j] = column_dot_product(n_samples, X, j)
+        X_j_squared[j] = column_dot_product(n_samples, X_work, j)
     
     # Coordinate descent
     for iteration in range(max_iter):
@@ -145,21 +159,18 @@ def lasso_coordinate_descent(floating[:, ::1] X, floating[::1] y,
             # Current coefficient value
             old_w_j = w[j]
             
-            # Compute partial residual: r_j = y - X.dot(w) + w_j*X_j
-            # = residuals + w_j*X_j
-            
-            # Compute X_j^T * residuals
+            # Compute partial residual
             p_j = 0.0
             for i in range(n_samples):
-                p_j += X[i, j] * (residuals[i] + old_w_j * X[i, j])
+                p_j += X_work[i, j] * (residuals[i] + old_w_j * X_work[i, j])
             
             # Update coefficient using soft thresholding
-            w[j] = soft_threshold(p_j, scaled_alpha) / X_j_squared[j]
+            w[j] = soft_threshold(p_j, alpha) / X_j_squared[j]
             
             # Update residuals
             if w[j] != old_w_j:
                 for i in range(n_samples):
-                    residuals[i] -= (w[j] - old_w_j) * X[i, j]
+                    residuals[i] -= (w[j] - old_w_j) * X_work[i, j]
         
         # Check for convergence
         diff = diff_abs_sum(n_features, w, w_old)
