@@ -91,14 +91,17 @@ def lasso_coordinate_descent(floating[:, ::1] X, floating[::1] y,
         'n_iter': number of iterations
         'residuals': ndarray of residuals
         'rmse': root mean squared error
+        'dual_gap': final dual gap value
     """
     # Get dimensions
     cdef int n_samples = X.shape[0]
     cdef int n_features = X.shape[1]
     cdef int i, j, iteration
-    cdef floating diff
+    cdef floating diff, dual_gap
     cdef floating z_j, p_j, old_w_j
     cdef floating[::1] X_j_squared = np.zeros(n_features, dtype=np.float64)
+    cdef floating dual_norm_XtR, R_norm_sq, w_norm1, XtR_j
+    cdef floating y_squared_mean = 0.0
     
     # Handle intercept
     cdef floating[::1] X_mean = np.zeros(n_features, dtype=np.float64)
@@ -109,6 +112,7 @@ def lasso_coordinate_descent(floating[:, ::1] X, floating[::1] y,
     cdef floating[::1] w = np.zeros(n_features, dtype=np.float64)
     cdef floating[::1] w_old = np.zeros(n_features, dtype=np.float64)
     cdef floating[::1] residuals = np.zeros(n_samples, dtype=np.float64)
+    cdef floating[::1] XtR = np.zeros(n_features, dtype=np.float64)
     
     # Declare X_centered at function level
     cdef floating[:, ::1] X_centered = np.zeros((n_samples, n_features), dtype=np.float64)
@@ -125,6 +129,7 @@ def lasso_coordinate_descent(floating[:, ::1] X, floating[::1] y,
         # Center y for initial residuals
         for i in range(n_samples):
             residuals[i] = y[i] - y_mean
+            y_squared_mean += (y[i] - y_mean) ** 2
             
         # Create centered X for use in coordinate descent
         for i in range(n_samples):
@@ -137,9 +142,13 @@ def lasso_coordinate_descent(floating[:, ::1] X, floating[::1] y,
         # Just copy y to residuals initially
         for i in range(n_samples):
             residuals[i] = y[i]
+            y_squared_mean += (y[i] - y_mean) ** 2
             
         # Use original X in coordinate descent
         X_work = X
+    
+    # Finalize y_squared_mean calculation
+    y_squared_mean /= n_samples
     
     # Precompute X_j^T * X_j for each feature using the working X
     for j in range(n_features):
@@ -172,9 +181,39 @@ def lasso_coordinate_descent(floating[:, ::1] X, floating[::1] y,
                 for i in range(n_samples):
                     residuals[i] -= (w[j] - old_w_j) * X_work[i, j]
         
-        # Check for convergence
-        diff = diff_abs_sum(n_features, w, w_old)
-        if diff < tol:
+        # Check for convergence using dual gap
+        # Calculate X.T.dot(residuals)
+        for j in range(n_features):
+            XtR_j = 0.0
+            for i in range(n_samples):
+                XtR_j += X_work[i, j] * residuals[i]
+            XtR[j] = XtR_j
+        
+        # Find max absolute value of X.T.dot(residuals)
+        dual_norm_XtR = 0.0
+        for j in range(n_features):
+            if fabs(XtR[j]) > dual_norm_XtR:
+                dual_norm_XtR = fabs(XtR[j])
+        
+        # Calculate ||R||^2
+        R_norm_sq = 0.0
+        for i in range(n_samples):
+            R_norm_sq += residuals[i] * residuals[i]
+
+        # Compute dual gap
+        if dual_norm_XtR > alpha:
+            # Calculate ||w||_1 (L1 norm)
+            w_norm1 = 0.0
+            for j in range(n_features):
+                w_norm1 += fabs(w[j])
+            
+            # Dual gap calculation based on scikit-learn's implementation
+            dual_gap = R_norm_sq / (2.0 * n_samples) + alpha * w_norm1 - (dual_norm_XtR ** 2) / (2.0 * alpha)
+        else:
+            dual_gap = R_norm_sq / (2.0 * n_samples)
+        
+        # Check if dual gap is small enough for convergence
+        if dual_gap < tol * y_squared_mean:
             break
     
     # Calculate final RMSE
@@ -192,7 +231,8 @@ def lasso_coordinate_descent(floating[:, ::1] X, floating[::1] y,
         'intercept_': intercept,
         'n_iter': iteration + 1,
         'residuals': np.asarray(residuals),
-        'rmse': rmse
+        'rmse': rmse,
+        'dual_gap': dual_gap
     }
     
     return result
