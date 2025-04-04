@@ -3,7 +3,7 @@
 Cython implementation of Lasso regression for PyCCD.
 This module provides a fast coordinate descent implementation optimized for time series.
 """
-from libc.math cimport fabs
+from libc.math cimport fabs, sqrt
 import numpy as np
 cimport numpy as np
 
@@ -105,6 +105,7 @@ def lasso_coordinate_descent(floating[:, ::1] X, floating[::1] y,
     
     # Handle intercept
     cdef floating[::1] X_mean = np.zeros(n_features, dtype=np.float64)
+    cdef floating[::1] X_std = np.zeros(n_features, dtype=np.float64)
     cdef floating y_mean = 0.0
     cdef floating intercept = 0.0
     
@@ -149,6 +150,19 @@ def lasso_coordinate_descent(floating[:, ::1] X, floating[::1] y,
     
     # Finalize y_squared_mean calculation
     y_squared_mean /= n_samples
+
+    # Calculate feature standard deviations and standardize
+    for j in range(n_features):
+        # Calculate std dev for this feature
+        X_std[j] = 0.0
+        for i in range(n_samples):
+            X_std[j] += X_work[i, j] * X_work[i, j]
+        X_std[j] = sqrt(X_std[j] / n_samples)
+        
+        # Standardize this feature if std dev is not zero
+        if X_std[j] > 0:
+            for i in range(n_samples):
+                X_work[i, j] /= X_std[j]
     
     # Precompute X_j^T * X_j for each feature using the working X
     for j in range(n_features):
@@ -207,7 +221,7 @@ def lasso_coordinate_descent(floating[:, ::1] X, floating[::1] y,
             for j in range(n_features):
                 w_norm1 += fabs(w[j])
             
-            # Dual gap calculation based on scikit-learn's implementation
+            # Dual gap calculation
             dual_gap = R_norm_sq / (2.0 * n_samples) + alpha * w_norm1 - (dual_norm_XtR ** 2) / (2.0 * alpha)
         else:
             dual_gap = R_norm_sq / (2.0 * n_samples)
@@ -215,6 +229,11 @@ def lasso_coordinate_descent(floating[:, ::1] X, floating[::1] y,
         # Check if dual gap is small enough for convergence
         if dual_gap < tol * y_squared_mean:
             break
+    
+    # Rescale coefficients back to original scale
+    for j in range(n_features):
+        if X_std[j] > 0:
+            w[j] /= X_std[j]
     
     # Calculate final RMSE
     cdef floating rmse = compute_rmse(n_samples, n_features, residuals)
