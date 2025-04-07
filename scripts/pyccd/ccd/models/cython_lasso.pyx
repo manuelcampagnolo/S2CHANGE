@@ -101,7 +101,6 @@ def lasso_coordinate_descent(floating[:, ::1] X, floating[::1] y,
     cdef floating z_j, p_j, old_w_j
     cdef floating[::1] X_j_squared = np.zeros(n_features, dtype=np.float64)
     cdef floating dual_norm_XtR, R_norm_sq, w_norm1, XtR_j
-    cdef floating y_squared_mean = 0.0
     
     # Handle intercept
     cdef floating[::1] X_mean = np.zeros(n_features, dtype=np.float64)
@@ -135,7 +134,6 @@ def lasso_coordinate_descent(floating[:, ::1] X, floating[::1] y,
         # Center y for initial residuals
         for i in range(n_samples):
             residuals[i] = y[i] - y_mean
-            y_squared_mean += (y[i] - y_mean) ** 2
             
         # Create centered X for use in coordinate descent
         for i in range(n_samples):
@@ -148,13 +146,9 @@ def lasso_coordinate_descent(floating[:, ::1] X, floating[::1] y,
         # Just copy y to residuals initially
         for i in range(n_samples):
             residuals[i] = y[i]
-            y_squared_mean += (y[i] - y_mean) ** 2
             
         # Use original X in coordinate descent
         X_work = X
-    
-    # Finalize y_squared_mean calculation
-    y_squared_mean /= n_samples
 
     # Calculate feature standard deviations and standardize
     for j in range(n_features):
