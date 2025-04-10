@@ -1,3 +1,4 @@
+# cython_lasso.py
 # cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True
 """
 Cython implementation of Lasso regression for PyCCD.
@@ -121,8 +122,6 @@ def lasso_coordinate_descent(floating[:, ::1] X, floating[::1] y,
     cdef floating[:, ::1] X_work
 
     # Variables for stopping criterion
-    cdef floating w_max_abs = 0.0
-    cdef floating d_w_max = 0.0
     cdef floating y_norm_sq = 0.0
     
     if fit_intercept:
@@ -134,6 +133,8 @@ def lasso_coordinate_descent(floating[:, ::1] X, floating[::1] y,
         # Center y for initial residuals
         for i in range(n_samples):
             residuals[i] = y[i] - y_mean
+            # y_norm_sq calculation
+            y_norm_sq += y[i] * y[i]
             
         # Create centered X for use in coordinate descent
         for i in range(n_samples):
@@ -146,9 +147,14 @@ def lasso_coordinate_descent(floating[:, ::1] X, floating[::1] y,
         # Just copy y to residuals initially
         for i in range(n_samples):
             residuals[i] = y[i]
+            # y_norm_sq calculation
+            y_norm_sq += y[i] * y[i]
             
         # Use original X in coordinate descent
         X_work = X
+
+    # y_norm_sq calculation
+    y_norm_sq /= n_samples
 
     # Calculate feature standard deviations and standardize
     for j in range(n_features):
@@ -169,6 +175,7 @@ def lasso_coordinate_descent(floating[:, ::1] X, floating[::1] y,
     
     # Coordinate descent
     for iteration in range(max_iter):
+
         # Store previous coefficients for convergence check
         for j in range(n_features):
             w_old[j] = w[j]
@@ -194,54 +201,39 @@ def lasso_coordinate_descent(floating[:, ::1] X, floating[::1] y,
                 for i in range(n_samples):
                     residuals[i] -= (w[j] - old_w_j) * X_work[i, j]
 
-        # First stopping criteria check
-        w_max_abs = 0.0
-        d_w_max = 0.0
+        # Calculate X.T.dot(residuals)
         for j in range(n_features):
-            if fabs(w[j]) > w_max_abs:
-                w_max_abs = fabs(w[j])
-            if fabs(w[j] - w_old[j]) > d_w_max:
-                d_w_max = fabs(w[j] - w_old[j])
-
-        # If first criteria is met, then check dual gap
-        if d_w_max < tol * w_max_abs:
-            # Calculate X.T.dot(residuals)
-            for j in range(n_features):
-                XtR_j = 0.0
-                for i in range(n_samples):
-                    XtR_j += X_work[i, j] * residuals[i]
-                XtR[j] = XtR_j
-            
-            # Find max absolute value of X.T.dot(residuals)
-            dual_norm_XtR = 0.0
-            for j in range(n_features):
-                if fabs(XtR[j]) > dual_norm_XtR:
-                    dual_norm_XtR = fabs(XtR[j])
-            
-            # Calculate ||R||^2
-            R_norm_sq = 0.0
+            XtR_j = 0.0
             for i in range(n_samples):
-                R_norm_sq += residuals[i] * residuals[i]
+                XtR_j += X_work[i, j] * residuals[i]
+            XtR[j] = XtR_j
+        
+        # Find max absolute value of X.T.dot(residuals)
+        dual_norm_XtR = 0.0
+        for j in range(n_features):
+            if fabs(XtR[j]) > dual_norm_XtR:
+                dual_norm_XtR = fabs(XtR[j])
+        
+        # Calculate ||R||^2
+        R_norm_sq = 0.0
+        for i in range(n_samples):
+            R_norm_sq += residuals[i] * residuals[i]
 
-            # Compute dual gap
-            if dual_norm_XtR > alpha:
-                # Calculate ||w||_1 (L1 norm)
-                w_norm1 = 0.0
-                for j in range(n_features):
-                    w_norm1 += fabs(w[j])
-                
-                # Dual gap calculation
-                dual_gap = R_norm_sq / (2.0 * n_samples) + alpha * w_norm1 - (dual_norm_XtR ** 2) / (2.0 * alpha)
-            else:
-                dual_gap = R_norm_sq / (2.0 * n_samples)
+        # Compute dual gap
+        if dual_norm_XtR > alpha:
+            # Calculate ||w||_1 (L1 norm)
+            w_norm1 = 0.0
+            for j in range(n_features):
+                w_norm1 += fabs(w[j])
             
-            for i in range(n_samples):
-                y_norm_sq += y[i] * y[i]
-            y_norm_sq /= n_samples
-            
-            # Check if dual gap is small enough for convergence
-            if dual_gap < tol * y_norm_sq:
-                break
+            # Dual gap calculation
+            dual_gap = R_norm_sq / (2.0 * n_samples) + alpha * w_norm1 - (dual_norm_XtR ** 2) / (2.0 * alpha)
+        else:
+            dual_gap = R_norm_sq / (2.0 * n_samples)
+        
+        # Check if dual gap is small enough for convergence
+        if dual_gap < tol * y_norm_sq:
+            break
     
     # Rescale coefficients back to original scale
     for j in range(n_features):
