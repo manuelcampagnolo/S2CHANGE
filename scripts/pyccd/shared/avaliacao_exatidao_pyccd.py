@@ -283,6 +283,36 @@ def preprocessCsvS2(csv_s2, end_of_series):
   return csv_s2
 
 
+def preprocessParquetS2(parquet_directory, end_of_series):
+  """
+  Does a pre-processing of a directory containing parquet files with detection results to ensure it has the necessary columns
+  and coherent values for the validation procedure.
+  Args:
+    parquet_directory: path to a directory containing parquet files with ccd detection results;
+    end_of_series: date of the last image in the series - a string in the form YYYY-mm-dd.
+  Returns:
+    Pre-processed dataframe.
+  """
+  
+  column_names = ['tBreak', 'tEnd', 'tStart', 'changeProb', 'x_coord', 'y_coord', 'coeficientes']
+  main_df = pd.DataFrame(columns=column_names)
+  
+  for file in os.listdir(parquet_directory):
+    if file.endswith('.parquet'):
+      file_path = os.path.join(parquet_directory, file)
+      temp_df = pd.read_parquet(file_path)
+      temp_df = temp_df[column_names].copy()
+      main_df = pd.concat([main_df, temp_df], ignore_index=True)
+
+  main_df.rename(columns={'x_coord':'longitude','y_coord':'latitude'}, inplace=True)
+  main_df['End_S'] = end_of_series
+  main_df['coord_ccdc'] = list(zip(main_df.latitude, main_df.longitude))
+  main_df['Dist_Point'] = -1
+  main_df['Point_Val'] = -1
+
+  return main_df
+
+
 # função de validação do data frame
 def valPol(df, theta):
   """
