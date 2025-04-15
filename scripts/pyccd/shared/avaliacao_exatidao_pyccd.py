@@ -125,7 +125,8 @@ def spatialJoin(pathPoligonosDGT, dfCCDC):
   ## Pontos ISA
 
   # 2) CONVERTER O DF PARA GEO DF
-  gdfCCDC = gpd.GeoDataFrame(dfCCDC, geometry = gpd.points_from_xy(dfCCDC.longitude, dfCCDC.latitude), crs = 4326 )
+  gdfCCDC = gpd.GeoDataFrame(dfCCDC, geometry = gpd.points_from_xy(dfCCDC.longitude, dfCCDC.latitude), crs=32629) # old csvs - crs=4326
+  gdfCCDC.to_crs(crs=4326, inplace=True)
 
   ## criar a bordadura
   ###idBord = identity.copy() # cria uma copia do identity gerado acima
@@ -159,6 +160,7 @@ def spatialJoin(pathPoligonosDGT, dfCCDC):
       # converter para datetime
       identity[dataCol] = pd.to_datetime(identity[dataCol], format = '%Y%m%d')
       identity.loc[maskZero, dataCol] = np.nan
+
 
   # 4) SPATIAL JOIN ENTRE OS CENTROIDES DO CCDC COM OS BUFFERS DE 200 METROS
   subset = gpd.sjoin(gdfCCDC, identity, how='inner')
@@ -303,6 +305,8 @@ def preprocessParquetS2(parquet_directory, end_of_series):
       temp_df = pd.read_parquet(file_path)
       temp_df = temp_df[column_names].copy()
       main_df = pd.concat([main_df, temp_df], ignore_index=True)
+  
+  main_df.reset_index(drop=True, inplace=True)
 
   main_df.rename(columns={'x_coord':'longitude','y_coord':'latitude'}, inplace=True)
   main_df['End_S'] = end_of_series
