@@ -444,10 +444,20 @@ def testeRemove(groupedby):
   min_delta_min = groupedby['Min_delta_min'].min()
   #remove rows only if there is more than 1 row per point, the number of analyst dates is not zero and min_delta_min is greater than zero.
   if len(groupedby) > 1 and groupedby.analistas.min() > 0 and min_delta_min >= 0:
-      Bj, Ai = groupedby.loc[groupedby['delta_min']==min_delta_min][['tBreak','data1_z']].values[0]
-      #remove rows that contain Ai or Bj (other than the row with the min_delta_min)
+    # Updated section with check on matching rows
+    # Add a check to see if there are any rows matching the condition
+    matching_rows = groupedby.loc[groupedby['delta_min']==min_delta_min][['tBreak','data1_z']]
+      
+    if len(matching_rows) > 0:  # Only proceed if matching rows
+      Bj, Ai = matching_rows.values[0]
       mask = ((groupedby['tBreak'] == Bj) | (groupedby['data1_z'] == Ai)) & (groupedby['delta_min']!=min_delta_min)
       groupedby = groupedby[~mask]
+
+    # original
+    # Bj, Ai = groupedby.loc[groupedby['delta_min']==min_delta_min][['tBreak','data1_z']].values[0]
+    # #remove rows that contain Ai or Bj (other than the row with the min_delta_min)
+    # mask = ((groupedby['tBreak'] == Bj) | (groupedby['data1_z'] == Ai)) & (groupedby['delta_min']!=min_delta_min)
+    # groupedby = groupedby[~mask]
 
   return groupedby
 
@@ -546,7 +556,7 @@ def runValidation(FOLDER_PARQUET, BDR_DGT, dt_ini, dt_end, bandFilter, theta):
     print('A correr validação dos resultados do ccd...')
     #pegar data do fim da serie temporal (ultima imagem)
 
-    single_file = os.path.join(FOLDER_PARQUET, os.listdir(FOLDER_PARQUET)[0])
+    single_file = os.listdir(FOLDER_PARQUET)[0]
     reference_index = single_file.find('END')
     end_of_series = single_file[reference_index + 3 : reference_index + 11]
     year, month, day = [end_of_series[:4], end_of_series[4:6], end_of_series[6:]]
@@ -558,7 +568,7 @@ def runValidation(FOLDER_PARQUET, BDR_DGT, dt_ini, dt_end, bandFilter, theta):
     
     #correr pre-processamento
     csv_s2 = preprocessParquetS2(FOLDER_PARQUET, end_of_series)
-    csv_preprocessed_path = '{}_pre_proc.csv'.format(results_path)
+    csv_preprocessed_path = os.path.join(results_path, 'pre_proc.csv')
     csv_s2.to_csv(csv_preprocessed_path)
 
     """## Filtrar datas
@@ -597,5 +607,5 @@ def runValidation(FOLDER_PARQUET, BDR_DGT, dt_ini, dt_end, bandFilter, theta):
     print('Omission error = {}%'.format(round(100*om,2)))
     print('Commission error = {}%'.format(round(100*cm,2)))
 
-    DF_FINAL_T.to_csv(results_path / f'VAL_{group_name}.csv', index=False)
+    DF_FINAL_T.to_csv(os.path.join(results_path, f'VAL_{group_name}.csv'), index=False)
 
