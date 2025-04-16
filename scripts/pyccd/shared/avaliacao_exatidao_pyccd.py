@@ -608,4 +608,18 @@ def runValidation(FOLDER_PARQUET, BDR_DGT, dt_ini, dt_end, bandFilter, theta):
     print('Commission error = {}%'.format(round(100*cm,2)))
 
     DF_FINAL_T.to_csv(os.path.join(results_path, f'VAL_{group_name}.csv'), index=False)
+#%%
+# ---------------------------------
+#      PARAMETROS DA VALIDACAO
+# ---------------------------------
+# datas do filtro das datas da analise (DGT 300)
+dt_ini = '2018-09-12' # data inicial
+dt_end = '2021-09-30' # data final
+# Margem de tolerancia entre a quebra do Modelo e do Analista
+theta = 60 # +/- theta dias de diferenca
+# banda a filtrar com base na magnitude
+bandFilter = None #nao implementado ainda - nao mexer
 
+FOLDER_PARQUET = r'C:\Users\scaetano\Downloads\T29TNE'
+BDR_DGT = r'C:\Users\Public\Documents\BDR_300_artigo\BDR_CCDC_TNE_Adjusted.shp'
+runValidation(FOLDER_PARQUET, BDR_DGT, dt_ini, dt_end, bandFilter, theta)
