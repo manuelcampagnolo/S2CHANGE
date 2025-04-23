@@ -568,6 +568,7 @@ def runValidation(FOLDER_PARQUET, BDR_DGT, dt_ini, dt_end, bandFilter, theta):
     
     #correr pre-processamento
     csv_s2 = preprocessParquetS2(FOLDER_PARQUET, end_of_series)
+    csv_s2['changeProb'] = csv_s2['changeProb'] / 100 # ----> changeProb modification from [0,100] to [0,1]
     csv_preprocessed_path = os.path.join(results_path, 'pre_proc.csv')
     csv_s2.to_csv(csv_preprocessed_path)
 
