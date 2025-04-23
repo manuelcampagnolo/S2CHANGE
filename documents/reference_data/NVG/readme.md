@@ -1,4 +1,4 @@
-Reference data set from Navigator
+Reference data set Navigator clear cuts
 
 Description: 
 1. Inês Silveira's dissertation [Development of a forest clear-cut reference database for Continental Portugal at Sentinel-2 Resolution](https://repositorio.ulisboa.pt/handle/10400.5/100065)
