@@ -314,8 +314,26 @@ def preprocessParquetS2(parquet_directory, end_of_series):
   main_df['Dist_Point'] = -1
   main_df['Point_Val'] = -1
 
+  main_df = fix_changeProb(main_df)
+
   return main_df
 
+def fix_changeProb(df):
+
+    #gets original column names
+    cols = df.columns
+
+    #puts changeProb in the 0-1 range
+    df['changeProb'] = df['changeProb']/100
+
+    #creates a column to store the number of breaks in a group
+    df['count_breaks'] = df.groupby('coord_ccdc')['tStart'].transform('count')
+    #creates a column to store the maximum tbreak in a group
+    df['max_tbreak_group'] = df.groupby('coord_ccdc')['tBreak'].transform('max')
+    #sets the changeProb to 1 in all segments, except the last one (the one with largest tBreak)
+    df.loc[(df['count_breaks'] > 1) & (df['max_tbreak_group']!=df['tBreak']), 'changeProb'] = 1
+
+    return df[cols].copy()
 
 # função de validação do data frame
 def valPol(df, theta):
@@ -568,7 +586,6 @@ def runValidation(FOLDER_PARQUET, BDR_DGT, dt_ini, dt_end, bandFilter, theta):
     
     #correr pre-processamento
     csv_s2 = preprocessParquetS2(FOLDER_PARQUET, end_of_series)
-    csv_s2['changeProb'] = csv_s2['changeProb'] / 100 # ----> changeProb modification from [0,100] to [0,1]
     csv_preprocessed_path = os.path.join(results_path, 'pre_proc.csv')
     csv_s2.to_csv(csv_preprocessed_path)
 
