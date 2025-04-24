@@ -224,7 +224,7 @@ def save_vector_points(gdf, output_file, target_crs="EPSG:32629"):
     
     return len(valid_points_gdf)
 
-def process_directory_to_geotiff_improved(input_dir, output_raster_file, output_vector_file, target_crs="EPSG:32629"):
+def process_directory_to_geotiff(input_dir, output_raster_file, output_vector_file, target_crs="EPSG:32629"):
     """
     Main function to process all parquet files in a directory and save as a single GeoTIFF
     and a vector file of used points.
@@ -275,4 +275,4 @@ if __name__ == "__main__":
     output_raster_file = "/Users/domwelsh/green_ds/Thesis/BDR_300_artigo/accuracy_assessment/last_break_dates.tif" # UPDATE
     output_vector_file = "/Users/domwelsh/green_ds/Thesis/BDR_300_artigo/accuracy_assessment/used_points.shp" # UPDATE
     
-    process_directory_to_geotiff_improved(input_directory, output_raster_file, output_vector_file) # target_crs='EPSG:4326'
+    process_directory_to_geotiff(input_directory, output_raster_file, output_vector_file) # target_crs='EPSG:4326'
