@@ -12,17 +12,13 @@ def filter_pixel_group(group):
     """
     Filter a group of rows for a single pixel according to the rules:
     - If only one row exists, keep it
-    - If multiple rows exist, keep the row with highest tBreak where changeProb != 0
-    - If no rows have changeProb != 0, keep the row with highest tBreak
+    - If multiple rows exist, keep the row with the second highest tBreak
     """
     if len(group) == 1:
         return group.iloc[0]
     else:
-        valid_rows = group[group['changeProb'] != 0]
-        if len(valid_rows) == 0:
-            return group.loc[group['tBreak'].idxmax()]
-        else:
-            return valid_rows.loc[valid_rows['tBreak'].idxmax()]
+        second_highest_idx = group['tBreak'].nlargest(2).index[-1]
+        return group.loc[second_highest_idx]
 
 def process_parquet_file(file_path):
     """
@@ -65,16 +61,6 @@ def collect_data_from_directory(input_dir):
         return None
     
     return pd.DataFrame(all_filtered_rows)
-
-def add_break_date_column(df):
-    """
-    Add break_date column based on changeProb and tBreak values
-    """
-    df['break_date'] = df.apply(
-        lambda row: row['tBreak'] if row['changeProb'] != 0 else None, # else 1 - to see pixels without break
-        axis=1
-    )
-    return df
 
 def create_geodataframe(df, source_crs="EPSG:32629"):
     """
@@ -131,7 +117,7 @@ def create_raster_array_utm(gdf, raster_params):
     min_x, min_y, max_x, max_y = raster_params['bounds']
     res_x, res_y = raster_params['resolution']
     
-    break_date_array = np.full((height, width), np.nan, dtype=np.float32)
+    tbreak_array = np.full((height, width), np.nan, dtype=np.float32)
     
     for idx, row in gdf.iterrows():
         # Calculate indices from pixel center coordinates
@@ -139,10 +125,13 @@ def create_raster_array_utm(gdf, raster_params):
         y_idx = int(np.round((max_y - row['y_coord']) / res_y - 0.5))
         
         if 0 <= x_idx < width and 0 <= y_idx < height:
-            if row['break_date'] is not None:
-                break_date_array[y_idx, x_idx] = row['break_date']
+            if not pd.isna(row['tBreak']):
+                date_obj = pd.to_datetime(row['tBreak'], unit='ms')
+                yyyymmdd = int(date_obj.strftime('%Y%m%d'))
+                tbreak_array[y_idx, x_idx] = yyyymmdd
+            # tbreak_array[y_idx, x_idx] = row['tBreak']
     
-    return break_date_array
+    return tbreak_array
 
 def save_geotiff(array, output_file, raster_params, source_crs='EPSG:32629', target_crs='EPSG:32629'):
     """
@@ -209,18 +198,18 @@ def save_vector_points(gdf, output_file, target_crs="EPSG:32629"):
     """
     Save all points from the GeoDataFrame that have valid break dates as a vector file.
     """
-    valid_points_gdf = gdf[gdf['break_date'].notna()].copy()
+    valid_points_gdf = gdf.copy()
 
     # Convert break_date from milliseconds to date format
     if not valid_points_gdf.empty:
         # Assuming break_date is in milliseconds since epoch
-        valid_points_gdf['break_date'] = pd.to_datetime(valid_points_gdf['break_date'], unit='ms').dt.strftime('%Y-%m-%d')
+        valid_points_gdf['tBreak_date'] = pd.to_datetime(valid_points_gdf['tBreak'], unit='ms').dt.strftime('%Y-%m-%d')
     
     # Reproject if necessary
     if valid_points_gdf.crs.to_string() != target_crs:
         valid_points_gdf = valid_points_gdf.to_crs(target_crs)
         
-    valid_points_gdf.to_file(output_file, driver='ESRI Shapefile')
+    valid_points_gdf.to_file(output_file, driver='GPKG')
     
     return len(valid_points_gdf)
 
@@ -242,9 +231,6 @@ def process_directory_to_geotiff(input_dir, output_raster_file, output_vector_fi
         print("No data")
         return
     
-    # Add break_date column
-    df = add_break_date_column(df)
-    
     # Create GeoDataFrame
     gdf = create_geodataframe(df)
     
@@ -255,10 +241,10 @@ def process_directory_to_geotiff(input_dir, output_raster_file, output_vector_fi
     print(f"Resolution: {raster_params['resolution'][0]} x {raster_params['resolution'][1]} meters")
     
     # Create raster array
-    break_date_array = create_raster_array_utm(gdf, raster_params)
+    tbreak_array = create_raster_array_utm(gdf, raster_params)
     
     # Save to GeoTIFF (with optional reprojection)
-    save_geotiff(break_date_array, output_raster_file, raster_params, source_crs='EPSG:32629', target_crs=target_crs)
+    save_geotiff(tbreak_array, output_raster_file, raster_params, source_crs='EPSG:32629', target_crs=target_crs)
     
     # Save vector points
     num_points_saved = save_vector_points(gdf, output_vector_file, target_crs)
@@ -266,13 +252,12 @@ def process_directory_to_geotiff(input_dir, output_raster_file, output_vector_fi
     print(f"Combined GeoTIFF saved to: {output_raster_file}")
     print(f"Vector points saved to: {output_vector_file}")
     print(f"Total pixels processed: {len(df)}")
-    print(f"Pixels with break dates: {df['break_date'].notna().sum()}")
     print(f"Points saved to vector file: {num_points_saved}")
 
 if __name__ == "__main__":
     # Set input directory and output files
     input_directory = "/Users/domwelsh/green_ds/Thesis/BDR_300_artigo" # UPDATE
-    output_raster_file = "/Users/domwelsh/green_ds/Thesis/BDR_300_artigo/accuracy_assessment/last_break_dates.tif" # UPDATE
-    output_vector_file = "/Users/domwelsh/green_ds/Thesis/BDR_300_artigo/accuracy_assessment/used_points.shp" # UPDATE
+    output_raster_file = "/Users/domwelsh/green_ds/Thesis/BDR_300_artigo/accuracy_assessment/last_break_dates_updated.tif" # UPDATE
+    output_vector_file = "/Users/domwelsh/green_ds/Thesis/BDR_300_artigo/accuracy_assessment/used_points_updated.gpkg" # UPDATE
     
     process_directory_to_geotiff(input_directory, output_raster_file, output_vector_file) # target_crs='EPSG:4326'
