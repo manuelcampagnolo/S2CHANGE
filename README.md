@@ -93,8 +93,8 @@ Entregáveis:
 
 Entregáveis:  
   * E2.1 – [Relatório com metodologia de criação da BDR](documents/Entregavel_2_1.pdf) (1 de maio de 2024); [versão revista](documents/Entregavel_2_1_v2.pdf) (14 de maio de 2024)
-  * E2.2 – [Base de dados de referência em formato ESRI shapefile ou Geopackage para uma tile Sentinel-2 sobre Portugal Continental](documents/Entregavel_2_2_BDR_navigator_sentinel2_metadados_v4.pdf) (7 de julho de 2024). A [base de dados BRD_NVG_S2_V01](documents/BRD_NVG_S2_V01.zip) está disponível aqui (exige palavra-passe). 
-  * E2.3 – Extensão da base de dados para outras regiões de Portugal Continental. A [base de dados revista BRD_NVG_S2_V02](BRD_NVG_S2_V02.zip) (20 de dezembro de 2024) para a totalidade do território está disponível aqui (exige palavra-passe).
+  * E2.2 – [Metadads Base de dados de referência em formato ESRI shapefile ou Geopackage para uma tile Sentinel-2 sobre Portugal Continental](documents/Entregavel_2_2_BDR_navigator_sentinel2_metadados_v4.pdf) (7 de julho de 2024).
+  * E2.3 – Extensão da base de dados para outras regiões de Portugal Continental. Ver [BRD_NVG](https://github.com/manuelcampagnolo/S2CHANGE/tree/main/documents/reference_data/NVG) para acesso aos dados (protegido) e à documentação.
 
 **Tarefa 3** – Adaptação e implementação operacional de uma metodologia automática com base em imagens de satélite para a criação sistemática de um produto nacional de delimitação de manchas vetoriais superiores a 0.5 ha de perda recente de floresta e mato, com uma periodicidade de pelo menos dois meses.
 
@@ -121,8 +121,7 @@ Entregáveis:
 <details markdown="block">
 <summary> Base de dados de referência </summary>
 
-* BRD_NVG_v01. 
-* BRD_NVG_S2_V02. A [base de dados revista BRD_NVG_S2_V02](BRD_NVG_S2_V02.zip) (20 de dezembro de 2024) para a totalidade do território está disponível aqui (exige palavra-passe). Na sequência do trabalho de revisão para corrigir os problemas identificados no Entregável 2.2, e descrito em [apresentação Inês Silveira](BDR/REVISTO/Apresentacao_tese_mestrado_IS.pdf), a base de dados de referência foi revista. A 
+* [BRD_NVG](https://github.com/manuelcampagnolo/S2CHANGE/tree/main/documents/reference_data/NVG)
 
 </details>
 
