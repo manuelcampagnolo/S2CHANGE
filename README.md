@@ -26,7 +26,7 @@ base em análise automática de imagens de satélite
 * Centro de custos do ISA: 5207 (S2CHANGE)
 </details>
 
-## Apresentações e outros contributos
+## Apresentações e recursos HPC
 
 <details markdown="block">
 <summary> Reunião DGT 20 fevereiro de 2024</summary>
