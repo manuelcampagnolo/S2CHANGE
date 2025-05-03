@@ -54,25 +54,9 @@ base em análise automática de imagens de satélite
 
 
 <details markdown="block">
-<summary> Call for Advanced Computing Projects (4th ed) - Grant 2024.07034.CPCA.A0</summary>
+<summary> HPC resources</summary>
 
-* [Application](documents/Application_2024.07034.CPCA.pdf)
-* [Allocated resources](documents/A0_project_resources.png)
-
-</details>
-
-<details markdown="block">
-<summary> Call for Advanced Computing Projects (5th ed) - Grant 2024_10004_CPCA_A1</summary>
-
-* [Application](documents/application_2024_10004_CPCA_A1.pdf)
-* [Contract](documents/TA_2024_10004_CPCA_A1.pdf)
-
-</details>
-
-<details markdown="block">
-<summary> Call for EuroHPC March 2025 </summary>
-
-* [Application](documents/EHPC-DEV-2025D03-088_Campagnolo_Consolidated_online_forms_submetido.pdf)
+See applications for HPC resources: https://github.com/manuelcampagnolo/S2CHANGE/tree/main/documents/HPC_resources
 
 </details>
 
