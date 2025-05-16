@@ -1,5 +1,5 @@
-# Estrutura dos dados: Extração de 20 observações temporais
-## Metodologia da obtenção dos dados
+# Extração de 20 observações temporais
+## Metodologia
 Os dados estão organizados por pixel com base nas geometrias de entrada (reference_data), extraindo séries temporais de observações antes e depois da data de quebra (ou da média entre duas datas -- data_0 e data_1 --, se aplicável).
 Para cada pixel, são guardadas:
     • As N observações anteriores e N posteriores à data central (data_mid);
