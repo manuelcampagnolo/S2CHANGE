@@ -1,7 +1,12 @@
 # About
 Description of the files contained in this folder
 
+
 ## PyCCD Processing
+
+<details>
+  <summary>PyCCD Processing</summary>
+
 Upon calling `main.py` (local or hpc):
 1. `preprocessing.py`
     - intermediate/auxiliary modules: `read_files.py`, `utils.py`
@@ -11,8 +16,15 @@ Process the CCD algorithm for a given tile and region of interest.
 
 For more information check this [link](https://github.com/manuelcampagnolo/S2CHANGE/blob/main/scripts/README.md)
 
+</details>
+
+---
+
 ## Create GeoTiff from Parquets
-- `ccd_results_filter.py`
+<details>
+  <summary>Create GeoTiff from Parquets</summary>
+    
+ `ccd_results_filter.py`
 
 Merges files in a parquet directory and creates a GeoTiff.
 
@@ -27,7 +39,15 @@ Outputs:
 - `output_raster_file`: path and name used to save the GeoTiff (needs to be set)
 - `output_vector_file`: path and name of vector file with used points (needs to be set)
 
+</details>
+
+---
+
 ## Accuracy Assessment
+
+<details>
+  <summary>Accuracy Assessment</summary>
+
 - `avaliacao_exatidao_pyccd.py`
 
 Conducts accuracy assessment of the pyccd results.
@@ -45,3 +65,4 @@ Outputs:
     - file is saved in the `accuracy_assessment` folder inside `FOLDER_PARQUET`
 - outputs accuracy metrics (F1-score, omission and commission errors) to the console
 
+</details>
