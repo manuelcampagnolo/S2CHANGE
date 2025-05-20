@@ -11,6 +11,7 @@ import glob
 import geopandas as gpd 
 import shutil
 from datetime import datetime
+import numpy as np
 
 # Registra a hora de início
 hora_inicio = datetime.now()
@@ -25,7 +26,7 @@ tile_to_test = 'T29SPD'  # Escolher o tile
 date_start = '2017-01-01'  # Escolher a data inicial para fazer o download das imagens S2
 date_end = '2024-12-31'  # Escolher a data final para fazer o download das imagens S2
 bandas = ['B3', 'B4', 'B8', 'B12']  # 12 bandas S2
-
+NODATA=65535
 # ---------------------------------
 #   Inicialização do Earth Engine
 # ---------------------------------
