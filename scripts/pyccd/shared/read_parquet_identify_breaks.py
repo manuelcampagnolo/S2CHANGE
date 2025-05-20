@@ -13,7 +13,7 @@ def read_parquet_identify_breaks(filepath, extra_cols_to_read):
     """
     df=pd.read_parquet(filepath)[['x_coord', 'y_coord']+extra_cols_to_read]
     df['is_break']=0 #is_break==0 terminal segment; is_break==1 for segment with break
-    # remove last segment for each pixel # 
+    # create mask and new binary column 'is_break'
     mask = (df['x_coord'] == df['x_coord'].shift(-1)) & (df['y_coord'] == df['y_coord'].shift(-1))
     df.loc[mask, 'is_break'] = 1
     return df 
