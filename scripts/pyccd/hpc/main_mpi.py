@@ -35,7 +35,6 @@ def main(batch_size=None):
     size = comm.Get_size()
 
     if rank == 0:
-        # root rank
         tif_dates_ord, N = check_or_initialize_file(
             outputs_config['output_file'], 
             input_config['tiles'], 
@@ -45,59 +44,44 @@ def main(batch_size=None):
             preprocessing_config['max_date'], 
             input_config['roi'], 
             preprocessing_config['bandas_desejadas']
-            )
-        
-        N=100000 # Number of pixels to be processed
+        )
         
         indices = list(range(0, N, batch_size))
-        batches = [
-            (start, min(start + batch_size, N)) for start in indices
-        ]
-        print(f"[Rank {rank}] Total batches created: {len(batches)}")
+        batches = [(start, min(start + batch_size, N)) for start in indices]
+        print(f"[Rank {rank}] Total batches created: {len(batches)}", flush=True)
 
-        # Split batches between ranks
         batches_per_rank = [batches[i::size] for i in range(size)]
     else:
         tif_dates_ord = None
         batches_per_rank = None
 
-    # Share data between processes
     tif_dates_ord = comm.bcast(tif_dates_ord, root=0)
     my_batches = comm.scatter(batches_per_rank, root=0)
+    print(f"[Rank {rank}] Received {len(my_batches)} batches", flush=True)
 
     start_time = time.time()
-
     local_results = []
-    total_batches = len(my_batches)
 
-    with ProcessPoolExecutor(max_workers=num_cpus) as executor:
-        futures = []
-        for i, batch in enumerate(my_batches):
-            futures.append(executor.submit(process_batch, batch, outputs_config['output_file'], tif_dates_ord))
+    for i, batch in enumerate(my_batches):
+        print(f"[Rank {rank}] Starting batch {i+1}/{len(my_batches)}: indices {batch}", flush=True)
+        try:
+            result = process_batch(batch, outputs_config['output_file'], tif_dates_ord, rank)
+            if result:
+                local_results.extend(result)
+        except Exception as e:
+            print(f"[Rank {rank}] Error in batch {i+1}: {repr(e)}", flush=True)
 
-        for i, future in enumerate(futures):
-            result = future.result()
-            local_results.extend(result)
+        elapsed = time.time() - start_time
+        print(f"[Rank {rank}] Finished batch {i+1}/{len(my_batches)} "
+              f"({(i+1)/len(my_batches)*100:.2f}%) - Elapsed: {int(elapsed//60)}m {int(elapsed%60)}s", flush=True)
 
-            elapsed_time = time.time() - start_time
-            minutes = elapsed_time // 60
-            seconds = elapsed_time % 60
-
-            print(f"[Rank {rank}] Processed {i+1}/{total_batches} batches "
-                  f"({(i+1)/total_batches*100:.2f}%) - Elapsed Time: {int(minutes)}m {int(seconds)}s")
-
-    # Saving results locally per process
     if local_results:
         result_df = pd.concat(local_results, ignore_index=True)
         result_df = explode_columns(result_df)
-        result_df.to_parquet(outputs_config['folders']['tabular'] / f"{ccd_config['filename']}_rank_{rank}.parquet", index=False)
-
-    # Sync all ranks before continuing
-    comm.Barrier()
-    
-    if rank == 0:
-        print(f"All batches were processed by {size} ranks.")
-
+        parquet_path = outputs_config['folders']['tabular'] / f"{ccd_config['filename']}_rank_{rank}.parquet"
+        print(f"[Rank {rank}] Saving results to {parquet_path}", flush=True)
+        result_df.to_parquet(parquet_path, index=False, engine='pyarrow')
+#%%
 def process_batch(batch, sel_values_path, tif_dates_ord):
     """
     Processes a batch of data from an HDF5 file, extracting the required slices 
@@ -112,8 +96,13 @@ def process_batch(batch, sel_values_path, tif_dates_ord):
         list: A list of processed results from `runDetectionForPoint`.
     """
     start, end = batch
-    
-    h5_file = h5py.File(sel_values_path, 'r')
+
+    try:
+        h5_file = h5py.File(sel_values_path, 'r')
+    except Exception as e:
+        print(f"[Rank {rank}] Failed to open HDF5 file: {repr(e)}", flush=True)
+        return []
+
     sel_values_block = h5_file['values'][:, :, start:end]
     xs_slice = h5_file['xs'][start:end]
     ys_slice = h5_file['ys'][start:end]
@@ -133,7 +122,15 @@ def process_batch(batch, sel_values_path, tif_dates_ord):
         for i in range(sel_values_block.shape[2])
     ]
 
-    return [runDetectionForPoint(arg) for arg in arg_list]
+    results = []
+    for args in arg_list:
+        try:
+            result = runDetectionForPoint(args)
+            results.append(result)
+        except Exception as e:
+            print(f"[Rank {rank}] Error processing point {args[0]}: {repr(e)}", flush=True)
 
+    return results
+#%%
 if __name__ == '__main__':
     main(preprocessing_config['batch_size'])
