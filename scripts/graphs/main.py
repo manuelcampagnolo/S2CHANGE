@@ -5,8 +5,8 @@ import sys
 import pickle
 
 from create_graph_from_parquet import *
-from create_geodataframe import *
-from output_tiff import *
+#from create_geodataframe import *
+#from output_tiff import *
 from concave_hull import concave_hull
 import geopandas as gpd
 from shapely.geometry import Polygon, LineString, Point, MultiPoint
