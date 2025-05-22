@@ -221,6 +221,8 @@ def process_directory_to_geotiff(input_dir, output_raster_file, output_vector_fi
     """
     # Create output directories if they don't exist
     for output_file in [output_raster_file, output_vector_file]:
+        if output_file is None:
+            continue
         output_dir = os.path.dirname(output_file)
         if output_dir:
             Path(output_dir).mkdir(parents=True, exist_ok=True)
@@ -247,17 +249,18 @@ def process_directory_to_geotiff(input_dir, output_raster_file, output_vector_fi
     save_geotiff(tbreak_array, output_raster_file, raster_params, source_crs='EPSG:32629', target_crs=target_crs)
     
     # Save vector points
-    num_points_saved = save_vector_points(gdf, output_vector_file, target_crs)
+    if output_vector_file is not None:
+        num_points_saved = save_vector_points(gdf, output_vector_file, target_crs)
+        print(f"Vector points saved to: {output_vector_file}")
+        print(f"Points saved to vector file: {num_points_saved}")
     
     print(f"Combined GeoTIFF saved to: {output_raster_file}")
-    print(f"Vector points saved to: {output_vector_file}")
     print(f"Total pixels processed: {len(df)}")
-    print(f"Points saved to vector file: {num_points_saved}")
 
 if __name__ == "__main__":
     # Set input directory and output files
-    input_directory = "/Users/domwelsh/green_ds/Thesis/BDR_300_artigo" # UPDATE
-    output_raster_file = "/Users/domwelsh/green_ds/Thesis/BDR_300_artigo/accuracy_assessment/last_break_dates_updated.tif" # UPDATE
-    output_vector_file = "/Users/domwelsh/green_ds/Thesis/BDR_300_artigo/accuracy_assessment/used_points_updated.gpkg" # UPDATE
+    input_directory = "/Users/domwelsh/green_ds/Thesis/T29SMD_0999" # UPDATE
+    output_raster_file = "/Users/domwelsh/green_ds/Thesis/T29SMD_0999/filter_results/last_break_dates_updated.tif" # UPDATE
+    output_vector_file = None # Add path if vector file is wanted, to check which points were processed to make the raster
     
     process_directory_to_geotiff(input_directory, output_raster_file, output_vector_file) # target_crs='EPSG:4326'
