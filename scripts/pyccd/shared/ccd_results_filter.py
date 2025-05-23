@@ -7,6 +7,9 @@ import rasterio
 from rasterio.transform import from_origin
 from rasterio.warp import calculate_default_transform, reproject, Resampling
 import numpy as np
+import matplotlib.pyplot as plt
+from datetime import datetime
+import colorsys
 
 def filter_pixel_group(group):
     """
@@ -117,8 +120,7 @@ def create_raster_array_utm(gdf, raster_params):
     min_x, min_y, max_x, max_y = raster_params['bounds']
     res_x, res_y = raster_params['resolution']
     
-    tbreak_array = np.full((height, width), np.nan, dtype=np.float32)
-    
+    tbreak_array = np.full((height, width), -9999, dtype=np.int32)
     for idx, row in gdf.iterrows():
         # Calculate indices from pixel center coordinates
         x_idx = int(np.round((row['x_coord'] - min_x) / res_x - 0.5))
@@ -126,7 +128,8 @@ def create_raster_array_utm(gdf, raster_params):
         
         if 0 <= x_idx < width and 0 <= y_idx < height:
             if not pd.isna(row['tBreak']):
-                date_obj = pd.to_datetime(row['tBreak'], unit='ms')
+                date_obj = pd.to_datetime(row['tBreak'], unit='ms', utc=True)
+                date_obj = date_obj.tz_localize(None)
                 yyyymmdd = int(date_obj.strftime('%Y%m%d'))
                 tbreak_array[y_idx, x_idx] = yyyymmdd
             # tbreak_array[y_idx, x_idx] = row['tBreak']
@@ -135,8 +138,12 @@ def create_raster_array_utm(gdf, raster_params):
 
 def save_geotiff(array, output_file, raster_params, source_crs='EPSG:32629', target_crs='EPSG:32629'):
     """
-    Save a numpy array as a GeoTIFF file, reprojecting to target CRS
+    Save a numpy array as a GeoTIFF file with a year-based color table, reprojecting to target CRS
     """
+    
+    nodata_value = -9999
+    # array = array.astype(np.int32)
+
     # If target CRS is different from source, reproject directly
     if source_crs != target_crs:
         # Create a temporary in-memory dataset first
@@ -148,10 +155,10 @@ def save_geotiff(array, output_file, raster_params, source_crs='EPSG:32629', tar
                 height=raster_params['height'],
                 width=raster_params['width'],
                 count=1,
-                dtype=np.float32,
+                dtype=np.int32,
                 crs=source_crs,
                 transform=raster_params['transform'],
-                nodata=np.nan
+                nodata=nodata_value
             ) as src:
                 src.write(array, 1)
                 
@@ -178,6 +185,7 @@ def save_geotiff(array, output_file, raster_params, source_crs='EPSG:32629', tar
                             dst_transform=transform,
                             dst_crs=target_crs,
                             resampling=Resampling.nearest)
+
     else:
         # If no reprojection needed, just save directly
         with rasterio.open(
@@ -187,10 +195,10 @@ def save_geotiff(array, output_file, raster_params, source_crs='EPSG:32629', tar
             height=raster_params['height'],
             width=raster_params['width'],
             count=1,
-            dtype=np.float32,
+            dtype=np.int32,
             crs=source_crs,
             transform=raster_params['transform'],
-            nodata=np.nan
+            nodata=nodata_value
         ) as dst:
             dst.write(array, 1)
 
@@ -200,10 +208,12 @@ def save_vector_points(gdf, output_file, target_crs="EPSG:32629"):
     """
     valid_points_gdf = gdf.copy()
 
-    # Convert break_date from milliseconds to date format
+    # Convert break_date from milliseconds to date format - use UTC consistently
     if not valid_points_gdf.empty:
         # Assuming break_date is in milliseconds since epoch
-        valid_points_gdf['tBreak_date'] = pd.to_datetime(valid_points_gdf['tBreak'], unit='ms').dt.strftime('%Y-%m-%d')
+        valid_points_gdf['tBreak_date'] = pd.to_datetime(
+            valid_points_gdf['tBreak'], unit='ms', utc=True
+        ).dt.tz_localize(None).dt.strftime('%Y-%m-%d')
     
     # Reproject if necessary
     if valid_points_gdf.crs.to_string() != target_crs:
@@ -212,6 +222,92 @@ def save_vector_points(gdf, output_file, target_crs="EPSG:32629"):
     valid_points_gdf.to_file(output_file, driver='GPKG')
     
     return len(valid_points_gdf)
+
+
+def create_qgis_style_file(gdf, output_style_file):
+    """
+    Create a QGIS .qml style file that colors pixels by year with gradient shading by day of year
+    """
+    
+    # Get all unique dates and extract years - use UTC consistently
+    valid_dates = gdf[~pd.isna(gdf['tBreak'])]['tBreak'].apply(
+        lambda x: pd.to_datetime(x, unit='ms', utc=True).tz_localize(None)
+    )
+    
+    # Group dates by year
+    dates_by_year = {}
+    for date in valid_dates:
+        year = date.year
+        date_int = int(date.strftime('%Y%m%d'))
+        if year not in dates_by_year:
+            dates_by_year[year] = []
+        dates_by_year[year].append(date_int)
+    
+    # Sort years and create color map
+    years = sorted(dates_by_year.keys())
+    cmap = plt.get_cmap('tab20', len(years))
+    
+    # Create QML content
+    qml_content = '''<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>
+<qgis version="3.22.0" minScale="0" maxScale="1e+08" styleCategories="AllStyleCategories">
+  <pipe>
+    <rasterrenderer opacity="1" type="paletted" band="1">
+      <rasterTransparency/>
+      <colorPalette>
+'''
+    
+    # Add color entries for each date, grouped by year with gradient
+    for i, year in enumerate(years):
+        # Get base color for this year
+        base_rgb = cmap(i)[:3]  # RGB values in 0-1 range
+        
+        # Convert to HSV for easier manipulation
+        h, s, v = colorsys.rgb_to_hsv(*base_rgb)
+        
+        # Get unique dates for this year and sort them
+        year_dates = sorted(set(dates_by_year[year]))
+        
+        for date_value in year_dates:
+            # Ensure date_value is an integer
+            date_value = int(date_value)
+            
+            # Extract day of year (1-365/366)
+            date_obj = datetime.strptime(str(date_value), '%Y%m%d')
+            day_of_year = date_obj.timetuple().tm_yday
+            
+            # Calculate position in year (0 to 1)
+            # Account for leap years
+            days_in_year = 366 if date_obj.year % 4 == 0 and (date_obj.year % 100 != 0 or date_obj.year % 400 == 0) else 365
+            position = (day_of_year - 1) / (days_in_year - 1)
+            
+            # Adjust value (brightness) and saturation based on position
+            # Early in year: lighter (higher value, lower saturation)
+            # Late in year: darker (lower value, higher saturation)
+            new_v = 0.9 - (position * 0.4)  # Goes from 0.9 to 0.5
+            new_s = s * (0.5 + position * 0.5)  # Goes from 50% to 100% of original saturation
+            
+            # Convert back to RGB
+            new_rgb = colorsys.hsv_to_rgb(h, new_s, new_v)
+            rgb = [int(c * 255) for c in new_rgb]
+            color_hex = '#{:02x}{:02x}{:02x}'.format(rgb[0], rgb[1], rgb[2])
+            
+            # Format label to show month-day
+            label = date_obj.strftime('%Y-%m-%d')
+            qml_content += f'        <paletteEntry value="{date_value}" color="{color_hex}" label="{label}"/>\n'
+    
+    # Add nodata value
+    qml_content += '''        <paletteEntry value="-9999" color="#000000" label="No Data" alpha="0"/>
+      </colorPalette>
+    </rasterrenderer>
+  </pipe>
+</qgis>'''
+    
+    # Save style file
+    with open(output_style_file, 'w') as f:
+        f.write(qml_content)
+    
+    print(f"QGIS style file saved to: {output_style_file}")
+    print(f"Years in data: {years}")
 
 def process_directory_to_geotiff(input_dir, output_raster_file, output_vector_file, target_crs="EPSG:32629"):
     """
@@ -235,6 +331,9 @@ def process_directory_to_geotiff(input_dir, output_raster_file, output_vector_fi
     
     # Create GeoDataFrame
     gdf = create_geodataframe(df)
+
+    style_file = output_raster_file.replace('.tif', '_year_colors.qml')
+    create_qgis_style_file(gdf, style_file)
     
     # Calculate raster parameters
     raster_params = calculate_raster_parameters_utm(gdf)
@@ -259,8 +358,8 @@ def process_directory_to_geotiff(input_dir, output_raster_file, output_vector_fi
 
 if __name__ == "__main__":
     # Set input directory and output files
-    input_directory = "/Users/domwelsh/green_ds/Thesis/T29SMD_0999" # UPDATE
-    output_raster_file = "/Users/domwelsh/green_ds/Thesis/T29SMD_0999/filter_results/last_break_dates_updated.tif" # UPDATE
+    input_directory = "/Users/domwelsh/green_ds/Thesis/BDR_300_artigo" # UPDATE
+    output_raster_file = "/Users/domwelsh/green_ds/Thesis/BDR_300_artigo/accuracy_assessment/color_test.tif" # UPDATE
     output_vector_file = None # Add path if vector file is wanted, to check which points were processed to make the raster
     
     process_directory_to_geotiff(input_directory, output_raster_file, output_vector_file) # target_crs='EPSG:4326'
