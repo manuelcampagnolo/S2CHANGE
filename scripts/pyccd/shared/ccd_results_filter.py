@@ -1,3 +1,37 @@
+"""
+PURPOSE:
+This script processes parquet files containing change detection results from satellite imagery analysis.
+It filters and aggregates pixel-level change detection data, converts it to raster format, and creates
+visualization files for use in GIS software like QGIS.
+
+MAIN FUNCTIONALITY:
+- Reads multiple parquet files containing change detection break points (tBreak values)
+- Filters data by date range (optional)
+- For each pixel location, selects the most relevant break point using these rules:
+  * If only one break exists: keep it
+  * If multiple breaks exist: keep the one with the second-highest tBreak value
+- Converts filtered point data to a georeferenced raster (GeoTIFF)
+- Creates QGIS style files for visualization
+- Optionally saves filtered points as a vector file
+
+INPUTS:
+- input_directory: Directory containing parquet files with columns:
+  * x_coord, y_coord: UTM coordinates (EPSG:32629 assumed)
+  * tBreak: Break date as milliseconds since Unix epoch (UTC)
+  * Other columns are preserved but not used for filtering
+- search_start: Optional start date for filtering (format: 'YYYY-MM-DD' or datetime object)
+- search_end: Optional end date for filtering (format: 'YYYY-MM-DD' or datetime object)
+
+OUTPUTS:
+- GeoTIFF raster file (.tif): 
+  * Pixel values represent break dates in YYYYMMDD format (integer)
+  * NoData value: -9999
+  * Resolution: 10m x 10m pixels
+  * Coordinate system: UTM (EPSG:32629) or optionally reprojected
+- QGIS style file (.qml): Color-coded visualization by year and day-of-year
+- Optional vector file (.gpkg): Point locations with break dates for verification
+"""
+
 import pandas as pd
 import geopandas as gpd
 import os
@@ -417,9 +451,9 @@ if __name__ == "__main__":
     output_raster_file = "/Users/domwelsh/green_ds/Thesis/BDR_300_artigo/accuracy_assessment/last_break_dates_date_filter_test.tif" # UPDATE
     output_vector_file = None # Add path if vector file is wanted, to check which points were processed to make the raster
     
-    # Date range filtering (set both to None to disable filtering)
-    search_start = "2020-01-01"  # Start date for filtering break dates (YYYY-MM-DD format)
-    search_end = "2020-01-20"    # End date for filtering break dates (YYYY-MM-DD format)
+    # String date range filtering (set both to None to disable filtering)
+    search_start = None  # Start date for filtering break dates ("YYYY-MM-DD" format)
+    search_end = None    # End date for filtering break dates ("YYYY-MM-DD" format)
     
     process_directory_to_geotiff(
         input_directory, 
