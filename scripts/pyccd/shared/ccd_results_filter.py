@@ -11,19 +11,48 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 import colorsys
 
-def filter_pixel_group(group):
+def filter_pixel_group(group, search_start=None, search_end=None):
     """
     Filter a group of rows for a single pixel according to the rules:
     - If only one row exists, keep it
     - If multiple rows exist, keep the row with the second highest tBreak
+    - Only consider rows within the date range if specified
     """
+    # Filter by date range if specified
+    if search_start is not None or search_end is not None:
+        filtered_group = group.copy()
+        
+        if search_start is not None:
+            # Convert search_start to milliseconds timestamp
+            if isinstance(search_start, str):
+                search_start_dt = pd.to_datetime(search_start)
+            else:
+                search_start_dt = search_start
+            search_start_ms = int(search_start_dt.timestamp() * 1000)
+            filtered_group = filtered_group[filtered_group['tBreak'] >= search_start_ms]
+        
+        if search_end is not None:
+            # Convert search_end to milliseconds timestamp
+            if isinstance(search_end, str):
+                search_end_dt = pd.to_datetime(search_end)
+            else:
+                search_end_dt = search_end
+            search_end_ms = int(search_end_dt.timestamp() * 1000)
+            filtered_group = filtered_group[filtered_group['tBreak'] <= search_end_ms]
+        
+        # If no rows remain after filtering, return None
+        if len(filtered_group) == 0:
+            return None
+            
+        group = filtered_group
+    
     if len(group) == 1:
         return group.iloc[0]
     else:
         second_highest_idx = group['tBreak'].nlargest(2).index[-1]
         return group.loc[second_highest_idx]
 
-def process_parquet_file(file_path):
+def process_parquet_file(file_path, search_start=None, search_end=None):
     """
     Process a single parquet file and return filtered rows
     """
@@ -33,14 +62,16 @@ def process_parquet_file(file_path):
         filtered_rows = []
         
         for (x, y), group in grouped:
-            filtered_rows.append(filter_pixel_group(group))
+            filtered_row = filter_pixel_group(group, search_start, search_end)
+            if filtered_row is not None:
+                filtered_rows.append(filtered_row)
         
         return filtered_rows
     except Exception as e:
         print(f"Error processing {file_path}: {str(e)}")
         return []
 
-def collect_data_from_directory(input_dir):
+def collect_data_from_directory(input_dir, search_start=None, search_end=None):
     """
     Collect and process data from all parquet files in a directory
     """
@@ -52,15 +83,24 @@ def collect_data_from_directory(input_dir):
     
     print(f"Found {len(parquet_files)} parquet files to process")
     
+    # Print date range information
+    if search_start is not None or search_end is not None:
+        date_info = "Date filtering: "
+        if search_start is not None:
+            date_info += f"from {search_start} "
+        if search_end is not None:
+            date_info += f"to {search_end}"
+        print(date_info)
+    
     all_filtered_rows = []
     
     for i, file_path in enumerate(parquet_files, 1):
         print(f"Processing file {i}/{len(parquet_files)}: {os.path.basename(file_path)}")
-        filtered_rows = process_parquet_file(file_path)
+        filtered_rows = process_parquet_file(file_path, search_start, search_end)
         all_filtered_rows.extend(filtered_rows)
     
     if not all_filtered_rows:
-        print("No valid data found in any files")
+        print("No valid data found in any files (possibly due to date filtering)")
         return None
     
     return pd.DataFrame(all_filtered_rows)
@@ -309,11 +349,26 @@ def create_qgis_style_file(gdf, output_style_file):
     print(f"QGIS style file saved to: {output_style_file}")
     print(f"Years in data: {years}")
 
-def process_directory_to_geotiff(input_dir, output_raster_file, output_vector_file, target_crs="EPSG:32629"):
+def process_directory_to_geotiff(input_dir, output_raster_file, output_vector_file, target_crs="EPSG:32629", search_start=None, search_end=None):
     """
     Main function to process all parquet files in a directory and save as a single GeoTIFF
     and a vector file of used points.
     Uses UTM coordinates throughout and only reprojects at the end if needed.
+    
+    Parameters:
+    -----------
+    input_dir : str
+        Directory containing parquet files
+    output_raster_file : str
+        Path for output GeoTIFF file
+    output_vector_file : str or None
+        Path for output vector file (None to skip)
+    target_crs : str
+        Target coordinate reference system
+    search_start : str or datetime, optional
+        Start date for filtering (e.g., '2020-01-01')
+    search_end : str or datetime, optional
+        End date for filtering (e.g., '2023-12-31')
     """
     # Create output directories if they don't exist
     for output_file in [output_raster_file, output_vector_file]:
@@ -324,7 +379,7 @@ def process_directory_to_geotiff(input_dir, output_raster_file, output_vector_fi
             Path(output_dir).mkdir(parents=True, exist_ok=True)
     
     # Collect data from all parquet files
-    df = collect_data_from_directory(input_dir)
+    df = collect_data_from_directory(input_dir, search_start, search_end)
     if df is None:
         print("No data")
         return
@@ -359,7 +414,17 @@ def process_directory_to_geotiff(input_dir, output_raster_file, output_vector_fi
 if __name__ == "__main__":
     # Set input directory and output files
     input_directory = "/Users/domwelsh/green_ds/Thesis/BDR_300_artigo" # UPDATE
-    output_raster_file = "/Users/domwelsh/green_ds/Thesis/BDR_300_artigo/accuracy_assessment/color_test.tif" # UPDATE
+    output_raster_file = "/Users/domwelsh/green_ds/Thesis/BDR_300_artigo/accuracy_assessment/last_break_dates_date_filter_test.tif" # UPDATE
     output_vector_file = None # Add path if vector file is wanted, to check which points were processed to make the raster
     
-    process_directory_to_geotiff(input_directory, output_raster_file, output_vector_file) # target_crs='EPSG:4326'
+    # Date range filtering (set both to None to disable filtering)
+    search_start = "2020-01-01"  # Start date for filtering break dates (YYYY-MM-DD format)
+    search_end = "2020-01-20"    # End date for filtering break dates (YYYY-MM-DD format)
+    
+    process_directory_to_geotiff(
+        input_directory, 
+        output_raster_file, 
+        output_vector_file, 
+        search_start=search_start, 
+        search_end=search_end
+    ) # target_crs='EPSG:4326'
