@@ -1,128 +1,33 @@
-Return-path: <bounces+8496221-fd76-mlc=isa.ulisboa.pt@em2486.eurohpc-ju.europa.eu>
-Envelope-to: mlc@isa.ulisboa.pt
-Delivery-date: Tue, 27 May 2025 11:02:27 +0100
-Received: from [192.168.0.18] (helo=mx1.isa.ulisboa.pt)
-	by quercus-ilex.isa.ulisboa.pt with esmtp (Exim 4.80)
-	(envelope-from <bounces+8496221-fd76-mlc=isa.ulisboa.pt@em2486.eurohpc-ju.europa.eu>)
-	id 1uJr8c-0004Vp-TD
-	for mlc@isa.ulisboa.pt; Tue, 27 May 2025 11:02:27 +0100
-Received: from o1.ptr934.pracecalls.eu ([149.72.238.216]:35206)
-	by mx1.isa.ulisboa.pt with esmtps (TLS1.2:ECDHE_RSA_AES_128_GCM_SHA256:128)
-	(Exim 4.84_2)
-	(envelope-from <bounces+8496221-fd76-mlc=isa.ulisboa.pt@em2486.eurohpc-ju.europa.eu>)
-	id 1uJr8K-0003uT-96
-	for mlc@isa.ulisboa.pt; Tue, 27 May 2025 11:02:26 +0100
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=eurohpc-ju.europa.eu;
-	h=from:subject:content-transfer-encoding:mime-version:to:cc:
-	content-type:cc:content-type:from:subject:to;
-	s=s1; bh=alsrjccN9oz/zDO+xL4DWDHo+VCwNvT8SDy/Mk/IGsk=;
-	b=mBsPLGc0PDK7TZ6v2DgjU3fKj7HwcQuETbSCmMi0XJ1ZU3wNs6lG4dfBSxHbYWSQxB17
-	1JNVBxjiwldHDRNgC+3jPsfZuLm20T8FUn8PKjBQYQo2uf5ChwGlWuQeEl+/HhpksZaPeV
-	Fri8y3KoWWpL0g4uI9FX8RZ7to0JP2smLVBQ3BjaISz4ruKdFLDded3GLzQZinRRmYRo9P
-	6kHL6leiPqTUsasHdtrkK/vpLpYqN03V9aramHqSI3wxVr8tlbQAMI/BmC9QObsH6Bi4YK
-	Q/f9KffJOh9ubsgBhnukDiWRLTfpd1DRSGouNxI7COWpdeJ6B+7XfRqqDgHJwe+A==
-Received: by recvd-65bb6cdcb5-gk2qm with SMTP id recvd-65bb6cdcb5-gk2qm-1-68358D9B-BB
-	2025-05-27 10:02:03.726564739 +0000 UTC m=+4190011.932289154
-Received: from [169.254.14.73] (unknown)
-	by geopod-ismtpd-8 (SG) with ESMTP
-	id d7yOBllcR4qWzygRu_MnVQ
-	Tue, 27 May 2025 10:02:03.637 +0000 (UTC)
-From: no-reply@eurohpc-ju.europa.eu
-Subject: EuroHPC Development Access Call - proposal No. EHPC-DEV-2025D03-088 -
- Final Results
-Message-ID: <d5cb16a9-8879-f694-c3f9-b6912602b5df@eurohpc-ju.europa.eu>
-Content-Transfer-Encoding: quoted-printable
-Date: Tue, 27 May 2025 10:02:03 +0000 (UTC)
-MIME-Version: 1.0
-X-SG-EID: 
- =?us-ascii?Q?u001=2EOe6udP5sTliHb4edvvjYpMFkSRBx29Yq=2FL68TC03aERVaAZagACAkFAsh?=
- =?us-ascii?Q?qiqOybvroCgXDjr1k2QYeMbyUOAvZGg7=2FXAai61?=
- =?us-ascii?Q?I8odrVUx5vCD=2FQv5KcDuHVRt9CsUsYYWyktE9IF?=
- =?us-ascii?Q?hWbskr+wg7uzwkDt+6Ak5YYsWckchEWUwbE0FGm?=
- =?us-ascii?Q?Xtph8kt8cIn1XrFaaHF6qYNmYBzdrKEIHXsuL4V?=
- =?us-ascii?Q?A=3D=3D?=
-To: mlc@isa.ulisboa.pt, eurohpc-call@macc.fccn.pt
-Cc: access@eurohpc-ju.europa.eu
-X-Entity-ID: u001.3dIECF+gFKDX36vLkjj9Xg==
-Content-Type: text/html; charset=utf-8
-Received-SPF: pass; client-ip=149.72.238.216; envelope-from=bounces+8496221-fd76-mlc=isa.ulisboa.pt@em2486.eurohpc-ju.europa.eu; helo=o1.ptr934.pracecalls.eu
-X-Spam_score: -4.422
+Dear Manuel Campagnolo,
 
-<p>Dear Manuel Campagnolo,</p><p> </p><p>We would like to thank you for sub=
-mitting the proposal No. <a href=3D"https://u8496221.ct.sendgrid.net/ls/cli=
-ck?upn=3Du001.8vV9HcGcJAP77NQW2aU6T5fEJ-2B1i-2BlgUJtUcD5-2BCeKjGQKNZyFcG7cU=
-6lyE4eMHLxO-2BYXrIp3GbXQtExvll17CDfHYMSmc0JXjzBFBtBVAE-3DimCR_QplyhqcZ5F26T=
-VTbifhlvJ-2BdxE3dMPeRYLUoPuDjI7cBLFvqQNiVsWLbvziFnWC-2Bebd04RSREYHq6wStnW7d=
-bO7PrTkVrCEmciPvrguknDUUdW7w4WDQdny4gqu2r8kop0hUxLVa8xUAfBzeqqrdonbWK8PWgAI=
-Vb-2FpcszssICikhB5aVjZ6IGJGIlnYBeaUxl6vWDuRZHZu8bUeX7O97w-3D-3D">EHPC-DEV-2=
-025D03-088</a> to the <strong style=3D"font-weight: 800;">EuroHPC Developme=
-nt Access Call</strong>.</p><p> </p><p>We are happy to inform you that your=
- proposal has been evaluated positively and has been awarded:</p><div><ul><=
-li><strong style=3D"font-weight: 800;">400</strong> node hours on <strong s=
-tyle=3D"font-weight: 800;">Deucalion GPU</strong> for a period of <u>12 mon=
-ths</u>.</li></ul></div><p> </p><div><p>As you have expressed interest for =
-the help of the EPICURE <strong style=3D"font-weight: 800;">Application Sup=
-port Team </strong>(AST),  please follow this link (https://pm.epicure-hpc.=
-eu/support/request/) at your earliest convenience and fill in the form to b=
-e assigned an EPICURE AST team to start benefiting from the support. If you=
- need help with the process, please contact epicure-applications@postit.csc=
-.fi</p></div><p>For more details regarding your results, please access the =
-<strong style=3D"font-weight: 800;">Technical Assessment</strong> step by l=
-ogging into the <a href=3D"https://u8496221.ct.sendgrid.net/ls/click?upn=3D=
-u001.8vV9HcGcJAP77NQW2aU6T5fEJ-2B1i-2BlgUJtUcD5-2BCeKi5cgeSTozsiN3s4PKr4A5Z=
-4RK9_QplyhqcZ5F26TVTbifhlvJ-2BdxE3dMPeRYLUoPuDjI7cBLFvqQNiVsWLbvziFnWC-2BHj=
-2hiwzowj8Lm-2Fu1o8mFHMnf5637b8avnXfZWjo7F7-2BQjldjPW7hfXHY3TVVSnyP7VGW-2Fj-=
-2FQguPienA0I0u5e1yrNwloQYJJn-2B-2Ba62wUm-2B1BmLpXlegJM8kqoUelrLfV1814-2BaeP=
-QVv4uCY8SUq6aw-3D-3D">Peer-Review platform</a>. </p><p> </p><p>The start an=
-d end dates of the allocation will be communicated to you by the correspond=
-ing HPC centre as soon as possible. If you do not receive an email from the=
- HPC center in the next days or week, we recommend contacting the support t=
-eam only after checking your junk folder.</p><p> </p><p>If, for any reason =
-you are unable to accept this award notice, please inform the Peer-Review T=
-eam as soon as possible. In particular, please assess, possibly with the su=
-pport of the HPC centre(s), that these awarded resources will allow you to =
-successfully finish your project on time. The terms of access, its duration=
- and the resources awarded to this proposal are not open for negotiation.</=
-p><p> </p><p>Please note that we expect you to start utilizing the resource=
-s already within the first month of your allocation. Please initiate the cr=
-eation of your user account(s) with the supercomputing centre immediately. =
-HPC centres may allocate resources in time according to a pre-defined consu=
-mption pattern. We advise you to ask the HPC centre for more information on=
- this pattern and on the policy adopted for prioritizing jobs in the job sc=
-heduler. If necessary, please adapt your work accordingly.</p><p> </p><p>Du=
-ring the access period, you should direct questions and requests for suppor=
-t to the =E2=80=98hotline=E2=80=99 of the HPC Centre where the resources wi=
-ll be allocated. The Peer-Review Team is available as a fall-back option, i=
-n case of no reply from the centre within a reasonable delay.</p><p> </p><p=
-><strong style=3D"font-weight: 800;">No project extensions are allowed</str=
-ong>, except in cases when the partition is unavailable during the designat=
-ed time.</p><p> </p><p>Upon the completion of your project, you are require=
-d to provide a final report using the correct template available on the <a =
-href=3D"https://u8496221.ct.sendgrid.net/ls/click?upn=3Du001.8vV9HcGcJAP77N=
-QW2aU6T57qeCv7UGP7BusCJtzRV7i6AYT2aLIHhE83iz75qhfQEnS3-2FbytxXwCNBs2xokd07b=
-Zgp0cKt-2BuSUpPa0RrbnrT5IGYrS8SFVJge8ylM4HBp0lm1Xbv2jqXhKez3lLUp-2BEC7bQV1s=
-MPWLRXLiKW9d2Z56FrpVe5RFDSnojLKLobl-2B8CqwAY7eBV6OookvJKdA-3D-3D9zQ6_Qplyhq=
-cZ5F26TVTbifhlvJ-2BdxE3dMPeRYLUoPuDjI7cBLFvqQNiVsWLbvziFnWC-2BhupcBBR0Vs59P=
-ClZhcio5MYx9OIlt5T2jr9AO4r5qzK0Y1dB1-2Fp5fSRSkETLo1Wkzr5pXABLw5NbQ5kBiGaJsR=
-KvLNFTwL1IuPgpsxVzcb6q9WU52NUn5JWrz-2FgIehdh2MXyJScRmFIh-2FBPTzKnYuw-3D-3D"=
-></a><a href=3D"https://u8496221.ct.sendgrid.net/ls/click?upn=3Du001.8vV9Hc=
-GcJAP77NQW2aU6TzHV6djpgKrNEvtaBUb4GfVsDARvzaA9iMULffePaR0JVM7esUyMQpBABGlsR=
-HLPpnuJY6EcU72qk33sczd2hKVP2EWxhOasQe2XL0pBZuJn-Ew4_QplyhqcZ5F26TVTbifhlvJ-=
-2BdxE3dMPeRYLUoPuDjI7cBLFvqQNiVsWLbvziFnWC-2BKT9yGpecDOBTHf5y-2B48W0HXE3hnz=
-aCRqR-2FmvNb2IzRIUnqHb5Wh9QccrDi0XuWxoOoZZd8szcLWUbMgO3y44AO7O62xXyLrzOW26E=
-vqq2P8VWi5VTPCnnn392ocUbmCczEEJlMqXjGnK4AAkkiMl0w-3D-3D">EuroHPC JU website=
-</a>.</p><p> </p><p>Congratulations again for your award through the EuroHP=
-C Development Access Call.</p><p> </p><p> </p><p>Kind regards,</p><p>The Pe=
-er-Review Team,</p><p>EuroHPC Joint Undertaking</p><p> </p><p><i>This is an=
- automatic email sent from the Peer-Review Platform. Please do not respond =
-to it. In case you have any questions or concerns please contact us by send=
-ing an email to </i><u><i>access@eurohpc-ju.europa.eu</i></u><i>.</i></p>
-<img src=3D"https://u8496221.ct.sendgrid.net/wf/open?upn=3Du001.cR-2FRDyHkt=
-8xeoP4bmpC-2FUYP7xuR0ecQJWj2zNFaQYEfEOzXGWD-2B-2Fw3P4UGtTSn-2Fnjrc4dBMNWi37=
-kd3FM8CjlijxuECkeOdxf98714YmH8pu08Fh2njpE1PRZJEItrZ4P0dh2nlsp1iogvIxEtF4ehX=
-d4AscalFOkFMhJ8Bc2Dw-2FrIu1oKqO87ClsHnVd2wRTbAl89gkI3clTcXRY7oFJQ-3D-3D" al=
-t=3D"" width=3D"1" height=3D"1" border=3D"0" style=3D"height:1px !important=
-;width:1px !important;border-width:0 !important;margin-top:0 !important;mar=
-gin-bottom:0 !important;margin-right:0 !important;margin-left:0 !important;=
-padding-top:0 !important;padding-bottom:0 !important;padding-right:0 !impor=
-tant;padding-left:0 !important;"/>
+We would like to thank you for submitting the proposal No. EHPC-DEV-2025D03-088 to the EuroHPC Development Access Call.
+
+We are happy to inform you that your proposal has been evaluated positively and has been awarded:
+
+    400 node hours on Deucalion GPU for a period of 12 months.
+
+As you have expressed interest for the help of the EPICURE Application Support Team (AST), please follow this link (https://pm.epicure-hpc.eu/support/request/) at your earliest convenience and fill in the form to be assigned an EPICURE AST team to start benefiting from the support. If you need help with the process, please contact epicure-applications@postit.csc.fi
+
+For more details regarding your results, please access the Technical Assessment step by logging into the Peer-Review platform.
+
+The start and end dates of the allocation will be communicated to you by the corresponding HPC centre as soon as possible. If you do not receive an email from the HPC center in the next days or week, we recommend contacting the support team only after checking your junk folder.
+
+If, for any reason you are unable to accept this award notice, please inform the Peer-Review Team as soon as possible. In particular, please assess, possibly with the support of the HPC centre(s), that these awarded resources will allow you to successfully finish your project on time. The terms of access, its duration and the resources awarded to this proposal are not open for negotiation.
+
+Please note that we expect you to start utilizing the resources already within the first month of your allocation. Please initiate the creation of your user account(s) with the supercomputing centre immediately. HPC centres may allocate resources in time according to a pre-defined consumption pattern. We advise you to ask the HPC centre for more information on this pattern and on the policy adopted for prioritizing jobs in the job scheduler. If necessary, please adapt your work accordingly.
+
+During the access period, you should direct questions and requests for support to the ‘hotline’ of the HPC Centre where the resources will be allocated. The Peer-Review Team is available as a fall-back option, in case of no reply from the centre within a reasonable delay.
+
+No project extensions are allowed, except in cases when the partition is unavailable during the designated time.
+
+Upon the completion of your project, you are required to provide a final report using the correct template available on the EuroHPC JU website.
+
+Congratulations again for your award through the EuroHPC Development Access Call.
+
+Kind regards,
+
+The Peer-Review Team,
+
+EuroHPC Joint Undertaking
+
+This is an automatic email sent from the Peer-Review Platform. Please do not respond to it. In case you have any questions or concerns please contact us by sending an email to access@eurohpc-ju.europa.eu.
